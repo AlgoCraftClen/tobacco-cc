@@ -1,0 +1,17 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Zip archives (source files are in extracted/)
+*.zip
+
+# Extracted Word doc (raw XML, not needed in repo)
+docx_extracted/
+
+# Claude local settings
+.claude/settings.local.json
