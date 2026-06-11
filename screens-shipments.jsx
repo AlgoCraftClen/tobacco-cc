@@ -3,9 +3,16 @@
    ============================================================ */
 
 function Shipments({ go, showToast }) {
-  const [shipments, setShipments] = React.useState(() => [...DATA.shipments]);
+  const [shipments, setShipments] = React.useState([]);
   const [tab, setTab]   = React.useState("All");
   const [showNew, setShowNew] = React.useState(false);
+
+  React.useEffect(() => {
+    DB.shipments.list().then(rows => {
+      DATA.shipments = rows;
+      setShipments(rows);
+    });
+  }, []);
 
   const tabs   = ["All", "Arriving", "Verifying", "In Transit", "Received"];
   const tabMap = { Arriving: "arriving", Verifying: "verifying", "In Transit": "in_transit", Received: "received" };
@@ -14,7 +21,10 @@ function Shipments({ go, showToast }) {
 
   const deleteShipment = (id, e) => {
     e.stopPropagation();
-    setShipments(ss => ss.filter(s => s.id !== id));
+    DB.shipments.delete(id);
+    const updated = shipments.filter(s => s.id !== id);
+    DATA.shipments = updated;
+    setShipments(updated);
     showToast && showToast("Shipment removed");
   };
 
@@ -138,7 +148,9 @@ function Shipments({ go, showToast }) {
         <NewShipmentDrawer
           nextId={nextId}
           onClose={() => setShowNew(false)}
-          onSave={(sh) => {
+          onSave={async (sh) => {
+            await DB.shipments.insert(sh);
+            DATA.shipments = [sh, ...DATA.shipments];
             setShipments(ss => [sh, ...ss]);
             setShowNew(false);
             showToast && showToast("Shipment added: " + sh.id);

@@ -6,11 +6,24 @@ const SALE_TABS = ["All", "Sent", "Partial", "Overdue", "Paid"];
 const SALE_FILTER_MAP = { Sent: "sent", Partial: "partial", Overdue: "overdue", Paid: "paid" };
 
 function Sales({ go, showToast }) {
-  const [invoices, setInvoices] = React.useState(() => [...DATA.invoices]);
+  const [invoices, setInvoices] = React.useState([]);
   const [tab, setTab]           = React.useState("All");
   const [q, setQ]               = React.useState("");
   const [selected, setSelected] = React.useState(null);
   const [showNew, setShowNew]   = React.useState(false);
+
+  React.useEffect(() => {
+    Promise.all([
+      DB.invoices.list(),
+      DB.customers.list(),
+      DB.products.list(),
+    ]).then(([invRows, custRows, prodRows]) => {
+      DATA.invoices = invRows;
+      DATA.customers = custRows;
+      DATA.products = prodRows;
+      setInvoices(invRows);
+    });
+  }, []);
 
   const list = invoices.filter(inv =>
     (tab === "All" || inv.status === SALE_FILTER_MAP[tab]) &&
@@ -23,7 +36,10 @@ function Sales({ go, showToast }) {
 
   const deleteInvoice = (id, e) => {
     e.stopPropagation();
-    setInvoices(is => is.filter(i => i.id !== id));
+    DB.invoices.delete(id);
+    const updated = invoices.filter(i => i.id !== id);
+    DATA.invoices = updated;
+    setInvoices(updated);
     if (selected?.id === id) setSelected(null);
     showToast && showToast("Invoice removed");
   };
@@ -243,7 +259,10 @@ function Sales({ go, showToast }) {
                   {selected.status !== "paid" && (
                     <button className="btn btn-primary" style={{ flex: 1 }}
                       onClick={() => {
-                        setInvoices(is => is.map(i => i.id === selected.id ? { ...i, status: "paid" } : i));
+                        DB.invoices.update(selected.id, { status: "paid" });
+                        const updated = invoices.map(i => i.id === selected.id ? { ...i, status: "paid" } : i);
+                        DATA.invoices = updated;
+                        setInvoices(updated);
                         setSelected(null);
                         showToast && showToast("Payment recorded for " + selected.id);
                       }}>
@@ -266,7 +285,9 @@ function Sales({ go, showToast }) {
         <NewInvoiceDrawer
           nextId={nextInvId}
           onClose={() => setShowNew(false)}
-          onSave={(inv, msg) => {
+          onSave={async (inv, msg) => {
+            await DB.invoices.insert(inv);
+            DATA.invoices = [inv, ...DATA.invoices];
             setInvoices(is => [inv, ...is]);
             setShowNew(false);
             showToast && showToast(msg);

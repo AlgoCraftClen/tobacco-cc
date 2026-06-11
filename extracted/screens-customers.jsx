@@ -9,11 +9,19 @@ const RISK_BADGE = {
 };
 
 function Customers({ go, showToast }) {
-  const [customers, setCustomers] = React.useState(() => [...DATA.customers]);
+  const [customers, setCustomers] = React.useState([]);
   const [q, setQ] = React.useState("");
   const [type, setType] = React.useState("All");
   const [selected, setSelected] = React.useState(null);
   const [showAdd, setShowAdd] = React.useState(false);
+
+  React.useEffect(() => {
+    Promise.all([DB.customers.list(), DB.invoices.list()]).then(([custRows, invRows]) => {
+      DATA.customers = custRows;
+      DATA.invoices = invRows;
+      setCustomers(custRows);
+    });
+  }, []);
 
   const types = ["All", "Retailer", "C-Store", "Wholesaler"];
   const list = customers.filter(c =>
@@ -29,7 +37,10 @@ function Customers({ go, showToast }) {
 
   const deleteCustomer = (id, e) => {
     e.stopPropagation();
-    setCustomers(cs => cs.filter(c => c.id !== id));
+    DB.customers.delete(id);
+    const updated = customers.filter(c => c.id !== id);
+    DATA.customers = updated;
+    setCustomers(updated);
     if (selected?.id === id) setSelected(null);
     showToast && showToast("Customer removed");
   };
@@ -177,7 +188,9 @@ function Customers({ go, showToast }) {
       {showAdd && (
         <AddCustomerDrawer
           onClose={() => setShowAdd(false)}
-          onSave={(c) => {
+          onSave={async (c) => {
+            await DB.customers.insert(c);
+            DATA.customers = [c, ...DATA.customers];
             setCustomers(cs => [c, ...cs]);
             setShowAdd(false);
             showToast && showToast("Customer added: " + c.name);

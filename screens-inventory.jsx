@@ -4,13 +4,20 @@
    ============================================================ */
 
 function Inventory({ go, showToast }) {
-  const [products, setProducts] = React.useState(() => [...DATA.products]);
+  const [products, setProducts] = React.useState([]);
   const [cat, setCat]   = React.useState("All");
   const [q, setQ]       = React.useState("");
   const [view, setView] = React.useState("table");
   const [showAdd, setShowAdd] = React.useState(false);
 
-  const cats = ["All", ...new Set(DATA.products.map(p => p.cat))];
+  React.useEffect(() => {
+    DB.products.list().then(rows => {
+      DATA.products = rows;
+      setProducts(rows);
+    });
+  }, []);
+
+  const cats = ["All", ...new Set(products.map(p => p.cat))];
   const list = products.filter(p =>
     (cat === "All" || p.cat === cat) &&
     (p.name.toLowerCase().includes(q.toLowerCase()) || p.sku.toLowerCase().includes(q.toLowerCase()))
@@ -19,7 +26,10 @@ function Inventory({ go, showToast }) {
 
   const deleteProduct = (id, e) => {
     e.stopPropagation();
-    setProducts(ps => ps.filter(p => p.id !== id));
+    DB.products.delete(id);
+    const updated = products.filter(p => p.id !== id);
+    DATA.products = updated;
+    setProducts(updated);
     showToast && showToast("Product removed");
   };
 
@@ -185,7 +195,9 @@ function Inventory({ go, showToast }) {
       {showAdd && (
         <AddProductDrawer
           onClose={() => setShowAdd(false)}
-          onSave={(p) => {
+          onSave={async (p) => {
+            await DB.products.insert(p);
+            DATA.products = [p, ...DATA.products];
             setProducts(ps => [p, ...ps]);
             setShowAdd(false);
             showToast && showToast("Product added: " + p.name);
