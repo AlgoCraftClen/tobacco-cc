@@ -397,10 +397,10 @@ function ProductDetail({ go, params, showToast }) {
   const daysLeft = p.sold30 > 0 ? Math.round(p.onHand / (p.sold30 / 30)) : "—";
 
   const unitBreakdown = [
-    { unit: "Case", qty: p.onHand,        price: p.casePrice,                       desc: "4 Boxes" },
-    { unit: "Box",  qty: p.onHand * 4,   price: +(p.casePrice / 4).toFixed(2),     desc: "19 Rolls" },
-    { unit: "Roll", qty: p.onHand * 76,  price: +(p.casePrice / 76).toFixed(2),    desc: "5 Cans" },
-    { unit: "Can",  qty: p.onHand * 380, price: +(p.casePrice / 380).toFixed(2),   desc: "Single unit" },
+    { unit: "Case", qty: p.onHand,         price: p.casePrice,                        desc: "6 Boxes" },
+    { unit: "Box",  qty: p.onHand * 6,    price: +(p.casePrice / 6).toFixed(2),      desc: "10 Rolls" },
+    { unit: "Roll", qty: p.onHand * 60,   price: +(p.casePrice / 60).toFixed(2),     desc: "5 Cans" },
+    { unit: "Can",  qty: p.onHand * 300,  price: +(p.casePrice / 300).toFixed(2),    desc: "Single unit" },
   ];
 
   const meterColor = p.status === "ok" ? "var(--pos)" : p.status === "low" ? "var(--warn)" : "var(--danger)";
@@ -457,7 +457,7 @@ function ProductDetail({ go, params, showToast }) {
             <div className="card-hd">
               <h3>Unit Breakdown</h3>
               <span className="muted sub" style={{ marginLeft: "auto", fontSize: 11.5 }}>
-                1 Case = 4 Boxes = 76 Rolls = 380 Cans
+                1 Case = 6 Boxes = 60 Rolls = 300 Cans
               </span>
             </div>
             <table className="tbl">
@@ -523,8 +523,8 @@ function ProductDetail({ go, params, showToast }) {
                 <div className="faint" style={{ fontSize: 11.5 }}>Smokeless tobacco · Washington</div>
               </div>
             </div>
-            <div className="kv"><span className="k">Unit ladder</span><span className="v mono" style={{ fontSize: 11.5 }}>Case → 4 Boxes → 76 Rolls → 380 Cans</span></div>
-            <div className="kv"><span className="k">Cans per case</span><span className="v mono">380</span></div>
+            <div className="kv"><span className="k">Unit ladder</span><span className="v mono" style={{ fontSize: 11.5 }}>Case → 6 Boxes → 60 Rolls → 300 Cans</span></div>
+            <div className="kv"><span className="k">Cans per case</span><span className="v mono">300</span></div>
           </div>
 
           <div className="card card-pad" style={{

@@ -20,9 +20,9 @@ function Shipments({ go, params, showToast }) {
   const list   = shipments.filter(s => tab === "All" || s.status === tabMap[tab]);
   const pending = shipments.filter(s => s.status !== "received").length;
 
-  const deleteShipment = (id, e) => {
+  const deleteShipment = async (id, e) => {
     e.stopPropagation();
-    DB.shipments.delete(id);
+    await DB.shipments.delete(id);
     const updated = shipments.filter(s => s.id !== id);
     DATA.shipments = updated;
     setShipments(updated);

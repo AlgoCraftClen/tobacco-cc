@@ -35,9 +35,9 @@ function Customers({ go, showToast }) {
   const totalOverdue = customers.reduce((s, c) => s + c.overdue, 0);
   const highRisk     = customers.filter(c => c.risk === "high").length;
 
-  const deleteCustomer = (id, e) => {
+  const deleteCustomer = async (id, e) => {
     e.stopPropagation();
-    DB.customers.delete(id);
+    await DB.customers.delete(id);
     const updated = customers.filter(c => c.id !== id);
     DATA.customers = updated;
     setCustomers(updated);

@@ -1,14 +1,14 @@
 /* ============================================================
-   DATA — CC Tobacco Distribution OS  (sample data, no backend)
-   Unit ladder: 1 Case = 4 Boxes · 1 Box = 19 Rolls · 1 Roll = 5 Cans
-   Total: 1 Case = 380 Cans
+   DATA — CC Tobacco Distribution OS
+   Unit ladder: 1 Case = 6 Boxes · 1 Box = 10 Rolls · 1 Roll = 5 Cans
+   Total: 1 Case = 300 Cans
    ============================================================ */
 (function () {
   const UNITS = ["Case", "Box", "Roll", "Can"];
   // Canonical conversion to Cans
-  const LADDER = { Case: 380, Box: 95, Roll: 5, Can: 1 };
-  // Case → 4 Boxes → 76 Rolls → 380 Cans
-  const CASE_TO = { Box: 4, Roll: 76, Can: 380 };
+  const LADDER = { Case: 300, Box: 50, Roll: 5, Can: 1 };
+  // Case → 6 Boxes → 60 Rolls → 300 Cans
+  const CASE_TO = { Box: 6, Roll: 60, Can: 300 };
 
   // ---- Products ------------------------------------------------
   const products = [];

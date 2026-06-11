@@ -261,8 +261,8 @@ function Sales({ go, showToast }) {
                 <div style={{ display: "flex", gap: 8 }}>
                   {selected.status !== "paid" && (
                     <button className="btn btn-primary" style={{ flex: 1 }}
-                      onClick={() => {
-                        DB.invoices.update(selected.id, { status: "paid" });
+                      onClick={async () => {
+                        await DB.invoices.update(selected.id, { status: "paid" });
                         const updated = invoices.map(i => i.id === selected.id ? { ...i, status: "paid" } : i);
                         DATA.invoices = updated;
                         setInvoices(updated);
@@ -297,8 +297,8 @@ function Sales({ go, showToast }) {
   );
 }
 
-// Price per unit derived from case price
-const UNIT_DIV = { Case: 1, Box: 4, Roll: 76, Can: 380 };
+// Price per unit derived from case price — 1 Case = 6 Boxes = 60 Rolls = 300 Cans
+const UNIT_DIV = { Case: 1, Box: 6, Roll: 60, Can: 300 };
 function unitPrice(casePrice, unit) {
   return +(casePrice / UNIT_DIV[unit]).toFixed(2);
 }
