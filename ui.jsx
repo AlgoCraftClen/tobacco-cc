@@ -119,7 +119,7 @@ const INV_STATUS = {
 const SHIP_STATUS = {
   arriving:   { cls: "badge-accent",  label: "Arriving" },
   verifying:  { cls: "badge-warn",    label: "Verifying" },
-  in_transit: { cls: "badge-neutral", label: "In Transit" },
+  in_transit: { cls: "badge-neutral", label: "On the Way" },
   received:   { cls: "badge-pos",     label: "Received" },
 };
 

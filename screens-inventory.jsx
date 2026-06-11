@@ -1,6 +1,6 @@
 /* ============================================================
    INVENTORY + PRODUCT DETAIL + add/delete
-   Unit ladder: 1 Case = 6 Boxes = 60 Rolls = 300 Cans
+   Unit ladder: 1 Case = 4 Boxes = 76 Rolls = 380 Cans
    ============================================================ */
 
 function Inventory({ go, showToast }) {
@@ -211,7 +211,7 @@ function Inventory({ go, showToast }) {
 function AddProductDrawer({ onClose, onSave }) {
   const [name, setName]         = React.useState("");
   const [brand, setBrand]       = React.useState("");
-  const [cat, setCat]           = React.useState("Cigarettes");
+  const [cat, setCat]           = React.useState("Grizzly");
   const [sku, setSku]           = React.useState("");
   const [baseUnit, setBaseUnit] = React.useState("Case");
   const [casePrice, setCasePrice] = React.useState("");
@@ -243,7 +243,7 @@ function AddProductDrawer({ onClose, onSave }) {
     });
   };
 
-  const cats = ["Cigarettes", "Smokeless", "Nicotine Pouch", "Cigars", "Vapor", "Accessories"];
+  const cats = ["Grizzly", "Copenhagen", "Other"];
 
   return (
     <>
@@ -261,23 +261,18 @@ function AddProductDrawer({ onClose, onSave }) {
             <div className="col gap12">
               <div className="field">
                 <label className="label">Product Name *</label>
-                <input className="input" placeholder="e.g. Marlboro Red"
+                <input className="input" placeholder="e.g. Grizzly Long Cut Wintergreen"
                   value={name} onChange={e => setName(e.target.value)} />
               </div>
               <div className="field">
                 <label className="label">Brand</label>
-                <input className="input" placeholder="e.g. Philip Morris"
-                  value={brand} onChange={e => setBrand(e.target.value)} />
-              </div>
-              <div className="field">
-                <label className="label">Category</label>
-                <select className="select" value={cat} onChange={e => setCat(e.target.value)}>
+                <select className="select" value={cat} onChange={e => { setCat(e.target.value); setBrand(e.target.value !== "Other" ? e.target.value : brand); }}>
                   {cats.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
               <div className="field">
                 <label className="label">SKU *</label>
-                <input className="input mono" placeholder="e.g. MB-RED-200"
+                <input className="input mono" placeholder="e.g. GRZ-LC-WG"
                   value={sku} onChange={e => setSku(e.target.value)} />
               </div>
               <div className="field">
@@ -341,10 +336,10 @@ function ProductDetail({ go, params }) {
   const daysLeft = Math.round(p.onHand / (p.sold30 / 30));
 
   const unitBreakdown = [
-    { unit: "Case", qty: p.onHand,      price: p.casePrice,                        desc: "6 Boxes" },
-    { unit: "Box",  qty: p.onHand * 6,  price: Math.round(p.casePrice / 6),        desc: "10 Rolls" },
-    { unit: "Roll", qty: p.onHand * 60, price: Math.round(p.casePrice / 60),       desc: "5 Cans" },
-    { unit: "Can",  qty: p.onHand * 300,price: +(p.casePrice / 300).toFixed(2),    desc: "Single unit" },
+    { unit: "Case", qty: p.onHand,        price: p.casePrice,                       desc: "4 Boxes" },
+    { unit: "Box",  qty: p.onHand * 4,   price: +(p.casePrice / 4).toFixed(2),     desc: "19 Rolls" },
+    { unit: "Roll", qty: p.onHand * 76,  price: +(p.casePrice / 76).toFixed(2),    desc: "5 Cans" },
+    { unit: "Can",  qty: p.onHand * 380, price: +(p.casePrice / 380).toFixed(2),   desc: "Single unit" },
   ];
 
   const meterColor = p.status === "ok" ? "var(--pos)" : p.status === "low" ? "var(--warn)" : "var(--danger)";
@@ -370,7 +365,7 @@ function ProductDetail({ go, params }) {
         </div>
         <div className="page-head-actions">
           <button className="btn"><Icon name="edit" size={14} />Edit</button>
-          <button className="btn btn-primary"><Icon name="truck" size={14} />Reorder</button>
+          <button className="btn btn-primary"><Icon name="truck" size={14} />Log Incoming</button>
         </div>
       </div>
 
@@ -401,7 +396,7 @@ function ProductDetail({ go, params }) {
             <div className="card-hd">
               <h3>Unit Breakdown</h3>
               <span className="muted sub" style={{ marginLeft: "auto", fontSize: 11.5 }}>
-                1 Case = 6 Boxes = 60 Rolls = 300 Cans
+                1 Case = 4 Boxes = 76 Rolls = 380 Cans
               </span>
             </div>
             <table className="tbl">
@@ -459,19 +454,16 @@ function ProductDetail({ go, params }) {
           </div>
 
           <div className="card card-pad">
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Supplier</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Source</div>
             <div className="center gap12 mb14">
               <Avatar name={p.brand} cls="av-3" size={34} />
               <div>
                 <div style={{ fontWeight: 500, fontSize: 13.5 }}>{p.brand}</div>
-                <div className="faint" style={{ fontSize: 11.5 }}>Last order 8 days ago</div>
+                <div className="faint" style={{ fontSize: 11.5 }}>Smokeless tobacco · Washington</div>
               </div>
             </div>
-            <div className="kv"><span className="k">Lead time</span><span className="v">3–5 days</span></div>
-            <div className="kv"><span className="k">Min. order</span><span className="v">10 cases</span></div>
-            <button className="btn btn-sm" style={{ width: "100%", marginTop: 14 }}>
-              <Icon name="truck" size={13} />Create Purchase Order
-            </button>
+            <div className="kv"><span className="k">Unit ladder</span><span className="v mono" style={{ fontSize: 11.5 }}>Case → 4 Boxes → 76 Rolls → 380 Cans</span></div>
+            <div className="kv"><span className="k">Cans per case</span><span className="v mono">380</span></div>
           </div>
 
           <div className="card card-pad" style={{

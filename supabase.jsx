@@ -13,7 +13,7 @@
   function rowToProduct(r) {
     return {
       id: r.id, name: r.name, brand: r.brand || "—",
-      cat: r.cat || "Cigarettes", sku: r.sku || "",
+      cat: r.cat || "Grizzly", sku: r.sku || "",
       baseUnit: r.base_unit || "Case",
       casePrice: Number(r.case_price) || 0,
       cost: Number(r.cost) || 0,
@@ -155,6 +155,10 @@
       delete: async (id) => {
         const { error } = await SB.from("shipments").delete().eq("id", id);
         if (error) console.error("shipments.delete:", error);
+      },
+      update: async (id, fields) => {
+        const { error } = await SB.from("shipments").update(fields).eq("id", id);
+        if (error) console.error("shipments.update:", error);
       },
     },
     invoices: {

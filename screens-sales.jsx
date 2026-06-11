@@ -298,6 +298,12 @@ function Sales({ go, showToast }) {
   );
 }
 
+// Price per unit derived from case price
+const UNIT_DIV = { Case: 1, Box: 4, Roll: 76, Can: 380 };
+function unitPrice(casePrice, unit) {
+  return +(casePrice / UNIT_DIV[unit]).toFixed(2);
+}
+
 function NewInvoiceDrawer({ nextId, onClose, onSave }) {
   const d = DATA;
   const [cid, setCid]   = React.useState("");
@@ -307,6 +313,26 @@ function NewInvoiceDrawer({ nextId, onClose, onSave }) {
   const addLine    = () => setLines(ls => [...ls, { product: "", unit: "Case", qty: 1, price: 0 }]);
   const removeLine = (i) => setLines(ls => ls.filter((_, idx) => idx !== i));
   const updateLine = (i, field, val) => setLines(ls => ls.map((l, idx) => idx === i ? { ...l, [field]: val } : l));
+
+  // When product changes: auto-fill price for selected unit
+  const onProductChange = (i, prodName) => {
+    const p = d.products.find(x => x.name === prodName);
+    setLines(ls => ls.map((l, idx) => {
+      if (idx !== i) return l;
+      const price = p && p.casePrice ? unitPrice(p.casePrice, l.unit) : l.price;
+      return { ...l, product: prodName, price };
+    }));
+  };
+
+  // When unit changes: recalculate price from case price
+  const onUnitChange = (i, unit) => {
+    setLines(ls => ls.map((l, idx) => {
+      if (idx !== i) return l;
+      const p = d.products.find(x => x.name === l.product);
+      const price = p && p.casePrice ? unitPrice(p.casePrice, unit) : l.price;
+      return { ...l, unit, price };
+    }));
+  };
 
   const total    = lines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
   const custName = d.customers.find(c => c.id === cid)?.name || "";
@@ -354,15 +380,13 @@ function NewInvoiceDrawer({ nextId, onClose, onSave }) {
             <div className="drawer-section-label">Line Items</div>
             {lines.map((l, i) => (
               <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 90px 32px", gap: 8, marginBottom: 10 }}>
-                <select className="select" value={l.product} onChange={e => {
-                  const p = d.products.find(p => p.name === e.target.value);
-                  updateLine(i, "product", e.target.value);
-                  if (p) updateLine(i, "price", p.casePrice);
-                }}>
+                <select className="select" value={l.product}
+                  onChange={e => onProductChange(i, e.target.value)}>
                   <option value="">Product…</option>
                   {d.products.map(p => <option key={p.id}>{p.name}</option>)}
                 </select>
-                <select className="select" value={l.unit} onChange={e => updateLine(i, "unit", e.target.value)}>
+                <select className="select" value={l.unit}
+                  onChange={e => onUnitChange(i, e.target.value)}>
                   {["Case", "Box", "Roll", "Can"].map(u => <option key={u}>{u}</option>)}
                 </select>
                 <input className="input mono" type="number" min="1" value={l.qty}
@@ -396,14 +420,10 @@ function NewInvoiceDrawer({ nextId, onClose, onSave }) {
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btn btn-primary" style={{ flex: 1 }}
                 disabled={!cid || total === 0}
-                onClick={() => onSave(buildInvoice("sent"), "Invoice created — " + custName)}>
-                <Icon name="send" size={14} />Create & Send
+                onClick={() => onSave(buildInvoice("sent"), "Sale recorded — " + custName)}>
+                <Icon name="checkCircle" size={14} />Record Sale
               </button>
-              <button className="btn" style={{ flex: 1 }}
-                disabled={!cid || total === 0}
-                onClick={() => onSave(buildInvoice("draft"), "Invoice saved as draft")}>
-                Save Draft
-              </button>
+              <button className="btn" onClick={onClose}>Cancel</button>
             </div>
           </div>
         </div>

@@ -1,21 +1,17 @@
 /**
  * CC Tobacco Distribution OS — Inventory Conversion Engine
  *
- * CANONICAL UNIT LADDER (confirmed 2026-06-10):
- *   1 Case = 6 Boxes
- *   1 Box  = 10 Rolls
+ * CANONICAL UNIT LADDER (confirmed 2026-06-11):
+ *   1 Case = 4 Boxes
+ *   1 Box  = 19 Rolls
  *   1 Roll = 5 Cans
- *   ∴ 1 Case = 300 Cans  |  1 Box = 50 Cans
- *
- * WARNING: The prototype files data.jsx and screens-invoice.jsx contain
- * a DIFFERENT (incorrect) ladder. Do not copy constants from those files.
- * This module is the single source of truth.
+ *   ∴ 1 Case = 380 Cans  |  1 Box = 95 Cans
  */
 
 /** Cans contained in one unit of each type. */
 export const UNIT_LADDER_CANS = Object.freeze({
-  Case: 300, // 6 boxes × 10 rolls × 5 cans
-  Box:   50, // 10 rolls × 5 cans
+  Case: 380, // 4 boxes × 19 rolls × 5 cans
+  Box:   95, // 19 rolls × 5 cans
   Roll:   5, // 5 cans
   Can:    1,
 });
@@ -23,9 +19,9 @@ export const UNIT_LADDER_CANS = Object.freeze({
 /** How many of each unit fit inside one Case. */
 export const UNITS_PER_CASE = Object.freeze({
   Case:   1,
-  Box:    6,
-  Roll:  60, // 6 boxes × 10 rolls
-  Can:  300, // 6 × 10 × 5
+  Box:    4,
+  Roll:  76, // 4 boxes × 19 rolls
+  Can:  380, // 4 × 19 × 5
 });
 
 const VALID_UNITS = new Set(Object.keys(UNIT_LADDER_CANS));
@@ -58,11 +54,11 @@ export function fromCans(cans, unit) {
  * Derive the unit price in cents from the case price in cents.
  * All results are rounded to the nearest cent.
  *
- * Example — Marlboro Gold, casePriceCents = 425_000 ($4,250.00):
- *   Case → 425_000  ($4,250.00)
- *   Box  →  70_833  ($708.33)   [425_000 / 6]
- *   Roll →   7_083  ($70.83)    [425_000 / 60]
- *   Can  →   1_417  ($14.17)    [425_000 / 300]
+ * Example — casePriceCents = 380_000 ($3,800.00):
+ *   Case → 380_000  ($3,800.00)
+ *   Box  →  95_000  ($950.00)   [380_000 / 4]
+ *   Roll →   5_000  ($50.00)    [380_000 / 76]
+ *   Can  →   1_000  ($10.00)    [380_000 / 380]
  */
 export function derivePriceCents(casePriceCents, unit) {
   assertUnit(unit);
