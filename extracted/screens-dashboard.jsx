@@ -70,28 +70,28 @@ function Dashboard({ go }) {
       </div>
 
       {/* Spotlight — arriving now */}
-      {arriving.some(s => s.status === "verifying") && (
-        <div className="spotlight mb24">
+      {arriving.filter(s => s.status === "verifying").map(sh => (
+        <div key={sh.id} className="spotlight mb24">
           <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1 }}>
             <div className="spotlight-ico"><Icon name="truck" size={22} /></div>
             <div>
               <div className="center gap10">
-                <span style={{ fontWeight: 600, fontSize: 14.5 }}>SH-3390 · Swedish Match</span>
+                <span style={{ fontWeight: 600, fontSize: 14.5 }}>{sh.id} · {sh.supplier}</span>
                 <Badge kind="warn">Verifying Now</Badge>
               </div>
               <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
-                38 cases · 5 line items · {money(96400)} · Dock Bay 1
+                {sh.cases} cases · {sh.lines} line items · {money(sh.value)} · Dock {sh.dock}
               </div>
             </div>
           </div>
           <div className="center gap8">
-            <button className="btn" onClick={() => go("shipment", { id: "SH-3390" })}>View Manifest</button>
-            <button className="btn btn-primary" onClick={() => go("shipment", { id: "SH-3390" })}>
+            <button className="btn" onClick={() => go("shipment", { id: sh.id })}>View Manifest</button>
+            <button className="btn btn-primary" onClick={() => go("shipment", { id: sh.id })}>
               <Icon name="scan" size={14} />Receive
             </button>
           </div>
         </div>
-      )}
+      ))}
 
       {/* Needs Attention */}
       <div className="between mb12" style={{ alignItems: "baseline" }}>
@@ -126,10 +126,10 @@ function Dashboard({ go }) {
       <div className="grid g-4 stagger mb24">
         <StatCard icon="dollar"  iconBg="var(--accent-soft)"  iconColor="var(--accent)"
           label="Revenue" cur value={fmt(sc(k.revenue))} trend={r.rev} ctx={r.ctx}
-          spark={d.revSeries} sparkColor="var(--accent)" />
+          spark={d.revSeries.length > 1 ? d.revSeries : undefined} sparkColor="var(--accent)" />
         <StatCard icon="trendUp" iconBg="var(--pos-bg)"       iconColor="var(--pos)"
           label="Gross Profit" cur value={fmt(sc(k.profit))} trend={r.prof} ctx={`${k.margin}% margin`}
-          spark={d.profitSeries} sparkColor="var(--pos)" />
+          spark={d.profitSeries.length > 1 ? d.profitSeries : undefined} sparkColor="var(--pos)" />
         <StatCard icon="pkg"     iconBg="var(--info-bg)"      iconColor="var(--info)"
           label="Inventory Value" cur value={fmt(k.invValue)} trend={k.invTrend} ctx="at cost, now" />
         <StatCard icon="wallet"  iconBg="var(--danger-bg)"    iconColor="var(--danger)"
@@ -141,23 +141,21 @@ function Dashboard({ go }) {
         <div className="card">
           <div className="card-hd">
             <h3>Revenue & Profit</h3>
-            <div className="center gap14" style={{ marginLeft: 14 }}>
-              <span className="center gap6" style={{ fontSize: 11.5, color: "var(--text-3)" }}>
-                <span style={{ width: 9, height: 9, borderRadius: 2, background: "var(--accent)" }} />Revenue
-              </span>
-              <span className="center gap6" style={{ fontSize: 11.5, color: "var(--text-3)" }}>
-                <span style={{ width: 9, height: 3, borderRadius: 2, background: "var(--info)" }} />Profit
-              </span>
-            </div>
             <div className="right">
               <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>{money(k.revenue)}</span>
-              <Trend value={k.revenueTrend} />
             </div>
           </div>
-          <div style={{ padding: "16px 18px 8px" }}>
-            <AreaChart series={d.revSeries} series2={d.profitSeries}
-              labels={["","","","Mar","","","Apr","","","May","","Jun"]} h={230} />
-          </div>
+          {d.revSeries.length > 1 ? (
+            <div style={{ padding: "16px 18px 8px" }}>
+              <AreaChart series={d.revSeries} series2={d.profitSeries.length > 1 ? d.profitSeries : undefined} h={230} />
+            </div>
+          ) : (
+            <div className="empty">
+              <Icon name="trendUp" size={28} />
+              <div className="empty-title">No sales data yet</div>
+              <div className="empty-desc">Charts will appear once you record sales</div>
+            </div>
+          )}
         </div>
 
         <div className="card">
@@ -165,20 +163,28 @@ function Dashboard({ go }) {
             <h3>Sales by Category</h3>
             <div className="right"><span className="muted" style={{ fontSize: 12 }}>30 days</span></div>
           </div>
-          <div style={{ padding: "20px", display: "flex", alignItems: "center", gap: 20 }}>
-            <Donut data={d.categoryMix} size={136} thickness={16} center={{ top: "$318k", bot: "revenue" }} />
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-              {d.categoryMix.map(c => (
-                <div key={c.name} className="between">
-                  <span className="center gap8" style={{ fontSize: 12.5 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 2, background: c.color, flexShrink: 0 }} />
-                    {c.name}
-                  </span>
-                  <span className="mono muted" style={{ fontSize: 12 }}>${c.val}k</span>
-                </div>
-              ))}
+          {d.categoryMix.length > 0 ? (
+            <div style={{ padding: "20px", display: "flex", alignItems: "center", gap: 20 }}>
+              <Donut data={d.categoryMix} size={136} thickness={16} center={{ top: "$0", bot: "revenue" }} />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+                {d.categoryMix.map(c => (
+                  <div key={c.name} className="between">
+                    <span className="center gap8" style={{ fontSize: 12.5 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: c.color, flexShrink: 0 }} />
+                      {c.name}
+                    </span>
+                    <span className="mono muted" style={{ fontSize: 12 }}>${c.val}k</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="empty">
+              <Icon name="invoice" size={28} />
+              <div className="empty-title">No category data yet</div>
+              <div className="empty-desc">Add sales to see category breakdown</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -194,37 +200,45 @@ function Dashboard({ go }) {
               </button>
             </div>
           </div>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th className="num">Units sold</th>
-                <th>Trend</th>
-                <th className="num">Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              {d.topProducts.map((p, i) => (
-                <tr key={p.name} onClick={() => go("inventory")}>
-                  <td>
-                    <div className="center gap10">
-                      <span className="mono faint" style={{ fontSize: 11, width: 14 }}>{i + 1}</span>
-                      <span className="td-strong">{p.name}</span>
-                    </div>
-                  </td>
-                  <td className="num mono">{p.units}</td>
-                  <td>
-                    <Sparkline
-                      data={[5,6,5,7,8,7,9,10 + p.trend / 3]}
-                      w={54} h={20}
-                      color={p.trend >= 0 ? "var(--pos)" : "var(--danger)"}
-                      fill={false} />
-                  </td>
-                  <td className="num mono td-strong">{money(p.rev)}</td>
+          {d.topProducts.length > 0 ? (
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th className="num">Units sold</th>
+                  <th>Trend</th>
+                  <th className="num">Revenue</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {d.topProducts.map((p, i) => (
+                  <tr key={p.name} onClick={() => go("inventory")}>
+                    <td>
+                      <div className="center gap10">
+                        <span className="mono faint" style={{ fontSize: 11, width: 14 }}>{i + 1}</span>
+                        <span className="td-strong">{p.name}</span>
+                      </div>
+                    </td>
+                    <td className="num mono">{p.units}</td>
+                    <td>
+                      <Sparkline
+                        data={[5,6,5,7,8,7,9,10 + p.trend / 3]}
+                        w={54} h={20}
+                        color={p.trend >= 0 ? "var(--pos)" : "var(--danger)"}
+                        fill={false} />
+                    </td>
+                    <td className="num mono td-strong">{money(p.rev)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="empty">
+              <Icon name="box" size={28} />
+              <div className="empty-title">No products yet</div>
+              <div className="empty-desc">Add inventory to see top performers</div>
+            </div>
+          )}
         </div>
 
         {/* Activity Feed */}
@@ -238,26 +252,24 @@ function Dashboard({ go }) {
             </div>
           </div>
           <div style={{ paddingTop: 4, paddingBottom: 8 }}>
-            {d.activity.map((a, i) => {
-              const pipColor = {
-                "created invoice":   "var(--accent)",
-                "received shipment": "var(--info)",
-                "flagged low stock": "var(--warn)",
-                "paid":              "var(--pos)",
-              }[a.act] || "var(--border-2)";
-              return (
-                <div key={i} className="activity-row">
-                  <Avatar name={a.who} cls={a.av} size={28} />
-                  <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.45 }}>
-                    <span style={{ fontWeight: 500 }}>{a.who}</span>
-                    <span className="muted"> {a.act} </span>
-                    <span style={{ color: "var(--accent)", fontWeight: 500 }}>{a.obj}</span>
-                    <div className="faint" style={{ fontSize: 11, marginTop: 2 }}>{a.meta}</div>
-                  </div>
-                  <span className="faint mono" style={{ fontSize: 10.5, flexShrink: 0 }}>{a.time}</span>
+            {d.activity.length > 0 ? d.activity.map((a, i) => (
+              <div key={i} className="activity-row">
+                <Avatar name={a.who} cls={a.av} size={28} />
+                <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.45 }}>
+                  <span style={{ fontWeight: 500 }}>{a.who}</span>
+                  <span className="muted"> {a.act} </span>
+                  <span style={{ color: "var(--accent)", fontWeight: 500 }}>{a.obj}</span>
+                  <div className="faint" style={{ fontSize: 11, marginTop: 2 }}>{a.meta}</div>
                 </div>
-              );
-            })}
+                <span className="faint mono" style={{ fontSize: 10.5, flexShrink: 0 }}>{a.time}</span>
+              </div>
+            )) : (
+              <div className="empty">
+                <Icon name="bell" size={28} />
+                <div className="empty-title">No activity yet</div>
+                <div className="empty-desc">Actions will appear here as you use the app</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
