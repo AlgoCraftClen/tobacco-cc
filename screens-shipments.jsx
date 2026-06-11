@@ -294,12 +294,32 @@ function ShipmentDetail({ go, params, showToast }) {
   }
 
   const handleReceive = async () => {
+    // Parse contents string: "Grizzly Long Cut × 10, Copenhagen Snuff × 5"
+    const items = (sh.po && sh.po !== "—")
+      ? sh.po.split(", ").map(s => {
+          const idx = s.lastIndexOf(" × ");
+          return { name: s.slice(0, idx), cases: parseInt(s.slice(idx + 3)) || 0 };
+        }).filter(i => i.cases > 0)
+      : [];
+
+    // Increment on_hand for each product in the delivery
+    for (const item of items) {
+      const prod = DATA.products.find(p => p.name === item.name);
+      if (prod) {
+        const newOnHand = prod.onHand + item.cases;
+        const newStatus = newOnHand <= 0 ? "critical" : (prod.reorder > 0 && newOnHand < prod.reorder) ? "low" : "ok";
+        await DB.products.update(prod.id, { on_hand: newOnHand, status: newStatus });
+        prod.onHand = newOnHand;
+        prod.status = newStatus;
+      }
+    }
+
     await DB.shipments.update(sh.id, { status: "received" });
     const updated = DATA.shipments.map(s => s.id === sh.id ? { ...s, status: "received" } : s);
     DATA.shipments = updated;
     setShipments(updated);
     setDone(true);
-    showToast && showToast(sh.id + " marked as received");
+    showToast && showToast(sh.id + " received — inventory updated");
   };
 
   const status = done ? "received" : sh.status;
@@ -351,9 +371,11 @@ function ShipmentDetail({ go, params, showToast }) {
             <div className="card card-pad" style={{ background: "var(--pos-bg)", borderColor: "rgba(74,184,122,0.3)" }}>
               <div className="center gap10">
                 <Icon name="checkCircle" size={20} style={{ color: "var(--pos)", flexShrink: 0 }} />
-                <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.55 }}>
-                  <strong style={{ color: "var(--text)" }}>Received.</strong><br />
-                  {sh.cases} case{sh.cases !== 1 ? "s" : ""} added to inventory.
+                <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>
+                  <strong style={{ color: "var(--text)" }}>Received & posted to inventory.</strong>
+                  {sh.po && sh.po !== "—" && (
+                    <div style={{ marginTop: 6, color: "var(--text-3)", fontSize: 12 }}>{sh.po}</div>
+                  )}
                 </div>
               </div>
             </div>
