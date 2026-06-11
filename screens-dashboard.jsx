@@ -51,6 +51,66 @@ function Dashboard({ go, userName }) {
       DATA.invoices  = invoices;
       DATA.shipments = shipments;
       DATA.customers = customers;
+
+      // ── KPIs ──────────────────────────────────────────────────────────────
+      const today      = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const revenue    = invoices.reduce((s, i) => s + i.total, 0);
+      const paid       = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
+      const invValue   = products.reduce((s, p) => s + p.onHand * p.casePrice, 0);
+      const balances   = customers.reduce((s, c) => s + c.balance, 0);
+      const overdueAmt = customers.reduce((s, c) => s + c.overdue, 0);
+      const casesOut   = shipments.filter(s => s.status === "received").reduce((s, sh) => s + sh.cases, 0);
+
+      DATA.kpis = {
+        revenue,
+        revenueTrend: 0,
+        profit:       paid,
+        profitTrend:  0,
+        margin:       revenue > 0 ? Math.round((paid / revenue) * 100) : 0,
+        invValue,
+        invTrend:     0,
+        balances,
+        overdue:      overdueAmt,
+        ordersToday:  invoices.filter(i => i.date === today).length,
+        casesOut,
+      };
+
+      // ── Revenue series (group invoice totals by date, last 12 points) ────
+      if (invoices.length > 0) {
+        const grouped = {};
+        invoices.forEach(inv => { grouped[inv.date] = (grouped[inv.date] || 0) + inv.total; });
+        const vals = Object.values(grouped);
+        DATA.revSeries    = vals.slice(-12);
+        DATA.profitSeries = DATA.revSeries.map(v => Math.round(v * (revenue > 0 ? paid / revenue : 0)));
+      } else {
+        DATA.revSeries    = [];
+        DATA.profitSeries = [];
+      }
+
+      // ── Top products (by sold_30, fallback to inventory value) ───────────
+      const ranked = [...products].sort((a, b) =>
+        (b.sold30 * b.casePrice || b.onHand * b.casePrice) -
+        (a.sold30 * a.casePrice || a.onHand * a.casePrice)
+      );
+      DATA.topProducts = ranked.slice(0, 5).map(p => ({
+        name:  p.name,
+        units: p.sold30 || p.onHand,
+        rev:   Math.round((p.sold30 || p.onHand) * p.casePrice),
+        trend: 0,
+      }));
+
+      // ── Category mix (by brand, using inventory value) ───────────────────
+      const brandRev = {};
+      products.forEach(p => {
+        const v = (p.sold30 || p.onHand) * p.casePrice;
+        brandRev[p.brand] = (brandRev[p.brand] || 0) + v;
+      });
+      const catColors = ["var(--accent)", "var(--pos)", "var(--warn)", "var(--info)"];
+      DATA.categoryMix = Object.entries(brandRev)
+        .filter(([, v]) => v > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, val], i) => ({ name, val: +(val / 1000).toFixed(1), color: catColors[i % catColors.length] }));
+
       reload();
     });
   }, []);

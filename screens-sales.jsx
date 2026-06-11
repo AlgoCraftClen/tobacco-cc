@@ -284,8 +284,20 @@ function Sales({ go, showToast }) {
         <NewInvoiceDrawer
           nextId={nextInvId}
           onClose={() => setShowNew(false)}
-          onSave={async (inv, msg) => {
+          onSave={async (inv, saleLines, msg) => {
             await DB.invoices.insert(inv);
+            // Increment sold_30 (in cases) for each product in the sale
+            for (const line of saleLines) {
+              const prod = DATA.products.find(p => p.name === line.product);
+              if (prod) {
+                const casesQty = Math.round((Number(line.qty) || 0) / UNIT_DIV[line.unit || "Case"]);
+                if (casesQty > 0) {
+                  const newSold30 = prod.sold30 + casesQty;
+                  await DB.products.update(prod.id, { sold_30: newSold30 });
+                  prod.sold30 = newSold30;
+                }
+              }
+            }
             DATA.invoices = [inv, ...DATA.invoices];
             setInvoices(is => [inv, ...is]);
             setShowNew(false);
@@ -419,7 +431,7 @@ function NewInvoiceDrawer({ nextId, onClose, onSave }) {
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btn btn-primary" style={{ flex: 1 }}
                 disabled={!cid || total === 0}
-                onClick={() => onSave(buildInvoice("sent"), "Sale recorded — " + custName)}>
+                onClick={() => onSave(buildInvoice("sent"), lines.filter(l => l.product && l.qty), "Sale recorded — " + custName)}>
                 <Icon name="checkCircle" size={14} />Record Sale
               </button>
               <button className="btn" onClick={onClose}>Cancel</button>
