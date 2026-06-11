@@ -118,9 +118,9 @@ function Inventory({ go, showToast }) {
                     <td><span className="cat-chip">{p.cat}</span></td>
                     <td>
                       <div className="meter-row" style={{ width: 130 }}>
-                        <Meter value={p.onHand} max={p.par} color={meterColor} />
+                        <Meter value={p.onHand} max={p.par || 1} color={meterColor} />
                         <span className="faint mono" style={{ fontSize: 10.5, flexShrink: 0 }}>
-                          {Math.round(p.onHand / p.par * 100)}%
+                          {p.par > 0 ? Math.round(p.onHand / p.par * 100) : 0}%
                         </span>
                       </div>
                     </td>
@@ -184,10 +184,10 @@ function Inventory({ go, showToast }) {
                     <div className="mono td-strong" style={{ fontSize: 14 }}>{money(p.casePrice)}</div>
                   </div>
                 </div>
-                <Meter value={p.onHand} max={p.par} color={meterColor} />
+                <Meter value={p.onHand} max={p.par || 1} color={meterColor} />
                 <div className="between mt8">
                   <span className="faint" style={{ fontSize: 10.5 }}>Par: {p.par}</span>
-                  <span className="faint mono" style={{ fontSize: 10.5 }}>{Math.round(p.onHand / p.par * 100)}%</span>
+                  <span className="faint mono" style={{ fontSize: 10.5 }}>{p.par > 0 ? Math.round(p.onHand / p.par * 100) : 0}%</span>
                 </div>
               </div>
             );
@@ -437,7 +437,7 @@ function ProductDetail({ go, params, showToast }) {
               <div className="stat-top"><span className="stat-label">On Hand</span></div>
               <div className="stat-val">{p.onHand} <span style={{ fontSize: 13, color: "var(--text-3)", marginLeft: 2 }}>cases</span></div>
               <div className="stat-foot">
-                <Meter value={p.onHand} max={p.par} color={meterColor} height={4} />
+                <Meter value={p.onHand} max={p.par || 1} color={meterColor} height={4} />
                 <span className="ctx" style={{ marginLeft: 4 }}>par {p.par}</span>
               </div>
             </div>

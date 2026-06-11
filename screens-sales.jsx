@@ -34,9 +34,9 @@ function Sales({ go, showToast }) {
   const totalOverdue = invoices.filter(i => i.status === "overdue").reduce((s, i) => s + i.total, 0);
   const totalPaid    = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
 
-  const deleteInvoice = (id, e) => {
+  const deleteInvoice = async (id, e) => {
     e.stopPropagation();
-    DB.invoices.delete(id);
+    await DB.invoices.delete(id);
     const updated = invoices.filter(i => i.id !== id);
     DATA.invoices = updated;
     setInvoices(updated);
@@ -209,41 +209,42 @@ function Sales({ go, showToast }) {
 
               <div className="drawer-section">
                 <div className="drawer-section-label">Line Items</div>
-                <table className="tbl" style={{ marginTop: -4 }}>
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Unit</th>
-                      <th className="num">Qty</th>
-                      <th className="num">Price</th>
-                      <th className="num">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {DATA.invoiceLines.map((l, i) => (
-                      <tr key={i} style={{ cursor: "default" }}>
-                        <td>
-                          <div className="cell-2">
-                            <span className="td-strong" style={{ fontSize: 12.5 }}>{l.product}</span>
-                            <span className="td-sub mono">{l.sku}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span style={{
-                            fontFamily: "var(--mono)", fontSize: 11.5, fontWeight: 600,
-                            color: { Case: "#5b8def", Box: "#c08bf0", Roll: "#d4a030", Can: "#4fc4cf" }[l.unit],
-                          }}>
-                            <span className={`uq uq-${l.unit.toLowerCase()}`} style={{ marginRight: 5 }} />
-                            {l.unit}
-                          </span>
-                        </td>
-                        <td className="num mono">{l.qty}</td>
-                        <td className="num mono">{money(l.price)}</td>
-                        <td className="num mono td-strong">{money(l.qty * l.price)}</td>
+                {(selected.lineItems || []).length > 0 ? (
+                  <table className="tbl" style={{ marginTop: -4 }}>
+                    <thead>
+                      <tr>
+                        <th>Product</th>
+                        <th>Unit</th>
+                        <th className="num">Qty</th>
+                        <th className="num">Price</th>
+                        <th className="num">Subtotal</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {selected.lineItems.map((l, i) => (
+                        <tr key={i} style={{ cursor: "default" }}>
+                          <td className="td-strong" style={{ fontSize: 12.5 }}>{l.product}</td>
+                          <td>
+                            <span style={{
+                              fontFamily: "var(--mono)", fontSize: 11.5, fontWeight: 600,
+                              color: { Case: "#5b8def", Box: "#c08bf0", Roll: "#d4a030", Can: "#4fc4cf" }[l.unit],
+                            }}>
+                              <span className={`uq uq-${(l.unit || "case").toLowerCase()}`} style={{ marginRight: 5 }} />
+                              {l.unit}
+                            </span>
+                          </td>
+                          <td className="num mono">{l.qty}</td>
+                          <td className="num mono">{money(l.price)}</td>
+                          <td className="num mono td-strong">{money(l.qty * l.price)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="muted" style={{ fontSize: 12.5, padding: "8px 0" }}>
+                    {selected.items} item{selected.items !== 1 ? "s" : ""} · details not available for older invoices
+                  </div>
+                )}
               </div>
 
               <div className="drawer-section">
@@ -263,6 +264,14 @@ function Sales({ go, showToast }) {
                     <button className="btn btn-primary" style={{ flex: 1 }}
                       onClick={async () => {
                         await DB.invoices.update(selected.id, { status: "paid" });
+                        const cust = DATA.customers.find(c => c.id === selected.cid);
+                        if (cust) {
+                          const newBalance = Math.max(0, cust.balance - selected.total);
+                          const newOverdue = selected.status === "overdue" ? Math.max(0, cust.overdue - selected.total) : cust.overdue;
+                          await DB.customers.update(selected.cid, { balance: newBalance, overdue: newOverdue });
+                          cust.balance = newBalance;
+                          cust.overdue = newOverdue;
+                        }
                         const updated = invoices.map(i => i.id === selected.id ? { ...i, status: "paid" } : i);
                         DATA.invoices = updated;
                         setInvoices(updated);
@@ -284,12 +293,21 @@ function Sales({ go, showToast }) {
         <NewInvoiceDrawer
           nextId={nextInvId}
           onClose={() => setShowNew(false)}
-          onSave={async (inv, saleLines, msg) => {
+          onSave={async (inv, msg) => {
             await DB.invoices.insert(inv);
+            // Update customer balance and YTD
+            const cust = DATA.customers.find(c => c.id === inv.cid);
+            if (cust) {
+              const newBalance = cust.balance + inv.total;
+              const newYtd    = cust.ytd + inv.total;
+              await DB.customers.update(inv.cid, { balance: newBalance, ytd: newYtd });
+              cust.balance = newBalance;
+              cust.ytd     = newYtd;
+            }
             // Increment sold_30 (in cases) for each product in the sale
-            for (const line of saleLines) {
+            for (const line of (inv.lineItems || [])) {
               const prod = DATA.products.find(p => p.name === line.product);
-              if (prod) {
+              if (prod && line.qty > 0) {
                 const casesQty = Math.round((Number(line.qty) || 0) / UNIT_DIV[line.unit || "Case"]);
                 if (casesQty > 0) {
                   const newSold30 = prod.sold30 + casesQty;
@@ -358,6 +376,10 @@ function NewInvoiceDrawer({ nextId, onClose, onSave }) {
     status,
     items: lines.filter(l => l.product).length,
     rep: "—",
+    lineItems: lines.filter(l => l.product && l.qty).map(l => ({
+      product: l.product, unit: l.unit || "Case",
+      qty: Number(l.qty) || 0, price: Number(l.price) || 0,
+    })),
   });
 
   return (
@@ -431,7 +453,7 @@ function NewInvoiceDrawer({ nextId, onClose, onSave }) {
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btn btn-primary" style={{ flex: 1 }}
                 disabled={!cid || total === 0}
-                onClick={() => onSave(buildInvoice("sent"), lines.filter(l => l.product && l.qty), "Sale recorded — " + custName)}>
+                onClick={() => onSave(buildInvoice("sent"), "Sale recorded — " + custName)}>
                 <Icon name="checkCircle" size={14} />Record Sale
               </button>
               <button className="btn" onClick={onClose}>Cancel</button>

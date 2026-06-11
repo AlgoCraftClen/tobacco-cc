@@ -321,7 +321,10 @@ function ShipmentDetail({ go, params, showToast }) {
     DATA.shipments = updated;
     setShipments(updated);
     setDone(true);
-    showToast && showToast(sh.id + " received — inventory updated");
+    const msg = items.length > 0
+      ? `${sh.id} received — ${items.length} product${items.length !== 1 ? "s" : ""} updated`
+      : `${sh.id} received — no products were logged on this delivery`;
+    showToast && showToast(msg);
   };
 
   const status = done ? "received" : sh.status;

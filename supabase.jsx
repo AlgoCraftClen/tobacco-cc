@@ -95,6 +95,7 @@
       total: Number(r.total) || 0,
       status: r.status || "sent",
       items: Number(r.items) || 0, rep: r.rep || "—",
+      lineItems: r.line_items ? JSON.parse(r.line_items) : [],
     };
   }
   function invoiceToRow(i) {
@@ -103,6 +104,7 @@
       date: i.date || "", due: i.due || "",
       total: i.total || 0, status: i.status || "sent",
       items: i.items || 0, rep: i.rep || "—",
+      line_items: i.lineItems && i.lineItems.length > 0 ? JSON.stringify(i.lineItems) : null,
     };
   }
 
@@ -140,6 +142,10 @@
       insert: async (c) => {
         const { error } = await SB.from("customers").insert(customerToRow(c));
         if (error) console.error("customers.insert:", error);
+      },
+      update: async (id, fields) => {
+        const { error } = await SB.from("customers").update(fields).eq("id", id);
+        if (error) console.error("customers.update:", error);
       },
       delete: async (id) => {
         const { error } = await SB.from("customers").delete().eq("id", id);

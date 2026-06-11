@@ -75,12 +75,17 @@ function Dashboard({ go, userName }) {
         casesOut,
       };
 
-      // ── Revenue series (group invoice totals by date, last 12 points) ────
+      // ── Revenue series (group by date, sort chronologically, last 12 points) ─
       if (invoices.length > 0) {
         const grouped = {};
         invoices.forEach(inv => { grouped[inv.date] = (grouped[inv.date] || 0) + inv.total; });
-        const vals = Object.values(grouped);
-        DATA.revSeries    = vals.slice(-12);
+        const MO = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+        const sorted = Object.keys(grouped).sort((a, b) => {
+          const [am, ad] = a.split(" "), [bm, bd] = b.split(" ");
+          const md = (MO[am] ?? 0) - (MO[bm] ?? 0);
+          return md !== 0 ? md : parseInt(ad) - parseInt(bd);
+        });
+        DATA.revSeries    = sorted.slice(-12).map(k => grouped[k]);
         DATA.profitSeries = DATA.revSeries.map(v => Math.round(v * (revenue > 0 ? paid / revenue : 0)));
       } else {
         DATA.revSeries    = [];
@@ -119,9 +124,19 @@ function Dashboard({ go, userName }) {
   const r = RANGES[range];
   const sc = (n) => Math.round(n * r.f);
 
-  const lowStock  = d.products.filter(p => p.status !== "ok");
+  const todayShort = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const todayLong  = new Date().toLocaleDateString("en-US", { month: "long",  day: "numeric" });
+  const etaIsToday = (eta) => {
+    if (!eta || eta === "TBD" || eta === "—") return false;
+    const e = eta.trim().toLowerCase();
+    return e === "today" || e === todayShort.toLowerCase() || e === todayLong.toLowerCase();
+  };
+
   const overdue   = d.invoices.filter(i => i.status === "overdue");
-  const arriving  = d.shipments.filter(s => ["arriving", "verifying"].includes(s.status));
+  const arriving  = d.shipments.filter(s =>
+    s.status !== "received" &&
+    (["arriving", "verifying"].includes(s.status) || etaIsToday(s.eta))
+  );
 
   return (
     <div className="page page-wide fade-in">
@@ -174,15 +189,10 @@ function Dashboard({ go, userName }) {
       <div className="between mb12" style={{ alignItems: "baseline" }}>
         <h2 style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.015em" }}>Needs attention</h2>
         <span className="faint" style={{ fontSize: 12 }}>
-          {lowStock.length + overdue.length + arriving.length} items
+          {overdue.length + arriving.length} items
         </span>
       </div>
-      <div className="grid g-3 mb28">
-        <AttentionCard
-          icon="alert" color="var(--warn)" bg="var(--warn-bg)"
-          title="Low stock" count={`${lowStock.length} items below reorder`}
-          rows={lowStock.slice(0, 3).map(p => [p.name, `${p.onHand} ${p.baseUnit.toLowerCase()}s`])}
-          action="View" onAction={() => go("inventory")} />
+      <div className="grid g-3 mb28" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <AttentionCard
           icon="receipt" color="var(--danger)" bg="var(--danger-bg)"
           title="Overdue invoices" count={`${money(k.overdue)} across ${overdue.length} accounts`}
@@ -190,8 +200,8 @@ function Dashboard({ go, userName }) {
           action="Collect" onAction={() => go("sales")} />
         <AttentionCard
           icon="truck" color="var(--info)" bg="var(--info-bg)"
-          title="Arriving today" count={`${arriving.length} shipments to receive`}
-          rows={arriving.map(s => [s.id + " · " + s.supplier, s.status === "verifying" ? "Verifying" : s.cases + " cases"])}
+          title="Arriving today" count={`${arriving.length} shipment${arriving.length !== 1 ? "s" : ""} to receive`}
+          rows={arriving.map(s => [s.id + " · " + s.supplier, etaIsToday(s.eta) && s.status === "in_transit" ? "Due today · " + s.cases + " cases" : s.status === "verifying" ? "Verifying" : s.cases + " cases"])}
           action="Receive" onAction={() => go("shipments")} />
       </div>
 
