@@ -8,9 +8,10 @@ function Shipments({ go, showToast }) {
   const [showNew, setShowNew] = React.useState(false);
 
   React.useEffect(() => {
-    DB.shipments.list().then(rows => {
-      DATA.shipments = rows;
-      setShipments(rows);
+    Promise.all([DB.shipments.list(), DB.products.list()]).then(([shipRows, prodRows]) => {
+      DATA.shipments = shipRows;
+      DATA.products  = prodRows;
+      setShipments(shipRows);
     });
   }, []);
 

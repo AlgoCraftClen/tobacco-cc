@@ -37,8 +37,25 @@ const RANGES = {
 };
 
 function Dashboard({ go, userName }) {
-  const d = DATA, k = d.kpis;
+  const [, reload] = React.useReducer(x => x + 1, 0);
   const [range, setRange] = React.useState("30d");
+
+  React.useEffect(() => {
+    Promise.all([
+      DB.products.list(),
+      DB.invoices.list(),
+      DB.shipments.list(),
+      DB.customers.list(),
+    ]).then(([products, invoices, shipments, customers]) => {
+      DATA.products  = products;
+      DATA.invoices  = invoices;
+      DATA.shipments = shipments;
+      DATA.customers = customers;
+      reload();
+    });
+  }, []);
+
+  const d = DATA, k = d.kpis;
   const r = RANGES[range];
   const sc = (n) => Math.round(n * r.f);
 
