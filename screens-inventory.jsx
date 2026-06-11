@@ -212,41 +212,63 @@ function Inventory({ go, showToast }) {
 }
 
 function AddProductDrawer({ onClose, onSave }) {
-  const [name, setName]         = React.useState("");
-  const [brand, setBrand]       = React.useState("");
-  const [cat, setCat]           = React.useState("Grizzly");
-  const [sku, setSku]           = React.useState("");
-  const [baseUnit, setBaseUnit] = React.useState("Case");
-  const [casePrice, setCasePrice] = React.useState("");
-  const [cost, setCost]         = React.useState("");
-  const [onHand, setOnHand]     = React.useState("");
-  const [reorder, setReorder]   = React.useState("");
-  const [par, setPar]           = React.useState("");
+  // 1 Case = 6 Boxes = 60 Rolls = 300 Cans  (1 Roll = 5 Cans, 10 Rolls/Box, 6 Boxes/Case)
+  const PER_CASE = { Case: 1, Box: 6, Roll: 60, Can: 300 };
+  const cats = ["Grizzly", "Copenhagen", "Other"];
+
+  const [name, setName]           = React.useState("");
+  const [cat, setCat]             = React.useState("Grizzly");
+  const [sku, setSku]             = React.useState("");
+  const [priceUnit, setPriceUnit] = React.useState("Case");
+  const [priceVal, setPriceVal]   = React.useState("");
+  const [stockUnit, setStockUnit] = React.useState("Case");
+  const [stockVal, setStockVal]   = React.useState("");
+
+  const unitPrice   = Number(priceVal) || 0;
+  const casePrice   = unitPrice * PER_CASE[priceUnit];
+
+  const stockNum    = Number(stockVal) || 0;
+  const onHandCases = stockNum > 0 ? stockNum / PER_CASE[stockUnit] : 0;
+
+  const fmt = n => n > 0 ? "$" + n.toFixed(2) : "—";
 
   const handleSave = () => {
     if (!name.trim() || !sku.trim()) return;
-    const oh = Number(onHand) || 0;
-    const ro = Number(reorder) || 0;
-    const pr = Number(par) || 0;
-    const status = oh <= 0 ? "critical" : oh < ro ? "low" : "ok";
+    const oh = Math.round(onHandCases);
+    const status = oh <= 0 ? "critical" : "ok";
     onSave({
       id: "P-" + Date.now(),
       name: name.trim(),
-      brand: brand.trim() || "—",
+      brand: cat !== "Other" ? cat : name.trim().split(" ")[0],
       cat,
       sku: sku.trim(),
-      baseUnit,
-      casePrice: Number(casePrice) || 0,
-      cost: Number(cost) || 0,
+      baseUnit: "Case",
+      casePrice,
+      cost: 0,
       onHand: oh,
-      reorder: ro,
-      par: pr || Math.max(oh * 2, 1),
+      reorder: 0,
+      par: Math.max(oh * 2, 12),
       sold30: 0,
       status,
     });
   };
 
-  const cats = ["Grizzly", "Copenhagen", "Other"];
+  const priceCols = [
+    { unit: "Case", label: "1 Case",      count: 1 },
+    { unit: "Box",  label: "6 per Case",  count: 6 },
+    { unit: "Roll", label: "60 per Case", count: 60 },
+    { unit: "Can",  label: "300 per Case",count: 300 },
+  ];
+
+  const stockCols = [
+    { label: "Cases", count: onHandCases },
+    { label: "Boxes", count: onHandCases * 6 },
+    { label: "Rolls", count: onHandCases * 60 },
+    { label: "Cans",  count: onHandCases * 300 },
+  ];
+
+  const breakdownStyle = { background: "var(--panel-2)", borderRadius: 8, padding: "10px 12px", marginTop: 4 };
+  const rowStyle       = { display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" };
 
   return (
     <>
@@ -259,6 +281,7 @@ function AddProductDrawer({ onClose, onSave }) {
           </button>
         </div>
         <div className="drawer-body">
+
           <div className="drawer-section">
             <div className="drawer-section-label">Product Info</div>
             <div className="col gap12">
@@ -269,7 +292,7 @@ function AddProductDrawer({ onClose, onSave }) {
               </div>
               <div className="field">
                 <label className="label">Brand</label>
-                <select className="select" value={cat} onChange={e => { setCat(e.target.value); setBrand(e.target.value !== "Other" ? e.target.value : brand); }}>
+                <select className="select" value={cat} onChange={e => setCat(e.target.value)}>
                   {cats.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
@@ -278,44 +301,68 @@ function AddProductDrawer({ onClose, onSave }) {
                 <input className="input mono" placeholder="e.g. GRZ-LC-WG"
                   value={sku} onChange={e => setSku(e.target.value)} />
               </div>
-              <div className="field">
-                <label className="label">Base Unit</label>
-                <select className="select" value={baseUnit} onChange={e => setBaseUnit(e.target.value)}>
-                  {["Case", "Box", "Roll", "Can"].map(u => <option key={u}>{u}</option>)}
-                </select>
-              </div>
             </div>
           </div>
+
           <div className="drawer-section">
-            <div className="drawer-section-label">Pricing & Stock</div>
-            <div className="col gap12">
+            <div className="drawer-section-label">Pricing</div>
+            <div className="col gap8">
               <div className="field">
-                <label className="label">Case Price ($)</label>
-                <input className="input mono" type="number" min="0" placeholder="0"
-                  value={casePrice} onChange={e => setCasePrice(e.target.value)} />
+                <label className="label">Price per</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <select className="select" value={priceUnit} onChange={e => setPriceUnit(e.target.value)}>
+                    {["Case", "Box", "Roll", "Can"].map(u => <option key={u}>{u}</option>)}
+                  </select>
+                  <input className="input mono" type="number" min="0" step="0.01" placeholder="0.00"
+                    value={priceVal} onChange={e => setPriceVal(e.target.value)} />
+                </div>
               </div>
-              <div className="field">
-                <label className="label">Unit Cost ($)</label>
-                <input className="input mono" type="number" min="0" placeholder="0"
-                  value={cost} onChange={e => setCost(e.target.value)} />
-              </div>
-              <div className="field">
-                <label className="label">On Hand (units)</label>
-                <input className="input mono" type="number" min="0" placeholder="0"
-                  value={onHand} onChange={e => setOnHand(e.target.value)} />
-              </div>
-              <div className="field">
-                <label className="label">Reorder Point</label>
-                <input className="input mono" type="number" min="0" placeholder="0"
-                  value={reorder} onChange={e => setReorder(e.target.value)} />
-              </div>
-              <div className="field">
-                <label className="label">Par Level</label>
-                <input className="input mono" type="number" min="0" placeholder="0"
-                  value={par} onChange={e => setPar(e.target.value)} />
-              </div>
+              {casePrice > 0 && (
+                <div style={breakdownStyle}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Price breakdown</div>
+                  {priceCols.map(row => (
+                    <div key={row.unit} style={rowStyle}>
+                      <span style={{ color: row.unit === priceUnit ? "var(--text)" : "var(--text-3)" }}>
+                        {row.unit}
+                        <span style={{ color: "var(--text-4)", fontSize: 11, marginLeft: 6 }}>({row.label})</span>
+                      </span>
+                      <span className="mono" style={{ fontWeight: row.unit === priceUnit ? 600 : 400 }}>
+                        {fmt(casePrice / row.count)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+
+          <div className="drawer-section">
+            <div className="drawer-section-label">Stock on Hand</div>
+            <div className="col gap8">
+              <div className="field">
+                <label className="label">How many do you have?</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <select className="select" value={stockUnit} onChange={e => setStockUnit(e.target.value)}>
+                    {["Case", "Box", "Roll", "Can"].map(u => <option key={u}>{u}</option>)}
+                  </select>
+                  <input className="input mono" type="number" min="0" placeholder="0"
+                    value={stockVal} onChange={e => setStockVal(e.target.value)} />
+                </div>
+              </div>
+              {onHandCases > 0 && (
+                <div style={breakdownStyle}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Equivalent</div>
+                  {stockCols.map(row => (
+                    <div key={row.label} style={rowStyle}>
+                      <span style={{ color: "var(--text-3)" }}>{row.label}</span>
+                      <span className="mono">{Math.round(row.count * 10) / 10}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="drawer-section">
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btn btn-primary" style={{ flex: 1 }}
@@ -326,6 +373,7 @@ function AddProductDrawer({ onClose, onSave }) {
               <button className="btn" onClick={onClose}>Cancel</button>
             </div>
           </div>
+
         </div>
       </div>
     </>
@@ -378,7 +426,7 @@ function ProductDetail({ go, params, showToast }) {
         </div>
         <div className="page-head-actions">
           <button className="btn" onClick={() => setShowEdit(true)}><Icon name="edit" size={14} />Edit</button>
-          <button className="btn btn-primary" onClick={() => go("shipments")}><Icon name="truck" size={14} />Log Incoming</button>
+          <button className="btn btn-primary" onClick={() => go("shipments", { openNew: true, preProduct: p.name })}><Icon name="truck" size={14} />Log Incoming</button>
         </div>
       </div>
 

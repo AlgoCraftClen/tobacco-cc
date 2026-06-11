@@ -2,10 +2,10 @@
    INCOMING — inbound deliveries from Washington supplier
    ============================================================ */
 
-function Shipments({ go, showToast }) {
+function Shipments({ go, params, showToast }) {
   const [shipments, setShipments] = React.useState([]);
   const [tab, setTab]   = React.useState("All");
-  const [showNew, setShowNew] = React.useState(false);
+  const [showNew, setShowNew] = React.useState(!!params?.openNew);
 
   React.useEffect(() => {
     Promise.all([DB.shipments.list(), DB.products.list()]).then(([shipRows, prodRows]) => {
@@ -145,6 +145,7 @@ function Shipments({ go, showToast }) {
       {showNew && (
         <NewShipmentDrawer
           nextId={nextId}
+          preProduct={params?.preProduct}
           onClose={() => setShowNew(false)}
           onSave={async (sh) => {
             await DB.shipments.insert(sh);
@@ -159,12 +160,12 @@ function Shipments({ go, showToast }) {
   );
 }
 
-function NewShipmentDrawer({ nextId, onClose, onSave }) {
+function NewShipmentDrawer({ nextId, preProduct, onClose, onSave }) {
   const d = DATA;
   const [from, setFrom]   = React.useState("");
   const [eta, setEta]     = React.useState("");
   const [value, setValue] = React.useState("");
-  const [lines, setLines] = React.useState([{ product: "", cases: "" }]);
+  const [lines, setLines] = React.useState([{ product: preProduct || "", cases: "" }]);
 
   const addLine    = () => setLines(ls => [...ls, { product: "", cases: "" }]);
   const removeLine = (i) => setLines(ls => ls.filter((_, idx) => idx !== i));
