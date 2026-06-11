@@ -30,7 +30,7 @@ function Shipments({ go, showToast }) {
 
   const nextId = React.useMemo(() => {
     const nums = shipments.map(s => parseInt(s.id.replace("SH-", "")) || 0);
-    return "SH-" + (Math.max(...nums, 3391) + 1);
+    return "SH-" + (Math.max(0, ...nums) + 1);
   }, [shipments]);
 
   return (
@@ -69,7 +69,7 @@ function Shipments({ go, showToast }) {
             </div>
             <div className="center gap8" style={{ flexShrink: 0 }}>
               <button className="btn" onClick={() => go("shipment", { id: sh.id })}>View Manifest</button>
-              <button className="btn btn-primary" onClick={() => go("shipment", { id: "SH-3390" })}>
+              <button className="btn btn-primary" onClick={() => go("shipment", { id: sh.id })}>
                 <Icon name="scan" size={14} />Receive Shipment
               </button>
             </div>

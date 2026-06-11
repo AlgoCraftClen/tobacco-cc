@@ -53,7 +53,7 @@ function Dashboard({ go }) {
         <div>
           <div className="page-title">Good morning, Clenny</div>
           <div className="page-desc">
-            Wednesday, Jun 11 · {k.ordersToday} orders today · {k.casesOut} cases moving
+            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })} · {k.ordersToday} orders today · {k.casesOut} cases moving
             <span style={{ color: "var(--pos)", marginLeft: 8 }}>● Live</span>
           </div>
         </div>

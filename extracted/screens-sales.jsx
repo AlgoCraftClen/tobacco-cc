@@ -46,7 +46,7 @@ function Sales({ go, showToast }) {
 
   const nextInvId = React.useMemo(() => {
     const nums = invoices.map(i => parseInt(i.id.replace("INV-", "")) || 0);
-    return "INV-" + (Math.max(...nums, 7741) + 1);
+    return "INV-" + (Math.max(0, ...nums) + 1);
   }, [invoices]);
 
   return (

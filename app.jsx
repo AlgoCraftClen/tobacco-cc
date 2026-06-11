@@ -8,7 +8,7 @@ const NAV = [
   ]},
   { group: "Operations", items: [
     { k: "inventory",  label: "Inventory",  icon: "inventory" },
-    { k: "shipments",  label: "Shipments",  icon: "truck",   badge: "2", badgeCls: "accent" },
+    { k: "shipments",  label: "Shipments",  icon: "truck" },
     { k: "sales",      label: "Sales",      icon: "invoice" },
     { k: "customers",  label: "Customers",  icon: "users" },
   ]},
