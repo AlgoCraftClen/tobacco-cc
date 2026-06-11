@@ -126,6 +126,10 @@
         const { error } = await SB.from("products").update(fields).eq("id", id);
         if (error) console.error("products.update:", error);
       },
+      save: async (p) => {
+        const { error } = await SB.from("products").update(productToRow(p)).eq("id", p.id);
+        if (error) console.error("products.save:", error);
+      },
     },
     customers: {
       list: async () => {

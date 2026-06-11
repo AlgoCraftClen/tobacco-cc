@@ -55,7 +55,10 @@ function Customers({ go, showToast }) {
           </div>
         </div>
         <div className="page-head-actions">
-          <button className="btn"><Icon name="download" size={14} />Export</button>
+          <button className="btn" onClick={() => exportCSV(customers, "customers.csv",
+            ["ID","Name","Contact","Type","City","Phone","Terms","Balance","Overdue","Credit Limit","YTD","Rep","Risk"],
+            c => [c.id, c.name, c.contact, c.type, c.city, c.phone, c.terms, c.balance, c.overdue, c.limit, c.ytd, c.rep, c.risk]
+          )}><Icon name="download" size={14} />Export</button>
           <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
             <Icon name="plus" size={14} />Add Customer
           </button>
@@ -310,12 +313,12 @@ function CustomerDrawer({ customer: c, onClose, go }) {
                 onClick={() => { onClose(); go("sales"); }}>
                 <Icon name="plus" size={14} />New Invoice
               </button>
-              <button className="btn" style={{ flex: 1 }}>
-                <Icon name="phone" size={14} />Call
-              </button>
-              <button className="btn" style={{ flex: 1 }}>
-                <Icon name="mail" size={14} />Email
-              </button>
+              {c.phone && c.phone !== "—" && (
+                <button className="btn" style={{ flex: 1 }}
+                  onClick={() => window.location.href = "tel:" + c.phone.replace(/\D/g, "")}>
+                  <Icon name="phone" size={14} />Call
+                </button>
+              )}
             </div>
           </div>
         </div>

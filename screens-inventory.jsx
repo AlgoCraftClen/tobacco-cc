@@ -43,7 +43,10 @@ function Inventory({ go, showToast }) {
           </div>
         </div>
         <div className="page-head-actions">
-          <button className="btn"><Icon name="download" size={14} />Export</button>
+          <button className="btn" onClick={() => exportCSV(products, "inventory.csv",
+            ["ID","Name","Brand","Category","SKU","Case Price","Cost","On Hand","Reorder","Par","Status"],
+            p => [p.id, p.name, p.brand, p.cat, p.sku, p.casePrice, p.cost, p.onHand, p.reorder, p.par, p.status]
+          )}><Icon name="download" size={14} />Export</button>
           <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
             <Icon name="plus" size={14} />Add Product
           </button>
@@ -329,11 +332,21 @@ function AddProductDrawer({ onClose, onSave }) {
   );
 }
 
-function ProductDetail({ go, params }) {
-  const d = DATA;
-  const p = d.products.find(x => x.id === params.id) || d.products[0];
-  const margin = Math.round((1 - p.cost / p.casePrice) * 100);
-  const daysLeft = Math.round(p.onHand / (p.sold30 / 30));
+function ProductDetail({ go, params, showToast }) {
+  const [p, setP] = React.useState(() => DATA.products.find(x => x.id === params.id));
+  const [showEdit, setShowEdit] = React.useState(false);
+
+  if (!p) return (
+    <div className="page fade-in">
+      <button className="btn btn-sm btn-ghost mb16" onClick={() => go("inventory")}>
+        <Icon name="chevL" size={13} />Inventory
+      </button>
+      <div className="empty"><Icon name="box" size={28} /><div className="empty-title">Product not found</div></div>
+    </div>
+  );
+
+  const margin   = p.casePrice > 0 ? Math.round((1 - p.cost / p.casePrice) * 100) : 0;
+  const daysLeft = p.sold30 > 0 ? Math.round(p.onHand / (p.sold30 / 30)) : "—";
 
   const unitBreakdown = [
     { unit: "Case", qty: p.onHand,        price: p.casePrice,                       desc: "4 Boxes" },
@@ -364,8 +377,8 @@ function ProductDetail({ go, params }) {
           </div>
         </div>
         <div className="page-head-actions">
-          <button className="btn"><Icon name="edit" size={14} />Edit</button>
-          <button className="btn btn-primary"><Icon name="truck" size={14} />Log Incoming</button>
+          <button className="btn" onClick={() => setShowEdit(true)}><Icon name="edit" size={14} />Edit</button>
+          <button className="btn btn-primary" onClick={() => go("shipments")}><Icon name="truck" size={14} />Log Incoming</button>
         </div>
       </div>
 
@@ -488,8 +501,141 @@ function ProductDetail({ go, params }) {
           </div>
         </div>
       </div>
+
+      {showEdit && (
+        <EditProductDrawer
+          product={p}
+          onClose={() => setShowEdit(false)}
+          onSave={async (updated) => {
+            await DB.products.save(updated);
+            DATA.products = DATA.products.map(x => x.id === updated.id ? updated : x);
+            setP(updated);
+            setShowEdit(false);
+            showToast && showToast("Product updated: " + updated.name);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-Object.assign(window, { Inventory, ProductDetail, AddProductDrawer });
+function EditProductDrawer({ product: orig, onClose, onSave }) {
+  const cats = ["Grizzly", "Copenhagen", "Other"];
+  const [name, setCatName]      = React.useState(orig.name);
+  const [cat, setCat]           = React.useState(orig.cat || "Grizzly");
+  const [sku, setSku]           = React.useState(orig.sku);
+  const [casePrice, setCasePrice] = React.useState(orig.casePrice || "");
+  const [cost, setCost]         = React.useState(orig.cost || "");
+  const [onHand, setOnHand]     = React.useState(orig.onHand ?? "");
+  const [reorder, setReorder]   = React.useState(orig.reorder ?? "");
+  const [par, setPar]           = React.useState(orig.par ?? "");
+
+  const handleSave = () => {
+    if (!name.trim() || !sku.trim()) return;
+    const oh = Number(onHand) || 0;
+    const ro = Number(reorder) || 0;
+    const pr = Number(par) || 0;
+    const status = oh <= 0 ? "critical" : oh < ro ? "low" : "ok";
+    onSave({
+      ...orig,
+      name: name.trim(),
+      brand: cat !== "Other" ? cat : orig.brand,
+      cat,
+      sku: sku.trim(),
+      casePrice: Number(casePrice) || 0,
+      cost: Number(cost) || 0,
+      onHand: oh,
+      reorder: ro,
+      par: pr || orig.par,
+      status,
+    });
+  };
+
+  return (
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="drawer">
+        <div className="drawer-head">
+          <div className="drawer-title">Edit Product</div>
+          <button className="btn btn-sm btn-icon btn-ghost" onClick={onClose}>
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+        <div className="drawer-body">
+          <div className="drawer-section">
+            <div className="drawer-section-label">Product Info</div>
+            <div className="col gap12">
+              <div className="field">
+                <label className="label">Product Name</label>
+                <input className="input" value={name} onChange={e => setCatName(e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">Brand</label>
+                <select className="select" value={cat} onChange={e => setCat(e.target.value)}>
+                  {cats.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label className="label">SKU</label>
+                <input className="input mono" value={sku} onChange={e => setSku(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <div className="drawer-section">
+            <div className="drawer-section-label">Pricing & Stock</div>
+            <div className="col gap12">
+              <div className="field">
+                <label className="label">Case Price ($)</label>
+                <input className="input mono" type="number" min="0" value={casePrice}
+                  onChange={e => setCasePrice(e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">Unit Cost ($)</label>
+                <input className="input mono" type="number" min="0" value={cost}
+                  onChange={e => setCost(e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">On Hand (cases)</label>
+                <input className="input mono" type="number" min="0" value={onHand}
+                  onChange={e => setOnHand(e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">Reorder Point (cases)</label>
+                <input className="input mono" type="number" min="0" value={reorder}
+                  onChange={e => setReorder(e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">Par Level (cases)</label>
+                <input className="input mono" type="number" min="0" value={par}
+                  onChange={e => setPar(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <div className="drawer-section">
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-primary" style={{ flex: 1 }}
+                disabled={!name.trim() || !sku.trim()}
+                onClick={handleSave}>
+                <Icon name="check" size={14} />Save Changes
+              </button>
+              <button className="btn" onClick={onClose}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function exportCSV(rows, filename, headers, getRow) {
+  const escape = v => JSON.stringify(v == null ? "" : String(v));
+  const lines  = [headers.join(","), ...rows.map(r => getRow(r).map(escape).join(","))];
+  const blob   = new Blob([lines.join("\n")], { type: "text/csv" });
+  const url    = URL.createObjectURL(blob);
+  const a      = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+window.exportCSV = exportCSV;
+
+Object.assign(window, { Inventory, ProductDetail, AddProductDrawer, EditProductDrawer });

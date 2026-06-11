@@ -59,7 +59,10 @@ function Sales({ go, showToast }) {
           </div>
         </div>
         <div className="page-head-actions">
-          <button className="btn"><Icon name="download" size={14} />Export</button>
+          <button className="btn" onClick={() => exportCSV(invoices, "sales.csv",
+            ["Invoice","Customer","Date","Due","Total","Status","Items"],
+            i => [i.id, i.customer, i.date, i.due, i.total, i.status, i.items]
+          )}><Icon name="download" size={14} />Export</button>
           <button className="btn btn-primary" onClick={() => setShowNew(true)}>
             <Icon name="plus" size={14} />New Invoice
           </button>
@@ -269,10 +272,6 @@ function Sales({ go, showToast }) {
                       <Icon name="checkCircle" size={14} />Record Payment
                     </button>
                   )}
-                  <button className="btn" style={{ flex: 1 }}>
-                    <Icon name="send" size={14} />Send Invoice
-                  </button>
-                  <button className="btn"><Icon name="print" size={14} />Print</button>
                 </div>
               </div>
             </div>
