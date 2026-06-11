@@ -25,7 +25,7 @@ const TITLES = {
   customer:  ["Customers", "Detail"],
 };
 
-function Sidebar({ screen, go, mobileOpen, setMobileOpen }) {
+function Sidebar({ screen, go, mobileOpen, setMobileOpen, userName }) {
   return (
     <aside className="sb">
       <div className="sb-brand">
@@ -65,10 +65,10 @@ function Sidebar({ screen, go, mobileOpen, setMobileOpen }) {
 
       <div className="sb-foot">
         <button className="user-card">
-          <Avatar name="Clenny Minor" cls="av-3" size={30} />
+          <Avatar name={userName || "?"} cls="av-3" size={30} />
           <div className="user-meta">
-            <div className="nm">Clenny Minor</div>
-            <div className="rl">Owner</div>
+            <div className="nm">{userName || "…"}</div>
+            <div className="rl">CC Tobacco</div>
           </div>
           <Icon name="settings" size={14} className="muted" />
         </button>
@@ -109,7 +109,7 @@ function Topbar({ screen, go, onMenu, onSearch }) {
   );
 }
 
-function CommandPalette({ open, setOpen, go }) {
+function CommandPalette({ open, setOpen, go, userName }) {
   const d = DATA;
   const [q, setQ] = React.useState("");
   const [hi, setHi] = React.useState(0);
@@ -198,7 +198,7 @@ function CommandPalette({ open, setOpen, go }) {
         <div className="cmd-foot">
           <span><span className="kbd">↑↓</span> navigate</span>
           <span><span className="kbd">↵</span> open</span>
-          <span style={{ marginLeft: "auto" }}>Clenny Minor · CC Tobacco</span>
+          <span style={{ marginLeft: "auto" }}>{userName || "Guest"} · CC Tobacco</span>
         </div>
       </div>
     </div>
@@ -217,8 +217,55 @@ function ComingSoon({ name }) {
   );
 }
 
+function NamePrompt({ onSave }) {
+  const [name, setName] = React.useState("");
+  const save = () => {
+    const n = name.trim();
+    if (!n) return;
+    localStorage.setItem("cc_user_name", n);
+    onSave(n);
+  };
+  return (
+    <div className="cmd-backdrop" style={{ zIndex: 9999, backdropFilter: "blur(18px)" }}>
+      <div className="cmd" style={{ maxWidth: 380 }}>
+        <div style={{ padding: "36px 28px 32px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 13, marginBottom: 32 }}>
+            <div className="brand-mark" style={{ width: 44, height: 44, borderRadius: 11, fontSize: 15 }}>CC</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>CC Tobacco OS</div>
+              <div className="muted" style={{ fontSize: 12.5 }}>Distribution Platform</div>
+            </div>
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 26, marginBottom: 8, letterSpacing: "-0.025em" }}>Iakwe!</div>
+          <div className="muted" style={{ fontSize: 13.5, marginBottom: 28, lineHeight: 1.55 }}>
+            You've got access. What should we call you?
+          </div>
+          <input
+            className="input"
+            placeholder="Your name…"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && save()}
+            autoFocus
+            style={{ fontSize: 15, height: 44, marginBottom: 14 }}
+          />
+          <button
+            className="btn btn-primary"
+            style={{ width: "100%", height: 44, fontSize: 14, fontWeight: 600 }}
+            disabled={!name.trim()}
+            onClick={save}
+          >
+            Enter OS
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [nav, setNav] = React.useState({ screen: "dashboard", params: {} });
+  const [userName, setUserName] = React.useState(() => localStorage.getItem("cc_user_name") || "");
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [toast, setToast] = React.useState(null);
   const [cmdOpen, setCmdOpen] = React.useState(false);
@@ -256,11 +303,11 @@ function App() {
     customer:  window.CustomerDetail,
   };
   const Screen = REG[nav.screen] || (() => <ComingSoon name={nav.screen} />);
-  const ctx = { go, showToast, params: nav.params };
+  const ctx = { go, showToast, params: nav.params, userName };
 
   return (
     <div className={"app" + (mobileOpen ? " sb-open" : "")}>
-      <Sidebar screen={nav.screen} go={go} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+      <Sidebar screen={nav.screen} go={go} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} userName={userName} />
       <div className="main">
         <Topbar screen={nav.screen} go={go}
           onMenu={() => setMobileOpen(o => !o)}
@@ -277,7 +324,8 @@ function App() {
           <div className="toast"><Icon name="checkCircle" size={15} />{toast}</div>
         </div>
       )}
-      <CommandPalette open={cmdOpen} setOpen={setCmdOpen} go={go} />
+      {!userName && <NamePrompt onSave={setUserName} />}
+      <CommandPalette open={cmdOpen} setOpen={setCmdOpen} go={go} userName={userName} />
     </div>
   );
 }

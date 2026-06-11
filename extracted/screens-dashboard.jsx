@@ -36,7 +36,7 @@ const RANGES = {
   "YTD": { f: 11.4, rev: 14.8, prof: 9.6,  ctx: "year to date" },
 };
 
-function Dashboard({ go }) {
+function Dashboard({ go, userName }) {
   const d = DATA, k = d.kpis;
   const [range, setRange] = React.useState("30d");
   const r = RANGES[range];
@@ -51,7 +51,7 @@ function Dashboard({ go }) {
       {/* Header */}
       <div className="page-head">
         <div>
-          <div className="page-title">Good morning, Clenny</div>
+          <div className="page-title">Iakwe {userName || "Friend"}</div>
           <div className="page-desc">
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })} · {k.ordersToday} orders today · {k.casesOut} cases moving
             <span style={{ color: "var(--pos)", marginLeft: 8 }}>● Live</span>
