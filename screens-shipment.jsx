@@ -20,8 +20,11 @@ function ReviewRow({ k, v, total }) {
 }
 
 /* ---- Expandable shipment card (reused by list + history) ---- */
-function ShipmentCard({ s, defaultOpen }) {
+function ShipmentCard({ s, defaultOpen, onSell }) {
   const [open, setOpen] = React.useState(!!defaultOpen);
+  const sold = (s.saleTotal || 0) > 0;
+  const profit = (s.saleTotal || 0) - s.grandTotal;
+  const canSell = s.status === "received" && !sold && !!onSell;
   return (
     <div className="list-card">
       <button className="lc-head" onClick={() => setOpen(o => !o)}>
@@ -47,18 +50,104 @@ function ShipmentCard({ s, defaultOpen }) {
             {s.miscCost > 0 && <ReviewRow k={s.miscDesc || "Misc cost"} v={money(s.miscCost)} />}
             <ReviewRow k="Grand total" v={money(s.grandTotal)} total />
           </div>
+          {sold && (
+            <div className="review-card mt12">
+              <ReviewRow k="Sold for" v={money(s.saleTotal)} />
+              <ReviewRow k="Sale price / can" v={money(s.salePricePerCan, 2)} />
+              <div className="review-row total">
+                <span className="rk">{profit >= 0 ? "Profit" : "Loss"}</span>
+                <span className="rv" style={{ color: profit >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(profit)}</span>
+              </div>
+            </div>
+          )}
           <div className="kv mt12"><span className="k">Route</span><span className="v">{s.sender} → {s.receiver}</span></div>
           {s.notes && <div className="kv"><span className="k">Issue note</span><span className="v" style={{ color: "var(--danger)" }}>{s.notes}</span></div>}
           {s.receivedAt && <div className="kv"><span className="k">{s.status === "disputed" ? "Flagged" : "Received"}</span><span className="v">{fmtDate(s.receivedAt)}</span></div>}
+          {s.soldAt && <div className="kv"><span className="k">Sold</span><span className="v">{fmtDate(s.soldAt)}</span></div>}
+        </div>
+      )}
+      {(canSell || sold) && (
+        <div className="lc-actions">
+          {sold ? (
+            <div className="between" style={{ flex: 1, fontSize: 13 }}>
+              <span className="muted">Sold for {money(s.saleTotal)}</span>
+              <span className="mono" style={{ fontWeight: 600, color: profit >= 0 ? "var(--pos)" : "var(--danger)" }}>
+                {profit >= 0 ? "+" : ""}{money(profit)} {profit >= 0 ? "profit" : "loss"}
+              </span>
+            </div>
+          ) : (
+            <button className="btn btn-primary" onClick={() => onSell(s)}>
+              <Icon name="dollar" size={15} />Record sale
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
+/* ---- Record a resale against a received shipment ---- */
+function RecordSaleSheet({ shipment, onClose, showToast, refresh }) {
+  const open = !!shipment;
+  const [price, setPrice] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  React.useEffect(() => { if (open) setPrice(""); }, [open, shipment]);
+
+  const cans = shipment ? shipment.cans : 0;
+  const total = cans * (Number(price) || 0);
+  const profit = total - (shipment ? shipment.grandTotal : 0);
+  const valid = Number(price) > 0;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await DB.shipments.recordSale(shipment.id, { salePricePerCan: Number(price) || 0, saleTotal: total });
+      await refresh();
+      showToast("Sale recorded");
+      onClose();
+    } catch (e) { showToast("Couldn't save — check connection"); }
+    setSaving(false);
+  };
+
+  return (
+    <Sheet open={open} onClose={onClose} title="Record sale" icon="dollar">
+      {shipment && (
+        <>
+          <div className="review-card mb16">
+            <ReviewRow k="Shipment" v={`${shipment.brand} · ${boxWord(shipment.boxes)}`} />
+            <ReviewRow k="Cans" v={fmt(cans)} />
+            <ReviewRow k="Cost (grand total)" v={money(shipment.grandTotal)} />
+          </div>
+          <div className="field mb16">
+            <label className="label">Sale price per can</label>
+            <div className="bignum-wrap">
+              <span className="bignum-cur">$</span>
+              <input className="bignum prefixed" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00"
+                value={price} onChange={e => setPrice(e.target.value)} autoFocus />
+            </div>
+          </div>
+          {Number(price) > 0 && (
+            <div className="review-card mb16">
+              <ReviewRow k={`${fmt(cans)} cans sold`} v={money(total)} />
+              <div className="review-row total">
+                <span className="rk">{profit >= 0 ? "Profit" : "Loss"}</span>
+                <span className="rv" style={{ color: profit >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(profit)}</span>
+              </div>
+            </div>
+          )}
+          <button className="btn btn-primary" style={{ width: "100%", height: 48 }} onClick={save} disabled={!valid || saving}>
+            <Icon name="check" size={15} />{saving ? "Saving…" : "Record Sale"}
+          </button>
+        </>
+      )}
+    </Sheet>
+  );
+}
+
 /* ---- Shipments list (tab) ---- */
-function Shipments({ shipments, loading, go, role }) {
+function Shipments({ shipments, loading, go, role, showToast, refresh }) {
   const [filter, setFilter] = React.useState("all");
+  const [sellFor, setSellFor] = React.useState(null);
   const filtered = filter === "all" ? shipments : shipments.filter(s => s.status === filter);
   const counts = {
     all: shipments.length,
@@ -90,13 +179,15 @@ function Shipments({ shipments, loading, go, role }) {
       </div>
 
       {loading ? <SkeletonList count={5} /> :
-        filtered.length > 0 ? filtered.map(s => <ShipmentCard key={s.id} s={s} />) : (
+        filtered.length > 0 ? filtered.map(s => <ShipmentCard key={s.id} s={s} onSell={setSellFor} />) : (
           <div className="empty">
             <Icon name="send" size={30} />
             <div className="empty-title">No shipments {filter !== "all" ? `(${filter})` : "yet"}</div>
             <div className="empty-desc">{role && role.name === "Clanny" ? "Tap New Shipment to send one" : "Shipments from Clanny will appear here"}</div>
           </div>
         )}
+
+      <RecordSaleSheet shipment={sellFor} onClose={() => setSellFor(null)} showToast={showToast} refresh={refresh} />
 
       <div className="m-foot">© {new Date().getFullYear()} Clenny Minor · All Rights Reserved</div>
     </div>

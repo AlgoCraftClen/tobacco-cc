@@ -49,10 +49,41 @@
     };
   };
 
+  // Partnership economics: 50/50 cost + profit split with settlement.
+  // contributed = capital each paid in (shipments by sender + purchases by partner)
+  // collected   = resale revenue each took in (sold shipment totals, by receiver)
+  const computeStake = (shipments, purchases) => {
+    const contributed = { Clanny: 0, Clenny: 0 };
+    const collected   = { Clanny: 0, Clenny: 0 };
+    (shipments || []).forEach(s => {
+      contributed[s.sender] = (contributed[s.sender] || 0) + (Number(s.grandTotal) || 0);
+      if ((Number(s.saleTotal) || 0) > 0)
+        collected[s.receiver] = (collected[s.receiver] || 0) + Number(s.saleTotal);
+    });
+    (purchases || []).forEach(p => {
+      contributed[p.partner] = (contributed[p.partner] || 0) + (Number(p.total) || 0);
+    });
+    const cost     = contributed.Clanny + contributed.Clenny;
+    const revenue  = collected.Clanny + collected.Clenny;
+    const profit   = revenue - cost;
+    const sharePer = profit / 2;                       // each partner's 50% entitlement
+    const net = {                                       // current cash position (Σ = profit)
+      Clanny: collected.Clanny - contributed.Clanny,
+      Clenny: collected.Clenny - contributed.Clenny,
+    };
+    const adjClanny = sharePer - net.Clanny;           // >0 ⇒ Clanny should receive
+    let settlement = null;
+    if (Math.round(adjClanny * 100) > 0)      settlement = { from: "Clenny", to: "Clanny", amount: adjClanny };
+    else if (Math.round(adjClanny * 100) < 0) settlement = { from: "Clanny", to: "Clenny", amount: -adjClanny };
+    const soldCount      = (shipments || []).filter(s => (Number(s.saleTotal) || 0) > 0).length;
+    const unsoldReceived = (shipments || []).filter(s => s.status === "received" && !((Number(s.saleTotal) || 0) > 0)).length;
+    return { cost, revenue, profit, sharePer, contributed, collected, net, settlement, soldCount, unsoldReceived };
+  };
+
   window.DATA = {
     SENDER, RECEIVER, ROLES, roleOf, BRANDS,
     UNITS, TO_CANS, BOX_TO, CASE_TO, ROLL_TO,
-    boxesToUnits, priceLadder,
+    boxesToUnits, priceLadder, computeStake,
 
     // Live caches (populated from Supabase at runtime)
     shipments: [],

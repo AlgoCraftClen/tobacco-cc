@@ -30,6 +30,9 @@
       notes:    r.notes    || "",
       createdAt:  r.created_at  || null,
       receivedAt: r.received_at || null,
+      saleTotal:       Number(r.sale_total) || 0,
+      salePricePerCan: Number(r.sale_price_per_can) || 0,
+      soldAt:          r.sold_at || null,
     };
   }
   function shipmentToRow(s) {
@@ -99,6 +102,12 @@
         const { error } = await SB.from("shipments_v2")
           .update({ status: "disputed", notes: note || "", received_at: new Date().toISOString() }).eq("id", id);
         if (error) { console.error("shipments.dispute:", error); throw error; }
+      },
+      recordSale: async (id, { salePricePerCan, saleTotal }) => {
+        const { error } = await SB.from("shipments_v2")
+          .update({ sale_price_per_can: salePricePerCan || 0, sale_total: saleTotal || 0, sold_at: new Date().toISOString() })
+          .eq("id", id);
+        if (error) { console.error("shipments.recordSale:", error); throw error; }
       },
       delete: async (id) => {
         const { error } = await SB.from("shipments_v2").delete().eq("id", id);
