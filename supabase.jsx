@@ -76,6 +76,38 @@
     };
   }
 
+  /* ---- Contributions ------------------------------------- */
+  function rowToContribution(r) {
+    return {
+      id: r.id, partner: r.partner || "Clanny",
+      amount: Number(r.amount) || 0,
+      description: r.description || "",
+      createdAt: r.created_at || null,
+    };
+  }
+  function contributionToRow(c) {
+    return { partner: c.partner || "Clanny", amount: c.amount || 0, description: c.description || "" };
+  }
+
+  /* ---- Expenses ------------------------------------------ */
+  function rowToExpense(r) {
+    return {
+      id: r.id, partner: r.partner || "Clanny",
+      amount: Number(r.amount) || 0,
+      category: r.category || "",
+      description: r.description || "",
+      shipmentId: r.shipment_id || null,
+      createdAt: r.created_at || null,
+    };
+  }
+  function expenseToRow(e) {
+    return {
+      partner: e.partner || "Clanny", amount: e.amount || 0,
+      category: e.category || "", description: e.description || "",
+      shipment_id: e.shipmentId || null,
+    };
+  }
+
   /* ---- Public API ---------------------------------------- */
   window.DB = {
     shipments: {
@@ -128,6 +160,38 @@
       delete: async (id) => {
         const { error } = await SB.from("purchases").delete().eq("id", id);
         if (error) { console.error("purchases.delete:", error); throw error; }
+      },
+    },
+    contributions: {
+      list: async () => {
+        const { data, error } = await SB.from("contributions").select("*").order("created_at", { ascending: false });
+        if (error) { console.error("contributions.list:", error); return []; }
+        return (data || []).map(rowToContribution);
+      },
+      insert: async (c) => {
+        const { data, error } = await SB.from("contributions").insert(contributionToRow(c)).select().single();
+        if (error) { console.error("contributions.insert:", error); throw error; }
+        return rowToContribution(data);
+      },
+      delete: async (id) => {
+        const { error } = await SB.from("contributions").delete().eq("id", id);
+        if (error) { console.error("contributions.delete:", error); throw error; }
+      },
+    },
+    expenses: {
+      list: async () => {
+        const { data, error } = await SB.from("expenses").select("*").order("created_at", { ascending: false });
+        if (error) { console.error("expenses.list:", error); return []; }
+        return (data || []).map(rowToExpense);
+      },
+      insert: async (e) => {
+        const { data, error } = await SB.from("expenses").insert(expenseToRow(e)).select().single();
+        if (error) { console.error("expenses.insert:", error); throw error; }
+        return rowToExpense(data);
+      },
+      delete: async (id) => {
+        const { error } = await SB.from("expenses").delete().eq("id", id);
+        if (error) { console.error("expenses.delete:", error); throw error; }
       },
     },
   };

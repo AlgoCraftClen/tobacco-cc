@@ -49,41 +49,37 @@
     };
   };
 
-  // Partnership economics: 50/50 cost + profit split with settlement.
-  // contributed = capital each paid in (shipments by sender + purchases by partner)
-  // collected   = resale revenue each took in (sold shipment totals, by receiver)
-  const computeStake = (shipments, purchases) => {
-    const contributed = { Clanny: 0, Clenny: 0 };
-    const collected   = { Clanny: 0, Clenny: 0 };
+  // Partnership accounting (50/50). Model (2026-06-18):
+  //  - revenue       = resale (shipment sale_total)
+  //  - expensesPaid  = per partner: logged expenses + purchases + shipment cost-of-goods (sender funds shipments)
+  //  - netProfit     = revenue - totalExpenses; split 50/50
+  //  - netPosition   = contributions + expensesPaid + profitShare  (each partner's claim on the business)
+  const computePartnership = (shipments, purchases, expenses, contributions) => {
+    const contributed  = { Clanny: 0, Clenny: 0 };
+    const expensesPaid = { Clanny: 0, Clenny: 0 };
+    let revenue = 0;
+    (contributions || []).forEach(c => { contributed[c.partner]  = (contributed[c.partner]  || 0) + (Number(c.amount) || 0); });
+    (expenses || []).forEach(e =>      { expensesPaid[e.partner] = (expensesPaid[e.partner] || 0) + (Number(e.amount) || 0); });
+    (purchases || []).forEach(p =>     { expensesPaid[p.partner] = (expensesPaid[p.partner] || 0) + (Number(p.total) || 0); });
     (shipments || []).forEach(s => {
-      contributed[s.sender] = (contributed[s.sender] || 0) + (Number(s.grandTotal) || 0);
-      if ((Number(s.saleTotal) || 0) > 0)
-        collected[s.receiver] = (collected[s.receiver] || 0) + Number(s.saleTotal);
+      expensesPaid[s.sender] = (expensesPaid[s.sender] || 0) + (Number(s.grandTotal) || 0); // cost of goods
+      revenue += Number(s.saleTotal) || 0;                                                  // resale revenue
     });
-    (purchases || []).forEach(p => {
-      contributed[p.partner] = (contributed[p.partner] || 0) + (Number(p.total) || 0);
-    });
-    const cost     = contributed.Clanny + contributed.Clenny;
-    const revenue  = collected.Clanny + collected.Clenny;
-    const profit   = revenue - cost;
-    const sharePer = profit / 2;                       // each partner's 50% entitlement
-    const net = {                                       // current cash position (Σ = profit)
-      Clanny: collected.Clanny - contributed.Clanny,
-      Clenny: collected.Clenny - contributed.Clenny,
+    const totalExpenses      = expensesPaid.Clanny + expensesPaid.Clenny;
+    const totalContributions = contributed.Clanny + contributed.Clenny;
+    const netProfit = revenue - totalExpenses;
+    const sharePer  = netProfit / 2;
+    const netPosition = {
+      Clanny: contributed.Clanny + expensesPaid.Clanny + sharePer,
+      Clenny: contributed.Clenny + expensesPaid.Clenny + sharePer,
     };
-    const adjClanny = sharePer - net.Clanny;           // >0 ⇒ Clanny should receive
-    let settlement = null;
-    if (Math.round(adjClanny * 100) > 0)      settlement = { from: "Clenny", to: "Clanny", amount: adjClanny };
-    else if (Math.round(adjClanny * 100) < 0) settlement = { from: "Clanny", to: "Clenny", amount: -adjClanny };
-    const soldCount      = (shipments || []).filter(s => (Number(s.saleTotal) || 0) > 0).length;
-    const unsoldReceived = (shipments || []).filter(s => s.status === "received" && !((Number(s.saleTotal) || 0) > 0)).length;
-    return { cost, revenue, profit, sharePer, contributed, collected, net, settlement, soldCount, unsoldReceived };
+    return { revenue, totalExpenses, totalContributions, netProfit, sharePer, contributed, expensesPaid, netPosition };
   };
 
   window.DATA = {
     SENDER, RECEIVER, ROLES, roleOf, BRANDS,
     UNITS, TO_CANS, BOX_TO, CASE_TO, ROLL_TO,
-    boxesToUnits, priceLadder, computeStake,
+    boxesToUnits, priceLadder, computePartnership,
 
     // Live caches (populated from Supabase at runtime)
     shipments: [],

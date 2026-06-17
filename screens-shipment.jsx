@@ -19,6 +19,39 @@ function ReviewRow({ k, v, total }) {
   );
 }
 
+/* ---- Optional operating-expense line editor (attributed to a partner) ---- */
+function ExpenseLines({ lines, setLines, categories }) {
+  const add = () => setLines([...lines, { category: categories[0], amount: "" }]);
+  const upd = (i, k, v) => setLines(lines.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
+  const rm = (i) => setLines(lines.filter((_, idx) => idx !== i));
+  return (
+    <div className="col gap10">
+      {lines.map((l, i) => (
+        <div key={i} className="center gap8">
+          <select className="input" style={{ height: 42, flex: 1 }} value={l.category} onChange={e => upd(i, "category", e.target.value)}>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <div className="bignum-wrap" style={{ width: 118 }}>
+            <span className="bignum-cur" style={{ fontSize: 15 }}>$</span>
+            <input className="bignum prefixed" style={{ height: 42, fontSize: 16, textAlign: "right", paddingRight: 10 }}
+              type="number" inputMode="decimal" min="0" step="0.01" placeholder="0" value={l.amount} onChange={e => upd(i, "amount", e.target.value)} />
+          </div>
+          <button className="icon-btn" onClick={() => rm(i)}><Icon name="x" size={15} className="faint" /></button>
+        </div>
+      ))}
+      <button className="btn btn-sm btn-ghost" style={{ alignSelf: "flex-start" }} onClick={add}>
+        <Icon name="plus" size={13} />Add expense
+      </button>
+    </div>
+  );
+}
+async function insertExpenseLines(lines, partner, shipmentId) {
+  for (const l of (lines || [])) {
+    const amt = Number(l.amount) || 0;
+    if (amt > 0) await DB.expenses.insert({ partner, amount: amt, category: l.category, description: l.category, shipmentId });
+  }
+}
+
 /* ---- Expandable shipment card (reused by list + history) ---- */
 function ShipmentCard({ s, defaultOpen, onSell }) {
   const [open, setOpen] = React.useState(!!defaultOpen);
@@ -90,8 +123,9 @@ function ShipmentCard({ s, defaultOpen, onSell }) {
 function RecordSaleSheet({ shipment, onClose, showToast, refresh }) {
   const open = !!shipment;
   const [price, setPrice] = React.useState("");
+  const [expLines, setExpLines] = React.useState([]);
   const [saving, setSaving] = React.useState(false);
-  React.useEffect(() => { if (open) setPrice(""); }, [open, shipment]);
+  React.useEffect(() => { if (open) { setPrice(""); setExpLines([]); } }, [open, shipment]);
 
   const cans = shipment ? shipment.cans : 0;
   const total = cans * (Number(price) || 0);
@@ -102,6 +136,7 @@ function RecordSaleSheet({ shipment, onClose, showToast, refresh }) {
     setSaving(true);
     try {
       await DB.shipments.recordSale(shipment.id, { salePricePerCan: Number(price) || 0, saleTotal: total });
+      await insertExpenseLines(expLines, "Clenny", shipment.id);
       await refresh();
       showToast("Sale recorded");
       onClose();
@@ -135,6 +170,10 @@ function RecordSaleSheet({ shipment, onClose, showToast, refresh }) {
               </div>
             </div>
           )}
+          <div className="field mb16">
+            <label className="label">Distribution expenses (optional · billed to Clenny)</label>
+            <ExpenseLines lines={expLines} setLines={setExpLines} categories={["Gas", "Delivery", "Transportation", "Storage", "Other"]} />
+          </div>
           <button className="btn btn-primary" style={{ width: "100%", height: 48 }} onClick={save} disabled={!valid || saving}>
             <Icon name="check" size={15} />{saving ? "Saving…" : "Record Sale"}
           </button>
@@ -202,6 +241,7 @@ function NewShipment({ go, showToast, refresh, role }) {
   const [canPrice, setCanPrice] = React.useState("");
   const [miscCost, setMiscCost] = React.useState("");
   const [miscDesc, setMiscDesc] = React.useState("");
+  const [expLines, setExpLines] = React.useState([]);
   const [saving, setSaving] = React.useState(false);
 
   const u = DATA.boxesToUnits(boxes);
@@ -216,12 +256,13 @@ function NewShipment({ go, showToast, refresh, role }) {
   const submit = async () => {
     setSaving(true);
     try {
-      await DB.shipments.insert({
+      const created = await DB.shipments.insert({
         brand, boxes: u.boxes, cases: u.cases, rolls: u.rolls, cans: u.cans,
         pricePerCan: Number(canPrice) || 0, subtotal,
         miscCost: Number(miscCost) || 0, miscDesc,
         grandTotal, sender: "Clanny", receiver: "Clenny", status: "pending",
       });
+      await insertExpenseLines(expLines, "Clanny", created && created.id);
       await refresh();
       showToast("Shipment sent to Clenny");
       go("shipments");
@@ -324,6 +365,11 @@ function NewShipment({ go, showToast, refresh, role }) {
             <label className="label">Description</label>
             <input className="input" style={{ height: 46, fontSize: 15 }} placeholder="e.g. Freight"
               value={miscDesc} onChange={e => setMiscDesc(e.target.value)} />
+          </div>
+
+          <div className="field" style={{ marginTop: 18 }}>
+            <label className="label">Operating expenses (optional · billed to Clanny)</label>
+            <ExpenseLines lines={expLines} setLines={setExpLines} categories={["Freight", "Pickup travel", "Fuel", "Port fees", "Loading", "Other"]} />
           </div>
 
           <div className="review-card mt20">

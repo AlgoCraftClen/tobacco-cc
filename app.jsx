@@ -217,13 +217,100 @@ function ComingSoon({ name }) {
   );
 }
 
+/* ---- Global add-transaction sheets (used by the FAB menu) ---- */
+function PartnerPick({ partner, setPartner, label }) {
+  return (
+    <div className="field mb16">
+      <label className="label">{label || "Who paid?"}</label>
+      <div className="choice-row">
+        {["Clanny", "Clenny"].map(p => (
+          <button key={p} className={"choice" + (partner === p ? " on" : "")} onClick={() => setPartner(p)} style={{ minHeight: 70 }}>
+            <Avatar name={p} cls={p === "Clanny" ? "av-3" : "av-1"} size={28} />
+            <div className="choice-name">{p}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AddContributionSheet({ open, onClose, role, showToast, refresh }) {
+  const [partner, setPartner] = React.useState(role ? role.name : "Clanny");
+  const [amount, setAmount] = React.useState("");
+  const [desc, setDesc] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  React.useEffect(() => { if (open) { setPartner(role ? role.name : "Clanny"); setAmount(""); setDesc(""); } }, [open, role]);
+  const valid = Number(amount) > 0;
+  const save = async () => {
+    setSaving(true);
+    try {
+      await DB.contributions.insert({ partner, amount: Number(amount) || 0, description: desc.trim() });
+      await refresh(); showToast("Contribution added"); onClose();
+    } catch (e) { showToast("Couldn't save — check connection"); }
+    setSaving(false);
+  };
+  return (
+    <Sheet open={open} onClose={onClose} title="Add contribution" icon="dollar">
+      <PartnerPick partner={partner} setPartner={setPartner} label="Who invested?" />
+      <div className="field mb16">
+        <label className="label">Amount</label>
+        <div className="bignum-wrap"><span className="bignum-cur">$</span>
+          <input className="bignum prefixed" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} autoFocus /></div>
+      </div>
+      <div className="field mb16">
+        <label className="label">Description</label>
+        <input className="input" style={{ height: 46, fontSize: 15 }} placeholder="e.g. Startup capital" value={desc} onChange={e => setDesc(e.target.value)} />
+      </div>
+      <button className="btn btn-primary" style={{ width: "100%", height: 48 }} onClick={save} disabled={!valid || saving}>
+        <Icon name="check" size={15} />{saving ? "Saving…" : "Save Contribution"}
+      </button>
+    </Sheet>
+  );
+}
+
+function AddExpenseSheet({ open, onClose, role, showToast, refresh }) {
+  const [partner, setPartner] = React.useState(role ? role.name : "Clanny");
+  const [amount, setAmount] = React.useState("");
+  const [desc, setDesc] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  React.useEffect(() => { if (open) { setPartner(role ? role.name : "Clanny"); setAmount(""); setDesc(""); } }, [open, role]);
+  const valid = Number(amount) > 0;
+  const save = async () => {
+    setSaving(true);
+    try {
+      await DB.expenses.insert({ partner, amount: Number(amount) || 0, description: desc.trim() });
+      await refresh(); showToast("Expense logged"); onClose();
+    } catch (e) { showToast("Couldn't save — check connection"); }
+    setSaving(false);
+  };
+  return (
+    <Sheet open={open} onClose={onClose} title="Log expense" icon="wallet">
+      <PartnerPick partner={partner} setPartner={setPartner} />
+      <div className="field mb16">
+        <label className="label">Amount</label>
+        <div className="bignum-wrap"><span className="bignum-cur">$</span>
+          <input className="bignum prefixed" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} autoFocus /></div>
+      </div>
+      <div className="field mb16">
+        <label className="label">Description</label>
+        <input className="input" style={{ height: 46, fontSize: 15 }} placeholder="e.g. Freight, fuel, delivery" value={desc} onChange={e => setDesc(e.target.value)} />
+      </div>
+      <button className="btn btn-primary" style={{ width: "100%", height: 48 }} onClick={save} disabled={!valid || saving}>
+        <Icon name="check" size={15} />{saving ? "Saving…" : "Save Expense"}
+      </button>
+    </Sheet>
+  );
+}
+
 function App() {
   const [roleName, setRoleName] = React.useState(() => localStorage.getItem("cc_role") || "");
   const [nav, setNav] = React.useState({ screen: "dashboard", params: {} });
-  const [data, setData] = React.useState({ shipments: [], purchases: [], loading: true });
+  const [data, setData] = React.useState({ shipments: [], purchases: [], expenses: [], contributions: [], loading: true });
   const [toast, setToast] = React.useState(null);
   const [cmdOpen, setCmdOpen] = React.useState(false);
   const [roleSheet, setRoleSheet] = React.useState(false);
+  const [fabOpen, setFabOpen] = React.useState(false);
+  const [modal, setModal] = React.useState(null);
   const [ptr, setPtr] = React.useState(false);
   const contentRef = React.useRef(null);
 
@@ -240,9 +327,11 @@ function App() {
   }, []);
 
   const refresh = React.useCallback(async () => {
-    const [shipments, purchases] = await Promise.all([DB.shipments.list(), DB.purchases.list()]);
-    DATA.shipments = shipments; DATA.purchases = purchases;
-    setData({ shipments, purchases, loading: false });
+    const [shipments, purchases, expenses, contributions] = await Promise.all([
+      DB.shipments.list(), DB.purchases.list(), DB.expenses.list(), DB.contributions.list(),
+    ]);
+    DATA.shipments = shipments; DATA.purchases = purchases; DATA.expenses = expenses; DATA.contributions = contributions;
+    setData({ shipments, purchases, expenses, contributions, loading: false });
   }, []);
 
   React.useEffect(() => { refresh(); }, [refresh]);
@@ -258,8 +347,13 @@ function App() {
   }, []);
 
   const pickRole = (name) => { localStorage.setItem("cc_role", name); setRoleName(name); setRoleSheet(false); };
-  const openPurchase = () => go("purchases", { add: true });
-  const onFab = () => nav.screen === "purchases" ? openPurchase() : go("newshipment");
+  const openPurchase = () => setModal("purchase");
+  const fabActions = [
+    { label: "New Shipment",     icon: "send",   run: () => go("newshipment") },
+    { label: "Log Purchase",     icon: "cart",   run: () => setModal("purchase") },
+    { label: "Log Expense",      icon: "wallet", run: () => setModal("expense") },
+    { label: "Add Contribution", icon: "dollar", run: () => setModal("contribution") },
+  ];
 
   // lightweight pull-to-refresh (touch)
   const ptrState = React.useRef({ y: 0, pulling: false });
@@ -291,7 +385,8 @@ function App() {
   const ctx = {
     go, screen: nav.screen, params: nav.params, role,
     showToast, refresh,
-    shipments: data.shipments, purchases: data.purchases, loading: data.loading,
+    shipments: data.shipments, purchases: data.purchases,
+    expenses: data.expenses, contributions: data.contributions, loading: data.loading,
   };
 
   return (
@@ -310,10 +405,26 @@ function App() {
 
       <BottomTabs screen={nav.screen} go={go} />
       {nav.screen !== "newshipment" && (
-        <button className="fab" onClick={onFab} aria-label="New">
+        <button className="fab" onClick={() => setFabOpen(true)} aria-label="Add">
           <Icon name="plus" size={25} />
         </button>
       )}
+
+      <Sheet open={fabOpen} onClose={() => setFabOpen(false)} title="Add">
+        <div className="col gap10">
+          {fabActions.map(a => (
+            <button key={a.label} className="btn" style={{ width: "100%", height: 54, justifyContent: "flex-start", gap: 12, fontSize: 14.5 }}
+              onClick={() => { setFabOpen(false); a.run(); }}>
+              <div className="lc-ico" style={{ width: 34, height: 34, borderRadius: 10 }}><Icon name={a.icon} size={17} /></div>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </Sheet>
+
+      <AddPurchaseSheet open={modal === "purchase"} onClose={() => setModal(null)} role={role} showToast={showToast} refresh={refresh} />
+      <AddExpenseSheet open={modal === "expense"} onClose={() => setModal(null)} role={role} showToast={showToast} refresh={refresh} />
+      <AddContributionSheet open={modal === "contribution"} onClose={() => setModal(null)} role={role} showToast={showToast} refresh={refresh} />
 
       {toast && (
         <div className="toast-wrap">

@@ -15,18 +15,22 @@ function dayLabel(iso) {
 }
 
 const KIND_ICON = {
-  sent:     { icon: "send",  bg: "var(--info-bg)",   color: "var(--info)" },
-  received: { icon: "check", bg: "var(--pos-bg)",    color: "var(--pos)" },
-  disputed: { icon: "alert", bg: "var(--danger-bg)", color: "var(--danger)" },
-  purchase: { icon: "cart",  bg: "var(--accent-soft)", color: "var(--accent)" },
+  sent:         { icon: "send",   bg: "var(--info-bg)",     color: "var(--info)" },
+  received:     { icon: "check",  bg: "var(--pos-bg)",      color: "var(--pos)" },
+  disputed:     { icon: "alert",  bg: "var(--danger-bg)",   color: "var(--danger)" },
+  sold:         { icon: "dollar", bg: "var(--pos-bg)",      color: "var(--pos)" },
+  purchase:     { icon: "cart",   bg: "var(--accent-soft)", color: "var(--accent)" },
+  expense:      { icon: "wallet", bg: "var(--danger-bg)",   color: "var(--danger)" },
+  contribution: { icon: "dollar", bg: "var(--accent-soft)", color: "var(--accent)" },
 };
 
-function History({ shipments, purchases, loading, go }) {
+function History({ shipments, purchases, expenses, contributions, loading, go }) {
   const [scope, setScope] = React.useState("all");
-  const all = buildActivity(shipments, purchases);
+  const SHIP_KINDS = ["sent", "received", "disputed", "sold"];
+  const all = buildActivity(shipments, purchases, expenses, contributions);
   const events = scope === "all" ? all
-    : scope === "shipments" ? all.filter(e => e.kind !== "purchase")
-    : all.filter(e => e.kind === "purchase");
+    : scope === "shipments" ? all.filter(e => SHIP_KINDS.includes(e.kind))
+    : all.filter(e => !SHIP_KINDS.includes(e.kind));
 
   // group by day label, preserving chronological order
   const groups = [];
@@ -45,7 +49,7 @@ function History({ shipments, purchases, loading, go }) {
       </div>
 
       <div className="seg mb16" style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(3,1fr)" }}>
-        {[["all", "All"], ["shipments", "Shipments"], ["purchases", "Purchases"]].map(([k, l]) => (
+        {[["all", "All"], ["shipments", "Shipments"], ["finance", "Finance"]].map(([k, l]) => (
           <button key={k} className={scope === k ? "on" : ""} onClick={() => setScope(k)}>{l}</button>
         ))}
       </div>
