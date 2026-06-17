@@ -194,5 +194,13 @@
         if (error) { console.error("expenses.delete:", error); throw error; }
       },
     },
+    // Wipe every transaction table — full reset.
+    clearAll: async () => {
+      const NIL = "00000000-0000-0000-0000-000000000000";
+      for (const t of ["shipments_v2", "purchases", "expenses", "contributions"]) {
+        const { error } = await SB.from(t).delete().neq("id", NIL);
+        if (error) { console.error("clearAll " + t + ":", error); throw error; }
+      }
+    },
   };
 })();

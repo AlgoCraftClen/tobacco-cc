@@ -24,10 +24,23 @@ const KIND_ICON = {
   contribution: { icon: "dollar", bg: "var(--accent-soft)", color: "var(--accent)" },
 };
 
-function History({ shipments, purchases, expenses, contributions, loading, go }) {
+function History({ shipments, purchases, expenses, contributions, loading, go, showToast, refresh }) {
   const [scope, setScope] = React.useState("all");
+  const [confirm, setConfirm] = React.useState(false);
+  const [clearing, setClearing] = React.useState(false);
   const SHIP_KINDS = ["sent", "received", "disputed", "sold"];
   const all = buildActivity(shipments, purchases, expenses, contributions);
+
+  const clearAll = async () => {
+    setClearing(true);
+    try {
+      await DB.clearAll();
+      await refresh();
+      showToast("All data cleared");
+      setConfirm(false);
+    } catch (e) { showToast("Couldn't clear — check connection"); }
+    setClearing(false);
+  };
   const events = scope === "all" ? all
     : scope === "shipments" ? all.filter(e => SHIP_KINDS.includes(e.kind))
     : all.filter(e => !SHIP_KINDS.includes(e.kind));
@@ -43,9 +56,18 @@ function History({ shipments, purchases, expenses, contributions, loading, go })
 
   return (
     <div className="page fade-in">
-      <div className="mb16">
-        <div className="page-title">History</div>
-        <div className="page-desc">{all.length} event{all.length !== 1 ? "s" : ""} across shipments & purchases</div>
+      <div className="page-head" style={{ marginBottom: 16 }}>
+        <div>
+          <div className="page-title">History</div>
+          <div className="page-desc">{all.length} event{all.length !== 1 ? "s" : ""} · shipments, purchases, expenses, contributions</div>
+        </div>
+        {all.length > 0 && (
+          <div className="page-head-actions">
+            <button className="btn btn-sm btn-danger" onClick={() => setConfirm(true)}>
+              <Icon name="trash" size={13} />Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="seg mb16" style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(3,1fr)" }}>
@@ -85,6 +107,18 @@ function History({ shipments, purchases, expenses, contributions, loading, go })
             <div className="empty-desc">Your shipment and purchase history will build up over time</div>
           </div>
         )}
+
+      <Sheet open={confirm} onClose={() => setConfirm(false)} title="Clear all data" icon="trash">
+        <div className="step-hint" style={{ marginBottom: 18 }}>
+          This permanently deletes <strong>all shipments, purchases, expenses, and contributions</strong> for both partners. This cannot be undone.
+        </div>
+        <div className="lc-actions" style={{ padding: 0, border: "none" }}>
+          <button className="btn" onClick={() => setConfirm(false)} disabled={clearing}>Cancel</button>
+          <button className="btn btn-danger" onClick={clearAll} disabled={clearing}>
+            <Icon name="trash" size={15} />{clearing ? "Clearing…" : "Clear everything"}
+          </button>
+        </div>
+      </Sheet>
 
       <div className="m-foot">© {new Date().getFullYear()} Clenny Minor · All Rights Reserved</div>
     </div>
