@@ -53,11 +53,12 @@ async function insertExpenseLines(lines, partner, shipmentId) {
 }
 
 /* ---- Expandable shipment card (reused by list + history) ---- */
-function ShipmentCard({ s, defaultOpen, onSell }) {
+function ShipmentCard({ s, defaultOpen, onSell, onReceive, onReport, busy }) {
   const [open, setOpen] = React.useState(!!defaultOpen);
   const sold = (s.saleTotal || 0) > 0;
   const profit = (s.saleTotal || 0) - s.grandTotal;
   const canSell = s.status === "received" && !sold && !!onSell;
+  const canReceive = s.status === "pending" && !!onReceive;
   return (
     <div className="list-card">
       <button className="lc-head" onClick={() => setOpen(o => !o)}>
@@ -99,9 +100,18 @@ function ShipmentCard({ s, defaultOpen, onSell }) {
           {s.soldAt && <div className="kv"><span className="k">Sold</span><span className="v">{fmtDate(s.soldAt)}</span></div>}
         </div>
       )}
-      {(canSell || sold) && (
+      {(canReceive || canSell || sold) && (
         <div className="lc-actions">
-          {sold ? (
+          {canReceive ? (
+            <>
+              <button className="btn btn-danger" onClick={() => onReport(s)} disabled={busy}>
+                <Icon name="alert" size={15} />Report Issue
+              </button>
+              <button className="btn btn-primary" onClick={() => onReceive(s)} disabled={busy}>
+                <Icon name="check" size={15} />Confirm Received
+              </button>
+            </>
+          ) : sold ? (
             <div className="between" style={{ flex: 1, fontSize: 13 }}>
               <span className="muted">Sold for {money(s.saleTotal)}</span>
               <span className="mono" style={{ fontWeight: 600, color: profit >= 0 ? "var(--pos)" : "var(--danger)" }}>
@@ -187,6 +197,25 @@ function RecordSaleSheet({ shipment, onClose, showToast, refresh }) {
 function Shipments({ shipments, loading, go, role, showToast, refresh }) {
   const [filter, setFilter] = React.useState("all");
   const [sellFor, setSellFor] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
+  const [issueFor, setIssueFor] = React.useState(null);
+  const [note, setNote] = React.useState("");
+
+  const receive = async (s) => {
+    setBusy(true);
+    try { await DB.shipments.receive(s.id); await refresh(); showToast(`${s.brand} shipment received`); }
+    catch (e) { showToast("Couldn't update — check connection"); }
+    setBusy(false);
+  };
+  const openIssue = (s) => { setIssueFor(s); setNote(""); };
+  const submitIssue = async () => {
+    if (!issueFor) return;
+    setBusy(true);
+    try { await DB.shipments.dispute(issueFor.id, note.trim()); await refresh(); showToast("Issue reported to Clanny"); setIssueFor(null); }
+    catch (e) { showToast("Couldn't report — check connection"); }
+    setBusy(false);
+  };
+
   const filtered = filter === "all" ? shipments : shipments.filter(s => s.status === filter);
   const counts = {
     all: shipments.length,
@@ -218,13 +247,31 @@ function Shipments({ shipments, loading, go, role, showToast, refresh }) {
       </div>
 
       {loading ? <SkeletonList count={5} /> :
-        filtered.length > 0 ? filtered.map(s => <ShipmentCard key={s.id} s={s} onSell={setSellFor} />) : (
+        filtered.length > 0 ? filtered.map(s => <ShipmentCard key={s.id} s={s} onSell={setSellFor} onReceive={receive} onReport={openIssue} busy={busy} />) : (
           <div className="empty">
             <Icon name="send" size={30} />
             <div className="empty-title">No shipments {filter !== "all" ? `(${filter})` : "yet"}</div>
             <div className="empty-desc">{role && role.name === "Clanny" ? "Tap New Shipment to send one" : "Shipments from Clanny will appear here"}</div>
           </div>
         )}
+
+      <Sheet open={!!issueFor} onClose={() => setIssueFor(null)} title="Report an issue" icon="alert">
+        {issueFor && (
+          <>
+            <div className="review-card mb16">
+              <ReviewRow k="Shipment" v={`${issueFor.brand} · ${boxWord(issueFor.boxes)}`} />
+              <ReviewRow k="Value" v={money(issueFor.grandTotal)} />
+            </div>
+            <div className="field mb16">
+              <label className="label">What's wrong? (e.g. 2 cans damaged)</label>
+              <textarea className="input" rows={4} placeholder="Describe the issue…" value={note} onChange={e => setNote(e.target.value)} autoFocus />
+            </div>
+            <button className="btn btn-primary" style={{ width: "100%", height: 48 }} onClick={submitIssue} disabled={busy || !note.trim()}>
+              <Icon name="alert" size={15} />{busy ? "Reporting…" : "Submit Issue"}
+            </button>
+          </>
+        )}
+      </Sheet>
 
       <RecordSaleSheet shipment={sellFor} onClose={() => setSellFor(null)} showToast={showToast} refresh={refresh} />
 
