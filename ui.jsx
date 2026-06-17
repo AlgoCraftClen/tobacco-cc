@@ -261,10 +261,93 @@ function BarPair({ data, w = 560, h = 180 }) {
   );
 }
 
+/* ---- extra icons (mobile nav + actions) ---- */
+Object.assign(ICONS, {
+  home:    "M3 11.5 12 4l9 7.5M5 10v10h5v-6h4v6h5V10",
+  inbox:   "M3 12h5l2 3h4l2-3h5M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z",
+  cart:    "M2 3h2.5l2.2 12.4a1.6 1.6 0 0 0 1.6 1.3h8.7a1.6 1.6 0 0 0 1.6-1.2L21.5 7H6M9.5 21a1 1 0 1 0 0-.01M17.5 21a1 1 0 1 0 0-.01",
+  history: "M3 3v6h6M3.5 9a9 9 0 1 1-1 5M12 7v5l4 2",
+  refresh: "M21 12a9 9 0 1 1-3-6.7M21 4v4h-4",
+  user:    "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M5 21v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1",
+  sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z",
+  swap:    "M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7",
+});
+
+/* ---- date / time helpers ---- */
+function fmtDate(iso, opts) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  return d.toLocaleDateString("en-US", opts || { month: "short", day: "numeric", year: "numeric" });
+}
+function relTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso); if (isNaN(d)) return "";
+  const s = (Date.now() - d.getTime()) / 1000;
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60); if (m < 60) return m + "m ago";
+  const h = Math.floor(m / 60); if (h < 24) return h + "h ago";
+  const dd = Math.floor(h / 24); if (dd < 7) return dd + "d ago";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/* ---- Sheet (slide-up modal) ---- */
+function Sheet({ open, onClose, title, icon, children }) {
+  React.useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div className="sheet-backdrop" onMouseDown={onClose}>
+      <div className="sheet" onMouseDown={e => e.stopPropagation()}>
+        <div className="sheet-grip" />
+        {title && (
+          <div className="sheet-head">
+            {icon && <div className="lc-ico" style={{ width: 32, height: 32, borderRadius: 9 }}><Icon name={icon} size={16} /></div>}
+            <h3>{title}</h3>
+            <button className="icon-btn" onClick={onClose}><Icon name="x" size={17} /></button>
+          </div>
+        )}
+        <div className="sheet-body">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Skeleton loaders ---- */
+function Skeleton({ h = 16, w = "100%", style }) {
+  return <div className="skeleton" style={{ height: h, width: w, ...style }} />;
+}
+function SkeletonList({ count = 4 }) {
+  return <div>{Array.from({ length: count }).map((_, i) => <div key={i} className="skeleton skel-card" />)}</div>;
+}
+
+/* ---- Progress bar ---- */
+function Progress({ value }) {
+  return <div className="progressbar"><span style={{ width: Math.max(0, Math.min(100, value)) + "%" }} /></div>;
+}
+
+/* ---- Metric card (mobile KPI) ---- */
+function MetricCard({ icon, iconBg, iconColor, value, label, cur, onClick }) {
+  return (
+    <div className="metric" onClick={onClick} style={onClick ? { cursor: "pointer" } : undefined}>
+      <div className="metric-ico" style={{ background: iconBg, color: iconColor }}>
+        <Icon name={icon} size={16} />
+      </div>
+      <div className="metric-val">{cur && <span className="cur">$</span>}{value}</div>
+      <div className="metric-label">{label}</div>
+    </div>
+  );
+}
+
 Object.assign(window, {
   fmt, money, moneyK, initials,
   Icon, ICONS, Trend, Avatar, Badge, Meter,
   STOCK, INV_STATUS, SHIP_STATUS,
   StockBadge, ShipBadge, InvBadge,
   Sparkline, AreaChart, Donut, BarPair, smoothPath,
+  fmtDate, relTime, Sheet, Skeleton, SkeletonList, Progress, MetricCard,
 });

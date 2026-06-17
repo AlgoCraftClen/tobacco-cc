@@ -1,5 +1,6 @@
 /* ============================================================
-   SUPABASE — client + CRUD helpers for CC Tobacco OS
+   SUPABASE — client + CRUD for CC Tobacco OS (mobile)
+   Tables: shipments_v2 · purchases
    ============================================================ */
 (function () {
   const { createClient } = window.supabase;
@@ -9,185 +10,115 @@
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qcGtxZW1ncGJzdHJic2F4cGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMjc3NDYsImV4cCI6MjA5NjcwMzc0Nn0.IKEqP0XW7hcVi-p65hUTyS2pApv7gZLt2dlMiwKbuX8"
   );
 
-  /* ---- Products ------------------------------------------ */
-  function rowToProduct(r) {
-    return {
-      id: r.id, name: r.name, brand: r.brand || "—",
-      cat: r.cat || "Grizzly", sku: r.sku || "",
-      baseUnit: r.base_unit || "Case",
-      casePrice: Number(r.case_price) || 0,
-      cost: Number(r.cost) || 0,
-      onHand: Number(r.on_hand) || 0,
-      reorder: Number(r.reorder) || 0,
-      par: Number(r.par) || 0,
-      sold30: Number(r.sold_30) || 0,
-      status: r.status || "ok",
-    };
-  }
-  function productToRow(p) {
-    return {
-      id: p.id, name: p.name, brand: p.brand || "",
-      cat: p.cat || "Cigarettes", sku: p.sku || "",
-      base_unit: p.baseUnit || "Case",
-      case_price: p.casePrice || 0,
-      cost: p.cost || 0,
-      on_hand: p.onHand || 0,
-      reorder: p.reorder || 0,
-      par: p.par || 0,
-      sold_30: p.sold30 || 0,
-      status: p.status || "ok",
-    };
-  }
-
-  /* ---- Customers ----------------------------------------- */
-  function rowToCustomer(r) {
-    return {
-      id: r.id, name: r.name, contact: r.contact || "—",
-      type: r.type || "Retailer", city: r.city || "—",
-      phone: r.phone || "—", terms: r.terms || "Net 15",
-      balance: Number(r.balance) || 0,
-      overdue: Number(r.overdue) || 0,
-      limit: Number(r.credit_limit) || 0,
-      since: r.since || "", lastOrder: r.last_order || "—",
-      ytd: Number(r.ytd) || 0,
-      rep: r.rep || "—", risk: r.risk || "low",
-    };
-  }
-  function customerToRow(c) {
-    return {
-      id: c.id, name: c.name, contact: c.contact || "",
-      type: c.type || "Retailer", city: c.city || "",
-      phone: c.phone || "", terms: c.terms || "Net 15",
-      balance: c.balance || 0, overdue: c.overdue || 0,
-      credit_limit: c.limit || 0,
-      since: c.since || "", last_order: c.lastOrder || "—",
-      ytd: c.ytd || 0, rep: c.rep || "—", risk: c.risk || "low",
-    };
-  }
-
-  /* ---- Shipments ----------------------------------------- */
+  /* ---- Shipments (shipments_v2) -------------------------- */
   function rowToShipment(r) {
     return {
-      id: r.id, supplier: r.supplier, po: r.po || "",
-      carrier: r.carrier || "TBD",
+      id: r.id,
+      brand: r.brand || "Grizzly",
+      boxes: Number(r.boxes) || 0,
       cases: Number(r.cases) || 0,
-      value: Number(r.value) || 0,
-      eta: r.eta || "TBD", dock: r.dock || "—",
-      lines: Number(r.lines) || 0,
-      status: r.status || "in_transit",
+      rolls: Number(r.rolls) || 0,
+      cans:  Number(r.cans)  || 0,
+      pricePerCan: Number(r.price_per_can) || 0,
+      subtotal:    Number(r.subtotal) || 0,
+      miscCost:    Number(r.misc_cost) || 0,
+      miscDesc:    r.misc_desc || "",
+      grandTotal:  Number(r.grand_total) || 0,
+      sender:   r.sender   || "Clanny",
+      receiver: r.receiver || "Clenny",
+      status:   r.status   || "pending",
+      notes:    r.notes    || "",
+      createdAt:  r.created_at  || null,
+      receivedAt: r.received_at || null,
     };
   }
   function shipmentToRow(s) {
     return {
-      id: s.id, supplier: s.supplier, po: s.po || "",
-      carrier: s.carrier || "TBD",
-      cases: s.cases || 0, value: s.value || 0,
-      eta: s.eta || "TBD", dock: s.dock || "—",
-      lines: s.lines || 0, status: s.status || "in_transit",
+      brand: s.brand || "Grizzly",
+      boxes: s.boxes || 0,
+      cases: s.cases || 0,
+      rolls: s.rolls || 0,
+      cans:  s.cans  || 0,
+      price_per_can: s.pricePerCan || 0,
+      subtotal:    s.subtotal || 0,
+      misc_cost:   s.miscCost || 0,
+      misc_desc:   s.miscDesc || "",
+      grand_total: s.grandTotal || 0,
+      sender:   s.sender   || "Clanny",
+      receiver: s.receiver || "Clenny",
+      status:   s.status   || "pending",
+      notes:    s.notes    || "",
     };
   }
 
-  /* ---- Invoices ------------------------------------------ */
-  function rowToInvoice(r) {
+  /* ---- Purchases ----------------------------------------- */
+  function rowToPurchase(r) {
     return {
-      id: r.id, customer: r.customer || "", cid: r.cid || "",
-      date: r.date || "", due: r.due || "",
-      total: Number(r.total) || 0,
-      status: r.status || "sent",
-      items: Number(r.items) || 0, rep: r.rep || "—",
-      lineItems: r.line_items ? JSON.parse(r.line_items) : [],
+      id: r.id,
+      partner: r.partner || "Clanny",
+      brand:   r.brand   || "Grizzly",
+      cans:    Number(r.cans) || 0,
+      pricePerCan: Number(r.price_per_can) || 0,
+      total:   Number(r.total) || 0,
+      createdAt: r.created_at || null,
     };
   }
-  function invoiceToRow(i) {
+  function purchaseToRow(p) {
     return {
-      id: i.id, customer: i.customer || "", cid: i.cid || "",
-      date: i.date || "", due: i.due || "",
-      total: i.total || 0, status: i.status || "sent",
-      items: i.items || 0, rep: i.rep || "—",
-      line_items: i.lineItems && i.lineItems.length > 0 ? JSON.stringify(i.lineItems) : null,
+      partner: p.partner || "Clanny",
+      brand:   p.brand   || "Grizzly",
+      cans:    p.cans    || 0,
+      price_per_can: p.pricePerCan || 0,
+      total:   p.total   || 0,
     };
   }
 
   /* ---- Public API ---------------------------------------- */
   window.DB = {
-    products: {
-      list: async () => {
-        const { data, error } = await SB.from("products").select("*").order("created_at", { ascending: false });
-        if (error) console.error("products.list:", error);
-        return (data || []).map(rowToProduct);
-      },
-      insert: async (p) => {
-        const { error } = await SB.from("products").insert(productToRow(p));
-        if (error) console.error("products.insert:", error);
-      },
-      delete: async (id) => {
-        const { error } = await SB.from("products").delete().eq("id", id);
-        if (error) console.error("products.delete:", error);
-      },
-      update: async (id, fields) => {
-        const { error } = await SB.from("products").update(fields).eq("id", id);
-        if (error) console.error("products.update:", error);
-      },
-      save: async (p) => {
-        const { error } = await SB.from("products").update(productToRow(p)).eq("id", p.id);
-        if (error) console.error("products.save:", error);
-      },
-    },
-    customers: {
-      list: async () => {
-        const { data, error } = await SB.from("customers").select("*").order("created_at", { ascending: false });
-        if (error) console.error("customers.list:", error);
-        return (data || []).map(rowToCustomer);
-      },
-      insert: async (c) => {
-        const { error } = await SB.from("customers").insert(customerToRow(c));
-        if (error) console.error("customers.insert:", error);
-      },
-      update: async (id, fields) => {
-        const { error } = await SB.from("customers").update(fields).eq("id", id);
-        if (error) console.error("customers.update:", error);
-      },
-      delete: async (id) => {
-        const { error } = await SB.from("customers").delete().eq("id", id);
-        if (error) console.error("customers.delete:", error);
-      },
-    },
     shipments: {
       list: async () => {
-        const { data, error } = await SB.from("shipments").select("*").order("created_at", { ascending: false });
-        if (error) console.error("shipments.list:", error);
+        const { data, error } = await SB.from("shipments_v2").select("*").order("created_at", { ascending: false });
+        if (error) { console.error("shipments.list:", error); return []; }
         return (data || []).map(rowToShipment);
       },
       insert: async (s) => {
-        const { error } = await SB.from("shipments").insert(shipmentToRow(s));
-        if (error) console.error("shipments.insert:", error);
-      },
-      delete: async (id) => {
-        const { error } = await SB.from("shipments").delete().eq("id", id);
-        if (error) console.error("shipments.delete:", error);
+        const { data, error } = await SB.from("shipments_v2").insert(shipmentToRow(s)).select().single();
+        if (error) { console.error("shipments.insert:", error); throw error; }
+        return rowToShipment(data);
       },
       update: async (id, fields) => {
-        const { error } = await SB.from("shipments").update(fields).eq("id", id);
-        if (error) console.error("shipments.update:", error);
+        const { error } = await SB.from("shipments_v2").update(fields).eq("id", id);
+        if (error) { console.error("shipments.update:", error); throw error; }
+      },
+      receive: async (id) => {
+        const { error } = await SB.from("shipments_v2")
+          .update({ status: "received", received_at: new Date().toISOString() }).eq("id", id);
+        if (error) { console.error("shipments.receive:", error); throw error; }
+      },
+      dispute: async (id, note) => {
+        const { error } = await SB.from("shipments_v2")
+          .update({ status: "disputed", notes: note || "", received_at: new Date().toISOString() }).eq("id", id);
+        if (error) { console.error("shipments.dispute:", error); throw error; }
+      },
+      delete: async (id) => {
+        const { error } = await SB.from("shipments_v2").delete().eq("id", id);
+        if (error) { console.error("shipments.delete:", error); throw error; }
       },
     },
-    invoices: {
+    purchases: {
       list: async () => {
-        const { data, error } = await SB.from("invoices").select("*").order("created_at", { ascending: false });
-        if (error) console.error("invoices.list:", error);
-        return (data || []).map(rowToInvoice);
+        const { data, error } = await SB.from("purchases").select("*").order("created_at", { ascending: false });
+        if (error) { console.error("purchases.list:", error); return []; }
+        return (data || []).map(rowToPurchase);
       },
-      insert: async (i) => {
-        const { error } = await SB.from("invoices").insert(invoiceToRow(i));
-        if (error) console.error("invoices.insert:", error);
+      insert: async (p) => {
+        const { data, error } = await SB.from("purchases").insert(purchaseToRow(p)).select().single();
+        if (error) { console.error("purchases.insert:", error); throw error; }
+        return rowToPurchase(data);
       },
       delete: async (id) => {
-        const { error } = await SB.from("invoices").delete().eq("id", id);
-        if (error) console.error("invoices.delete:", error);
-      },
-      update: async (id, fields) => {
-        const { error } = await SB.from("invoices").update(fields).eq("id", id);
-        if (error) console.error("invoices.update:", error);
+        const { error } = await SB.from("purchases").delete().eq("id", id);
+        if (error) { console.error("purchases.delete:", error); throw error; }
       },
     },
   };

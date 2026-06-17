@@ -15,3 +15,7 @@ docx_extracted/
 
 # Claude local settings
 .claude/settings.local.json
+
+# Build output / local tool state
+dist/
+.wrangler/
