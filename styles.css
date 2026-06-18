@@ -510,7 +510,9 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
    SCREEN TRANSITIONS
    ============================================================ */
 .fade-in { animation: fadeIn .26s ease both; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+/* NOTE: do NOT set a non-none transform in the `to` — a retained transform (even translateY(0))
+   makes `.fade-in` a containing block and traps position:fixed sheet overlays inside the page. */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 .stagger > * { animation: fadeIn .30s ease both; }
 .stagger > *:nth-child(2){animation-delay:.04s}
 .stagger > *:nth-child(3){animation-delay:.08s}
