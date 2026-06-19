@@ -11,6 +11,20 @@ function Cell({ k, v, accent }) {
     </div>
   );
 }
+/* Editable version of Cell — used for the linked Boxes/Cases/Rolls/Cans inputs */
+function UnitCell({ k, unit, value, onChange, accent }) {
+  return (
+    <div className={"calc-cell" + (accent ? " accent" : "")}>
+      <div className="ck">{k}</div>
+      <input
+        className="cv" type="number" inputMode="decimal" min="0" step="any" placeholder="0"
+        value={value} onChange={e => onChange(unit, e.target.value)}
+        style={{ width: "100%", background: "transparent", border: "none", outline: "none", padding: 0,
+                 color: accent ? "var(--accent)" : "var(--text)" }}
+      />
+    </div>
+  );
+}
 function ReviewRow({ k, v, total }) {
   return (
     <div className={"review-row" + (total ? " total" : "")}>
@@ -394,19 +408,38 @@ function NewShipment({ go, showToast, refresh, role }) {
   const [step, setStep] = React.useState(1);
   const [brand, setBrand] = React.useState("");
   const [boxes, setBoxes] = React.useState("");
+  const [cases, setCases] = React.useState("");
+  const [rolls, setRolls] = React.useState("");
+  const [cans,  setCans]  = React.useState("");
   const [canPrice, setCanPrice] = React.useState("");
   const [miscCost, setMiscCost] = React.useState("");
   const [miscDesc, setMiscDesc] = React.useState("");
   const [expLines, setExpLines] = React.useState([]);
   const [saving, setSaving] = React.useState(false);
 
-  const u = DATA.boxesToUnits(boxes);
+  // Boxes / Cases / Rolls / Cans are all editable and kept in sync via total cans.
+  const totalCans = Number(cans) || 0;
+  const u = {
+    boxes: totalCans / DATA.TO_CANS.Box,
+    cases: totalCans / DATA.TO_CANS.Case,
+    rolls: totalCans / DATA.TO_CANS.Roll,
+    cans:  totalCans,
+  };
+  // Edit any unit → set that field to the raw text, derive the other three.
+  const applyUnit = (unit, raw) => {
+    const total = (Number(raw) || 0) * (DATA.TO_CANS[unit] || 1);
+    const t = (n) => { const x = Number(n); return x ? String(+x.toFixed(4)) : ""; };
+    setBoxes(unit === "Box"  ? raw : t(total / DATA.TO_CANS.Box));
+    setCases(unit === "Case" ? raw : t(total / DATA.TO_CANS.Case));
+    setRolls(unit === "Roll" ? raw : t(total / DATA.TO_CANS.Roll));
+    setCans (unit === "Can"  ? raw : t(total));
+  };
   const lad = DATA.priceLadder(canPrice);
   const subtotal = u.cans * (Number(canPrice) || 0);
   const grandTotal = subtotal + (Number(miscCost) || 0);
 
   const canNext =
-    step === 1 ? (brand && Number(boxes) > 0) :
+    step === 1 ? (brand && totalCans > 0) :
     step === 2 ? (Number(canPrice) > 0) : true;
 
   const submit = async () => {
@@ -444,7 +477,7 @@ function NewShipment({ go, showToast, refresh, role }) {
         <div className="step-card" key="s1">
           <div className="steplabel">Step 1 · Brand & Quantity</div>
           <div className="step-q">What are you sending?</div>
-          <div className="step-hint">Pick a brand, then enter the number of boxes.</div>
+          <div className="step-hint">Pick a brand, then enter the amount — boxes, cases, rolls and cans all stay in sync.</div>
 
           <div className="choice-row mb20">
             {DATA.BRANDS.map(b => (
@@ -457,18 +490,17 @@ function NewShipment({ go, showToast, refresh, role }) {
 
           <div className="field">
             <label className="label">How many boxes are you sending?</label>
-            <input className="bignum" type="number" inputMode="numeric" min="0" placeholder="0"
-              value={boxes} onChange={e => setBoxes(e.target.value)} />
+            <input className="bignum" type="number" inputMode="decimal" min="0" step="any" placeholder="0"
+              value={boxes} onChange={e => applyUnit("Box", e.target.value)} />
           </div>
 
-          {Number(boxes) > 0 && (
-            <div className="calc-grid">
-              <Cell k={<span><span className="uq uq-case" /> Cases</span>} v={fmt(u.cases)} />
-              <Cell k={<span><span className="uq uq-roll" /> Rolls</span>} v={fmt(u.rolls)} />
-              <Cell k={<span><span className="uq uq-can" /> Cans</span>} v={fmt(u.cans)} accent />
-              <Cell k="Per box" v="540 cans" />
-            </div>
-          )}
+          <div className="step-hint" style={{ marginTop: 12, marginBottom: 2 }}>Sending less than a box? Enter cases, rolls or cans:</div>
+          <div className="calc-grid" style={{ marginTop: 8 }}>
+            <UnitCell k={<span><span className="uq uq-case" /> Cases</span>} unit="Case" value={cases} onChange={applyUnit} />
+            <UnitCell k={<span><span className="uq uq-roll" /> Rolls</span>} unit="Roll" value={rolls} onChange={applyUnit} />
+            <UnitCell k={<span><span className="uq uq-can" /> Cans</span>} unit="Can" value={cans} onChange={applyUnit} accent />
+            <Cell k="Per box" v="540 cans" />
+          </div>
         </div>
       )}
 
