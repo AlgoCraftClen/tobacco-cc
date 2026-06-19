@@ -8,12 +8,13 @@ const TABS = [
   { k: "dashboard", label: "Dashboard", icon: "home" },
   { k: "shipments", label: "Shipments", icon: "send" },
   { k: "receive",   label: "Receive",   icon: "inbox" },
+  { k: "sale",      label: "Sale",      icon: "reports" },
   { k: "purchases", label: "Purchases", icon: "cart" },
   { k: "history",   label: "History",   icon: "history" },
 ];
 const TITLES = {
   dashboard: "Dashboard", shipments: "Shipments", newshipment: "New Shipment",
-  receive: "Receive", purchases: "Purchases", history: "History",
+  receive: "Receive", sale: "Sale", purchases: "Purchases", history: "History",
 };
 // which tab is highlighted for a given screen
 const tabFor = (screen) => screen === "newshipment" ? "shipments" : screen;
@@ -148,6 +149,7 @@ function CommandPalette({ open, setOpen, go, openPurchase, onSwitchRole }) {
     { group: "Actions", label: "New shipment", sub: "Send tobacco to Clenny", icon: "send", run: () => go("newshipment") },
     { group: "Actions", label: "Log purchase", sub: "Record a personal purchase", icon: "cart", run: openPurchase },
     { group: "Actions", label: "Switch role", sub: "Change sender / receiver", icon: "swap", run: onSwitchRole },
+    { group: "Go to", label: "Updated Running Sales Report", sub: "Sale page", icon: "reports", run: () => go("sale") },
     ...TABS.map(t => ({ group: "Go to", label: t.label, sub: "Page", icon: t.icon, run: () => go(t.k) })),
   ]), [go, openPurchase, onSwitchRole]);
 
@@ -305,7 +307,7 @@ function AddExpenseSheet({ open, onClose, role, showToast, refresh }) {
 function App() {
   const [roleName, setRoleName] = React.useState(() => localStorage.getItem("cc_role") || "");
   const [nav, setNav] = React.useState({ screen: "dashboard", params: {} });
-  const [data, setData] = React.useState({ shipments: [], purchases: [], expenses: [], contributions: [], loading: true });
+  const [data, setData] = React.useState({ shipments: [], purchases: [], expenses: [], contributions: [], sales: [], loading: true });
   const [toast, setToast] = React.useState(null);
   const [cmdOpen, setCmdOpen] = React.useState(false);
   const [roleSheet, setRoleSheet] = React.useState(false);
@@ -327,11 +329,11 @@ function App() {
   }, []);
 
   const refresh = React.useCallback(async () => {
-    const [shipments, purchases, expenses, contributions] = await Promise.all([
-      DB.shipments.list(), DB.purchases.list(), DB.expenses.list(), DB.contributions.list(),
+    const [shipments, purchases, expenses, contributions, sales] = await Promise.all([
+      DB.shipments.list(), DB.purchases.list(), DB.expenses.list(), DB.contributions.list(), DB.sales.list(),
     ]);
     DATA.shipments = shipments; DATA.purchases = purchases; DATA.expenses = expenses; DATA.contributions = contributions;
-    setData({ shipments, purchases, expenses, contributions, loading: false });
+    setData({ shipments, purchases, expenses, contributions, sales, loading: false });
   }, []);
 
   React.useEffect(() => { refresh(); }, [refresh]);
@@ -378,6 +380,7 @@ function App() {
     shipments: window.Shipments,
     newshipment: window.NewShipment,
     receive: window.Receive,
+    sale: window.Sale,
     purchases: window.Purchases,
     history: window.History,
   };
@@ -386,7 +389,7 @@ function App() {
     go, screen: nav.screen, params: nav.params, role,
     showToast, refresh,
     shipments: data.shipments, purchases: data.purchases,
-    expenses: data.expenses, contributions: data.contributions, loading: data.loading,
+    expenses: data.expenses, contributions: data.contributions, sales: data.sales, loading: data.loading,
   };
 
   return (

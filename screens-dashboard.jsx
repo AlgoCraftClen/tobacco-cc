@@ -65,13 +65,19 @@ function ActivityRow({ a }) {
 /* ---- Partnership: per-partner financial position (expandable) ---- */
 function PartnerCard({ name, roleLabel, pos }) {
   const [open, setOpen] = React.useState(false);
+  const putIn = pos.invested + pos.expenses;
   return (
     <div className="list-card">
       <button className="lc-head" onClick={() => setOpen(o => !o)}>
         <Avatar name={name} cls={avOf(name)} size={40} />
         <div className="lc-main">
           <div className="lc-title">{name}</div>
-          <div className="lc-sub">{roleLabel}</div>
+          <div className="lc-sub" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div>{roleLabel}</div>
+            <div className="faint" style={{ fontSize: 11 }}>
+              Total Put In: <span className="mono" style={{ fontWeight: 600, color: "var(--text)" }}>{money(putIn)}</span> (Inv: {money(pos.invested)} · Exp: {money(pos.expenses)})
+            </div>
+          </div>
         </div>
         <div className="lc-amt" style={{ color: pos.net >= 0 ? "var(--text)" : "var(--danger)" }}>
           {money(pos.net)}<span className="sub">net position</span>
@@ -82,6 +88,9 @@ function PartnerCard({ name, roleLabel, pos }) {
         <div className="lc-body">
           <div className="kv"><span className="k">Invested (contributions)</span><span className="v mono">{money(pos.invested)}</span></div>
           <div className="kv"><span className="k">Expenses paid for business</span><span className="v mono">{money(pos.expenses)}</span></div>
+          {pos.purchases > 0 && (
+            <div className="kv"><span className="k">Personal purchases (deducted)</span><span className="v mono" style={{ color: "var(--danger)" }}>-{money(pos.purchases)}</span></div>
+          )}
           <div className="kv"><span className="k">{pos.share >= 0 ? "Profit share (50%)" : "Loss share (50%)"}</span>
             <span className="v mono" style={{ color: pos.share >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(pos.share)}</span></div>
           <div className="kv" style={{ borderTop: "1px solid var(--border-2)" }}>
@@ -100,6 +109,8 @@ function PartnershipView({ pt }) {
       <div className="metric-grid mb12">
         <MetricCard icon="dollar" iconBg="var(--pos-bg)" iconColor="var(--pos)" value={fmt(pt.revenue)} cur label="Total revenue" />
         <MetricCard icon="wallet" iconBg="var(--danger-bg)" iconColor="var(--danger)" value={fmt(pt.totalExpenses)} cur label="Total expenses" />
+        <MetricCard icon="reports" iconBg="var(--info-bg)" iconColor="var(--info)" value={fmt(pt.grossProfit)} cur label="Gross profit" />
+        <MetricCard icon="check" iconBg={lossy ? "var(--danger-bg)" : "var(--pos-bg)"} iconColor={lossy ? "var(--danger)" : "var(--pos)"} value={fmt(pt.netProfit)} cur label={lossy ? "Net loss" : "Net profit"} />
       </div>
 
       <div className="card card-pad mb16" style={{ borderColor: lossy ? "var(--danger)" : "var(--accent-line)", background: lossy ? "var(--danger-bg)" : "var(--accent-softer)" }}>
@@ -116,9 +127,9 @@ function PartnershipView({ pt }) {
       <div className="sec-head"><span className="sec-title">Each partner's position</span></div>
       <div className="grid g-2" style={{ gap: 12 }}>
         <PartnerCard name="Clanny" roleLabel="Sender · funds shipments"
-          pos={{ invested: pt.contributed.Clanny, expenses: pt.expensesPaid.Clanny, share: pt.sharePer, net: pt.netPosition.Clanny }} />
+          pos={{ invested: pt.contributed.Clanny, expenses: pt.expensesPaid.Clanny, share: pt.sharePer, purchases: pt.purchasesVal.Clanny, net: pt.netPosition.Clanny }} />
         <PartnerCard name="Clenny" roleLabel="Receiver · sells locally"
-          pos={{ invested: pt.contributed.Clenny, expenses: pt.expensesPaid.Clenny, share: pt.sharePer, net: pt.netPosition.Clenny }} />
+          pos={{ invested: pt.contributed.Clenny, expenses: pt.expensesPaid.Clenny, share: pt.sharePer, purchases: pt.purchasesVal.Clenny, net: pt.netPosition.Clenny }} />
       </div>
     </div>
   );
@@ -168,7 +179,9 @@ function Dashboard({ role, shipments, purchases, expenses, contributions, loadin
             <div className="between">
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{lossy ? "Net loss" : "Net profit"}</div>
-                <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>{money(pt.revenue)} revenue − {money(pt.totalExpenses)} expenses</div>
+                <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
+                  Gross profit: {money(pt.grossProfit)} · Net: {money(pt.netProfit)}
+                </div>
               </div>
               <div className="center gap6">
                 <span className="mono" style={{ fontSize: 18, fontWeight: 700, color: lossy ? "var(--danger)" : "var(--pos)" }}>{money(pt.netProfit)}</span>

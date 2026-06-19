@@ -108,6 +108,21 @@
     };
   }
 
+  /* ---- Running sales report entries (device-local) -------- */
+  const SALES_KEY = "cc_running_sales";
+  // Start empty — no seeded/placeholder sale. Real sales are added by the user.
+  const readSales = () => {
+    try {
+      const raw = localStorage.getItem(SALES_KEY);
+      if (!raw) return [];
+      return JSON.parse(raw) || [];
+    } catch (e) {
+      console.error("sales.read:", e);
+      return [];
+    }
+  };
+  const writeSales = (sales) => localStorage.setItem(SALES_KEY, JSON.stringify(sales || []));
+
   /* ---- Public API ---------------------------------------- */
   window.DB = {
     shipments: {
@@ -194,6 +209,30 @@
         if (error) { console.error("expenses.delete:", error); throw error; }
       },
     },
+    sales: {
+      list: async () => readSales(),
+      insert: async (s) => {
+        const rows = readSales();
+        const nextNo = rows.reduce((m, x) => Math.max(m, Number(x.saleNo) || 0), 0) + 1;
+        const cans = Number(s.cans) || ((Number(s.quantityCases) || 0) * 90);
+        const pricePerCan = Number(s.pricePerCan) || 0;
+        const row = {
+          id: "sale-" + Date.now(),
+          saleNo: nextNo,
+          quantityCases: Number(s.quantityCases) || (cans / 90),
+          cans,
+          pricePerCan,
+          revenue: cans * pricePerCan,
+          createdAt: new Date().toISOString(),
+        };
+        const out = [row, ...rows];
+        writeSales(out);
+        return row;
+      },
+      delete: async (id) => {
+        writeSales(readSales().filter(s => s.id !== id));
+      },
+    },
     // Wipe every transaction table — full reset.
     clearAll: async () => {
       const NIL = "00000000-0000-0000-0000-000000000000";
@@ -201,6 +240,7 @@
         const { error } = await SB.from(t).delete().neq("id", NIL);
         if (error) { console.error("clearAll " + t + ":", error); throw error; }
       }
+      writeSales([]);
     },
   };
 })();

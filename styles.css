@@ -677,7 +677,7 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   padding-bottom: var(--safe-b);
   background: rgba(33,28,22,0.94); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
-  grid-template-columns: repeat(5, 1fr); align-items: stretch;
+  grid-template-columns: repeat(6, 1fr); align-items: stretch;
 }
 .tab {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
@@ -897,7 +897,11 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   .fab { display: grid; }
   .app-footer { display: none; }
   .m-foot { display: block; }
-  .content { padding-bottom: calc(var(--tab-h) + var(--safe-b) + 26px); }
+  /* clear both the bottom tab bar AND the floating FAB, with comfortable room to tap the last card's action */
+  .content { padding-bottom: calc(var(--tab-h) + var(--safe-b) + 124px); }
+  /* on phones the bar would float up over the last review row (Grand total) and the page
+     can't scroll far enough to reveal it — keep it in normal flow so nothing is covered */
+  .sticky-actions { position: static; padding-top: 18px; }
   .page { padding: 18px 16px 8px; }
   .role-grid { grid-template-columns: 1fr 1fr; }
 }
@@ -905,4 +909,3 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
 @media (min-width: 769px) {
   .tabbar, .fab, .m-header, .m-foot { display: none !important; }
 }
-

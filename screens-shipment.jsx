@@ -53,12 +53,12 @@ async function insertExpenseLines(lines, partner, shipmentId) {
 }
 
 /* ---- Expandable shipment card (reused by list + history) ---- */
-function ShipmentCard({ s, defaultOpen, onSell, onReceive, onReport, busy }) {
+function ShipmentCard({ s, defaultOpen, onSell, onReceive, onReport, busy, role }) {
   const [open, setOpen] = React.useState(!!defaultOpen);
   const sold = (s.saleTotal || 0) > 0;
   const profit = (s.saleTotal || 0) - s.grandTotal;
-  const canSell = s.status === "received" && !sold && !!onSell;
-  const canReceive = s.status === "pending" && !!onReceive;
+  const canSell = s.status === "received" && !sold && !!onSell && role?.name === "Clenny";
+  const canReceive = s.status === "pending" && !!onReceive && role?.name === "Clenny";
   return (
     <div className="list-card">
       <button className="lc-head" onClick={() => setOpen(o => !o)}>
@@ -129,28 +129,130 @@ function ShipmentCard({ s, defaultOpen, onSell, onReceive, onReport, busy }) {
   );
 }
 
+/* ---- Helper component for editing multiple sale lines ---- */
+function SaleLines({ lines, setLines }) {
+  const add = () => setLines([...lines, { unit: "Can", quantity: "", price: "" }]);
+  const upd = (i, k, v) => setLines(lines.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
+  const rm = (i) => setLines(lines.filter((_, idx) => idx !== i));
+  return (
+    <div className="col gap12" style={{ marginBottom: 16 }}>
+      {lines.map((l, i) => {
+        const factor = DATA.TO_CANS[l.unit] || 1;
+        const lineCans = (Number(l.quantity) || 0) * factor;
+        const lineTotal = (Number(l.quantity) || 0) * (Number(l.price) || 0);
+        return (
+          <div key={i} className="center gap8" style={{ borderBottom: "1px solid var(--border-soft)", paddingBottom: 12, alignItems: "flex-end" }}>
+            <div className="col gap4" style={{ width: 85 }}>
+              <label className="label" style={{ fontSize: 11, marginBottom: 2 }}>Unit</label>
+              <select className="input" style={{ height: 42, padding: "0 8px", fontSize: 13 }} value={l.unit} onChange={e => upd(i, "unit", e.target.value)}>
+                {["Can", "Roll", "Case", "Box"].map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+            
+            <div className="col gap4" style={{ flex: 1, minWidth: 50 }}>
+              <label className="label" style={{ fontSize: 11, marginBottom: 2 }}>Qty</label>
+              <input className="input" style={{ height: 42, textAlign: "center", fontSize: 14 }} type="number" inputMode="numeric" placeholder="0" value={l.quantity} onChange={e => upd(i, "quantity", e.target.value)} />
+            </div>
+
+            <div className="col gap4" style={{ width: 95 }}>
+              <label className="label" style={{ fontSize: 11, marginBottom: 2 }}>Price / {l.unit}</label>
+              <div className="bignum-wrap" style={{ height: 42 }}>
+                <span className="bignum-cur" style={{ fontSize: 13, left: 8 }}>$</span>
+                <input className="bignum prefixed" style={{ height: 42, fontSize: 14, textAlign: "right", paddingRight: 8 }}
+                  type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={l.price} onChange={e => upd(i, "price", e.target.value)} />
+              </div>
+            </div>
+
+            <div className="col gap4" style={{ width: 75, textAlign: "right", paddingRight: 4 }}>
+              <span className="label" style={{ fontSize: 11, marginBottom: 2 }}>Total</span>
+              <div style={{ fontSize: 13, fontWeight: "600", height: 42, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <div>{money(lineTotal, 2)}</div>
+                <div className="faint" style={{ fontSize: 9, fontWeight: "normal", marginTop: -2 }}>{lineCans} cans</div>
+              </div>
+            </div>
+
+            {lines.length > 1 && (
+              <button className="icon-btn" style={{ height: 42, padding: 4 }} onClick={() => rm(i)}>
+                <Icon name="x" size={14} className="faint" />
+              </button>
+            )}
+          </div>
+        );
+      })}
+      <button className="btn btn-sm btn-ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={add}>
+        <Icon name="plus" size={13} />Add another sale
+      </button>
+    </div>
+  );
+}
+
 /* ---- Record a resale against a received shipment ---- */
 function RecordSaleSheet({ shipment, onClose, showToast, refresh }) {
   const open = !!shipment;
-  const [price, setPrice] = React.useState("");
+  const [salesLines, setSalesLines] = React.useState([{ unit: "Can", quantity: "", price: "" }]);
   const [expLines, setExpLines] = React.useState([]);
   const [saving, setSaving] = React.useState(false);
-  React.useEffect(() => { if (open) { setPrice(""); setExpLines([]); } }, [open, shipment]);
+
+  React.useEffect(() => {
+    if (open) {
+      setSalesLines([{ unit: "Can", quantity: "", price: "" }]);
+      setExpLines([]);
+    }
+  }, [open, shipment]);
 
   const cans = shipment ? shipment.cans : 0;
-  const total = cans * (Number(price) || 0);
-  const profit = total - (shipment ? shipment.grandTotal : 0);
-  const valid = Number(price) > 0;
+  
+  const totalCansSold = salesLines.reduce((sum, line) => {
+    const qty = Number(line.quantity) || 0;
+    const factor = DATA.TO_CANS[line.unit] || 1;
+    return sum + (qty * factor);
+  }, 0);
+
+  const totalRevenue = salesLines.reduce((sum, line) => {
+    const qty = Number(line.quantity) || 0;
+    const price = Number(line.price) || 0;
+    return sum + (qty * price);
+  }, 0);
+
+  const remainingCans = cans - totalCansSold;
+  const opsCost = expLines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  const grandTotal = shipment ? shipment.grandTotal : 0;
+  // Net profit = resale revenue − product cost − operations costs entered below.
+  const profit = totalRevenue - grandTotal - opsCost;
+  const remainingColor = remainingCans < 0 ? "var(--danger)" : "var(--text-2)";
+
+  const valid = salesLines.length > 0 && 
+    salesLines.every(l => (Number(l.quantity) || 0) > 0 && (Number(l.price) || 0) > 0) &&
+    totalCansSold <= cans;
 
   const save = async () => {
     setSaving(true);
     try {
-      await DB.shipments.recordSale(shipment.id, { salePricePerCan: Number(price) || 0, saleTotal: total });
+      const avgPrice = totalCansSold > 0 ? totalRevenue / totalCansSold : 0;
+      await DB.shipments.recordSale(shipment.id, { salePricePerCan: avgPrice, saleTotal: totalRevenue });
+      
+      // Write each sale line to running sales
+      for (const l of salesLines) {
+        const qty = Number(l.quantity) || 0;
+        const price = Number(l.price) || 0;
+        if (qty > 0 && price > 0) {
+          const lineCans = qty * DATA.TO_CANS[l.unit];
+          const linePricePerCan = price / DATA.TO_CANS[l.unit];
+          await DB.sales.insert({
+            quantityCases: lineCans / DATA.TO_CANS.Case,
+            cans: lineCans,
+            pricePerCan: linePricePerCan,
+          });
+        }
+      }
+      
       await insertExpenseLines(expLines, "Clenny", shipment.id);
       await refresh();
-      showToast("Sale recorded");
+      showToast("Sales recorded successfully");
       onClose();
-    } catch (e) { showToast("Couldn't save — check connection"); }
+    } catch (e) {
+      showToast("Couldn't save — check connection");
+    }
     setSaving(false);
   };
 
@@ -160,30 +262,37 @@ function RecordSaleSheet({ shipment, onClose, showToast, refresh }) {
         <>
           <div className="review-card mb16">
             <ReviewRow k="Shipment" v={`${shipment.brand} · ${boxWord(shipment.boxes)}`} />
-            <ReviewRow k="Cans" v={fmt(cans)} />
+            <ReviewRow k="Total Shipment Cans" v={fmt(cans)} />
             <ReviewRow k="Cost (grand total)" v={money(shipment.grandTotal)} />
           </div>
+
           <div className="field mb16">
-            <label className="label">Sale price per can</label>
-            <div className="bignum-wrap">
-              <span className="bignum-cur">$</span>
-              <input className="bignum prefixed" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00"
-                value={price} onChange={e => setPrice(e.target.value)} autoFocus />
+            <label className="label">Sales Entries</label>
+            <SaleLines lines={salesLines} setLines={setSalesLines} />
+          </div>
+
+          <div className="review-card mb16">
+            <ReviewRow k="Total Cans Sold" v={`${fmt(totalCansSold)} of ${fmt(cans)}`} />
+            <ReviewRow 
+              k="Cans Remaining" 
+              v={<span style={{ color: remainingColor, fontWeight: remainingCans < 0 ? "bold" : "normal" }}>{fmt(remainingCans)}</span>} 
+            />
+            <ReviewRow k="Total Revenue" v={money(totalRevenue, 2)} />
+            <ReviewRow k="Product cost (grand total)" v={`-${money(grandTotal)}`} />
+            {opsCost > 0 && <ReviewRow k="Operations cost (billed to Clenny)" v={`-${money(opsCost, 2)}`} />}
+            <div className="review-row total">
+              <span className="rk">{profit >= 0 ? "Net Profit" : "Net Loss"}</span>
+              <span className="rv" style={{ color: profit >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(profit)}</span>
             </div>
           </div>
-          {Number(price) > 0 && (
-            <div className="review-card mb16">
-              <ReviewRow k={`${fmt(cans)} cans sold`} v={money(total)} />
-              <div className="review-row total">
-                <span className="rk">{profit >= 0 ? "Profit" : "Loss"}</span>
-                <span className="rv" style={{ color: profit >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(profit)}</span>
-              </div>
-            </div>
-          )}
+
+          {/* ---- Separate operations cost section ---- */}
           <div className="field mb16">
-            <label className="label">Distribution expenses (optional · billed to Clenny)</label>
+            <label className="label">Cost of operations (optional · billed to Clenny)</label>
+            <div className="step-hint" style={{ marginBottom: 10, fontSize: 12 }}>Add expenses for gas, delivery, transportation, etc. These are separate from product costs.</div>
             <ExpenseLines lines={expLines} setLines={setExpLines} categories={["Gas", "Delivery", "Transportation", "Storage", "Other"]} />
           </div>
+
           <button className="btn btn-primary" style={{ width: "100%", height: 48 }} onClick={save} disabled={!valid || saving}>
             <Icon name="check" size={15} />{saving ? "Saving…" : "Record Sale"}
           </button>
@@ -247,7 +356,7 @@ function Shipments({ shipments, loading, go, role, showToast, refresh }) {
       </div>
 
       {loading ? <SkeletonList count={5} /> :
-        filtered.length > 0 ? filtered.map(s => <ShipmentCard key={s.id} s={s} onSell={setSellFor} onReceive={receive} onReport={openIssue} busy={busy} />) : (
+        filtered.length > 0 ? filtered.map(s => <ShipmentCard key={s.id} s={s} onSell={setSellFor} onReceive={receive} onReport={openIssue} busy={busy} role={role} />) : (
           <div className="empty">
             <Icon name="send" size={30} />
             <div className="empty-title">No shipments {filter !== "all" ? `(${filter})` : "yet"}</div>
@@ -396,33 +505,28 @@ function NewShipment({ go, showToast, refresh, role }) {
 
       {step === 3 && (
         <div className="step-card" key="s3">
-          <div className="steplabel">Step 3 · Miscellaneous Costs</div>
+          <div className="steplabel">Step 3 · Overhead & Operations Costs</div>
           <div className="step-q">Any extra costs?</div>
-          <div className="step-hint">Optional — shipping, freight, handling. Leave blank to skip.</div>
+          <div className="step-hint">These are separate from product cost — shipping, freight, handling, fuel, etc. Leave blank to skip.</div>
 
           <div className="field mb16">
-            <label className="label">Cost amount</label>
+            <label className="label">Overhead cost amount</label>
             <div className="bignum-wrap">
               <span className="bignum-cur">$</span>
               <input className="bignum prefixed" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00"
                 value={miscCost} onChange={e => setMiscCost(e.target.value)} />
             </div>
           </div>
-          <div className="field">
-            <label className="label">Description</label>
+          <div className="field mb16">
+            <label className="label">Overhead description</label>
             <input className="input" style={{ height: 46, fontSize: 15 }} placeholder="e.g. Freight"
               value={miscDesc} onChange={e => setMiscDesc(e.target.value)} />
           </div>
 
-          <div className="field" style={{ marginTop: 18 }}>
-            <label className="label">Operating expenses (optional · billed to Clanny)</label>
+          <div className="field">
+            <label className="label">Operations expenses (optional · billed to Clanny)</label>
+            <div className="step-hint" style={{ marginBottom: 10, fontSize: 12 }}>Separate operating costs like fuel, pickup travel, port fees. These are tracked independently from product pricing.</div>
             <ExpenseLines lines={expLines} setLines={setExpLines} categories={["Freight", "Pickup travel", "Fuel", "Port fees", "Loading", "Other"]} />
-          </div>
-
-          <div className="review-card mt20">
-            <ReviewRow k="Subtotal" v={money(subtotal)} />
-            <ReviewRow k={miscDesc || "Misc cost"} v={money(Number(miscCost) || 0)} />
-            <ReviewRow k="Grand total" v={money(grandTotal)} total />
           </div>
         </div>
       )}
@@ -441,9 +545,34 @@ function NewShipment({ go, showToast, refresh, role }) {
             <ReviewRow k="Cans" v={fmt(u.cans)} />
             <ReviewRow k="Price / can" v={money(Number(canPrice) || 0, 2)} />
             <ReviewRow k="Subtotal" v={money(subtotal)} />
-            {Number(miscCost) > 0 && <ReviewRow k={miscDesc || "Misc cost"} v={money(Number(miscCost))} />}
+          </div>
+
+          {Number(miscCost) > 0 && (
+            <div className="review-card mt12">
+              <div className="review-row" style={{ fontWeight: 600, color: "var(--text-2)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span className="rk">Overhead (included in total)</span><span className="rv"></span>
+              </div>
+              <ReviewRow k={miscDesc || "Overhead cost"} v={money(Number(miscCost))} />
+            </div>
+          )}
+
+          <div className="review-card mt12">
             <ReviewRow k="Grand total" v={money(grandTotal)} total />
           </div>
+
+          {expLines.some(l => Number(l.amount) > 0) && (
+            <div className="review-card mt12">
+              <div className="review-row" style={{ fontWeight: 600, color: "var(--text-2)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span className="rk">Operations expenses</span><span className="rv"></span>
+              </div>
+              {expLines.filter(l => Number(l.amount) > 0).map((l, i) => (
+                <ReviewRow key={i} k={l.category} v={money(Number(l.amount))} />
+              ))}
+              <div className="step-hint" style={{ fontSize: 11, marginTop: 8 }}>
+                Billed to Clanny · tracked separately, not part of the shipment grand total.
+              </div>
+            </div>
+          )}
         </div>
       )}
 

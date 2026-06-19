@@ -49,31 +49,43 @@
     };
   };
 
-  // Partnership accounting (50/50). Model (2026-06-18):
-  //  - revenue       = resale (shipment sale_total)
-  //  - expensesPaid  = per partner: logged expenses + purchases + shipment cost-of-goods (sender funds shipments)
+  // Partnership accounting (50/50).
+  //  - revenue       = resale (shipment sale_total) + personal purchases
+  //  - expensesPaid  = per partner: logged expenses + shipment cost-of-goods (sender funds shipments)
+  //  - purchasesVal  = per partner: personal tobacco purchases
   //  - netProfit     = revenue - totalExpenses; split 50/50
-  //  - netPosition   = contributions + expensesPaid + profitShare  (each partner's claim on the business)
+  //  - netPosition   = contributions + expensesPaid + profitShare - purchasesVal
   const computePartnership = (shipments, purchases, expenses, contributions) => {
     const contributed  = { Clanny: 0, Clenny: 0 };
     const expensesPaid = { Clanny: 0, Clenny: 0 };
+    const purchasesVal = { Clanny: 0, Clenny: 0 };
+    let operatingExpenses = 0;
+    let shipmentCosts = 0;
     let revenue = 0;
     (contributions || []).forEach(c => { contributed[c.partner]  = (contributed[c.partner]  || 0) + (Number(c.amount) || 0); });
-    (expenses || []).forEach(e =>      { expensesPaid[e.partner] = (expensesPaid[e.partner] || 0) + (Number(e.amount) || 0); });
-    (purchases || []).forEach(p =>     { expensesPaid[p.partner] = (expensesPaid[p.partner] || 0) + (Number(p.total) || 0); });
+    (expenses || []).forEach(e => {
+      expensesPaid[e.partner] = (expensesPaid[e.partner] || 0) + (Number(e.amount) || 0);
+      operatingExpenses += Number(e.amount) || 0;
+    });
+    (purchases || []).forEach(p => {
+      purchasesVal[p.partner] = (purchasesVal[p.partner] || 0) + (Number(p.total) || 0);
+      revenue += Number(p.total) || 0; // Personal purchases are revenue for the business
+    });
     (shipments || []).forEach(s => {
       expensesPaid[s.sender] = (expensesPaid[s.sender] || 0) + (Number(s.grandTotal) || 0); // cost of goods
+      shipmentCosts += Number(s.grandTotal) || 0;
       revenue += Number(s.saleTotal) || 0;                                                  // resale revenue
     });
     const totalExpenses      = expensesPaid.Clanny + expensesPaid.Clenny;
     const totalContributions = contributed.Clanny + contributed.Clenny;
+    const grossProfit = revenue - shipmentCosts;
     const netProfit = revenue - totalExpenses;
     const sharePer  = netProfit / 2;
     const netPosition = {
-      Clanny: contributed.Clanny + expensesPaid.Clanny + sharePer,
-      Clenny: contributed.Clenny + expensesPaid.Clenny + sharePer,
+      Clanny: contributed.Clanny + expensesPaid.Clanny + sharePer - purchasesVal.Clanny,
+      Clenny: contributed.Clenny + expensesPaid.Clenny + sharePer - purchasesVal.Clenny,
     };
-    return { revenue, totalExpenses, totalContributions, netProfit, sharePer, contributed, expensesPaid, netPosition };
+    return { revenue, totalExpenses, totalContributions, netProfit, sharePer, contributed, expensesPaid, netPosition, purchasesVal, grossProfit, shipmentCosts, operatingExpenses };
   };
 
   window.DATA = {

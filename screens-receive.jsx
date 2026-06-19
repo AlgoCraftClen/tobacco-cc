@@ -3,8 +3,9 @@
    Confirm Received  ·  Report Issue (stores note + disputed)
    ============================================================ */
 
-function ReceiveCard({ s, onConfirm, onReport, busy }) {
+function ReceiveCard({ s, onConfirm, onReport, busy, role }) {
   const [open, setOpen] = React.useState(false);
+  const showActions = role?.name === "Clenny";
   return (
     <div className="list-card">
       <button className="lc-head" onClick={() => setOpen(o => !o)}>
@@ -35,14 +36,16 @@ function ReceiveCard({ s, onConfirm, onReport, busy }) {
         </div>
       )}
 
-      <div className="lc-actions">
-        <button className="btn btn-danger" onClick={() => onReport(s)} disabled={busy}>
-          <Icon name="alert" size={15} />Report Issue
-        </button>
-        <button className="btn btn-primary" onClick={() => onConfirm(s)} disabled={busy}>
-          <Icon name="check" size={15} />Confirm Received
-        </button>
-      </div>
+      {showActions && (
+        <div className="lc-actions">
+          <button className="btn btn-danger" onClick={() => onReport(s)} disabled={busy}>
+            <Icon name="alert" size={15} />Report Issue
+          </button>
+          <button className="btn btn-primary" onClick={() => onConfirm(s)} disabled={busy}>
+            <Icon name="check" size={15} />Confirm Received
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -98,7 +101,7 @@ function Receive({ shipments, loading, showToast, refresh, role }) {
 
       {loading ? <SkeletonList count={4} /> :
         pending.length > 0 ? pending.map(s => (
-          <ReceiveCard key={s.id} s={s} busy={busy} onConfirm={confirm} onReport={openIssue} />
+          <ReceiveCard key={s.id} s={s} busy={busy} onConfirm={confirm} onReport={openIssue} role={role} />
         )) : (
           <div className="empty">
             <Icon name="check" size={30} />
