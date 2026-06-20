@@ -3,8 +3,9 @@
    Confirm Received  ·  Report Issue (stores note + disputed)
    ============================================================ */
 
-function ReceiveCard({ s, onConfirm, onReport, busy, role }) {
+function ReceiveCard({ s, expenses = [], onConfirm, onReport, busy, role }) {
   const [open, setOpen] = React.useState(false);
+  const finance = DATA.shipmentFinance(s, expenses);
   const showActions = role?.name === "Clenny";
   return (
     <div className="list-card">
@@ -16,7 +17,7 @@ function ReceiveCard({ s, onConfirm, onReport, busy, role }) {
           <div className="lc-title">{s.brand} <ShipStatus status={s.status} /></div>
           <div className="lc-sub">{boxWord(s.boxes)} · {fmt(s.cans)} cans · from {s.sender}</div>
         </div>
-        <div className="lc-amt">{money(s.grandTotal)}<span className="sub">{relTime(s.createdAt)}</span></div>
+        <div className="lc-amt">{money(finance.productTotal)}<span className="sub">{relTime(s.createdAt)}</span></div>
       </button>
 
       {open && (
@@ -29,9 +30,11 @@ function ReceiveCard({ s, onConfirm, onReport, busy, role }) {
           </div>
           <div className="review-card mt16">
             <ReviewRow k="Price / can" v={money(s.pricePerCan, 2)} />
-            <ReviewRow k="Subtotal" v={money(s.subtotal)} />
-            {s.miscCost > 0 && <ReviewRow k={s.miscDesc || "Misc cost"} v={money(s.miscCost)} />}
-            <ReviewRow k="Grand total" v={money(s.grandTotal)} total />
+            <ReviewRow k="Product total" v={money(finance.productTotal)} />
+            <ReviewRow k="Clanny funded" v={`${fmt(finance.funding.Clanny.rolls)} rolls · ${money(finance.funding.Clanny.amount)}`} />
+            <ReviewRow k="Clenny funded" v={`${fmt(finance.funding.Clenny.rolls)} rolls · ${money(finance.funding.Clenny.amount)}`} />
+            {finance.shipmentCosts > 0 && <ReviewRow k="Extra shipment costs" v={money(finance.shipmentCosts)} />}
+            <ReviewRow k="All-in total" v={money(finance.allInTotal)} total />
           </div>
         </div>
       )}
@@ -50,7 +53,7 @@ function ReceiveCard({ s, onConfirm, onReport, busy, role }) {
   );
 }
 
-function Receive({ shipments, loading, showToast, refresh, role }) {
+function Receive({ shipments, expenses = [], loading, showToast, refresh, role }) {
   const pending = shipments.filter(s => s.status === "pending");
   const [busy, setBusy] = React.useState(false);
   const [issueFor, setIssueFor] = React.useState(null);
@@ -101,7 +104,7 @@ function Receive({ shipments, loading, showToast, refresh, role }) {
 
       {loading ? <SkeletonList count={4} /> :
         pending.length > 0 ? pending.map(s => (
-          <ReceiveCard key={s.id} s={s} busy={busy} onConfirm={confirm} onReport={openIssue} role={role} />
+          <ReceiveCard key={s.id} s={s} expenses={expenses} busy={busy} onConfirm={confirm} onReport={openIssue} role={role} />
         )) : (
           <div className="empty">
             <Icon name="check" size={30} />
@@ -115,7 +118,7 @@ function Receive({ shipments, loading, showToast, refresh, role }) {
           <>
             <div className="review-card mb16">
               <ReviewRow k="Shipment" v={`${issueFor.brand} · ${boxWord(issueFor.boxes)}`} />
-              <ReviewRow k="Value" v={money(issueFor.grandTotal)} />
+              <ReviewRow k="Product total" v={money(DATA.shipmentFinance(issueFor, expenses).productTotal)} />
             </div>
             <div className="field mb16">
               <label className="label">What's wrong? (e.g. 2 cans damaged)</label>

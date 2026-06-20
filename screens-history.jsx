@@ -1,6 +1,6 @@
 /* ============================================================
    HISTORY — chronological activity log
-   Shipments (sent / received / disputed) + purchases
+   Shipments, funding, costs, sales, contributions
    ============================================================ */
 
 function dayLabel(iso) {
@@ -20,6 +20,8 @@ const KIND_ICON = {
   disputed:     { icon: "alert",  bg: "var(--danger-bg)",   color: "var(--danger)" },
   sold:         { icon: "dollar", bg: "var(--pos-bg)",      color: "var(--pos)" },
   purchase:     { icon: "cart",   bg: "var(--accent-soft)", color: "var(--accent)" },
+  funding:      { icon: "cart",   bg: "var(--accent-soft)", color: "var(--accent)" },
+  distribution: { icon: "truck",  bg: "var(--danger-bg)",   color: "var(--danger)" },
   expense:      { icon: "wallet", bg: "var(--danger-bg)",   color: "var(--danger)" },
   contribution: { icon: "dollar", bg: "var(--accent-soft)", color: "var(--accent)" },
 };
@@ -59,7 +61,7 @@ function History({ shipments, purchases, expenses, contributions, loading, go, s
       <div className="page-head" style={{ marginBottom: 16 }}>
         <div>
           <div className="page-title">History</div>
-          <div className="page-desc">{all.length} event{all.length !== 1 ? "s" : ""} · shipments, purchases, expenses, contributions</div>
+          <div className="page-desc">{all.length} event{all.length !== 1 ? "s" : ""} · shipments, funding, sales, costs</div>
         </div>
         {all.length > 0 && (
           <div className="page-head-actions">
@@ -104,13 +106,13 @@ function History({ shipments, purchases, expenses, contributions, loading, go, s
           <div className="empty">
             <Icon name="history" size={30} />
             <div className="empty-title">Nothing here yet</div>
-            <div className="empty-desc">Your shipment and purchase history will build up over time</div>
+            <div className="empty-desc">Your shipment, funding, sale, and cost history will build up over time</div>
           </div>
         )}
 
       <Sheet open={confirm} onClose={() => setConfirm(false)} title="Clear all data" icon="trash">
         <div className="step-hint" style={{ marginBottom: 18 }}>
-          This permanently deletes <strong>all shipments, purchases, expenses, and contributions</strong> for both partners. This cannot be undone.
+          This permanently deletes <strong>all shipments, funding records, older purchases, expenses, and contributions</strong> for both partners. This cannot be undone.
         </div>
         <div className="lc-actions" style={{ padding: 0, border: "none" }}>
           <button className="btn" onClick={() => setConfirm(false)} disabled={clearing}>Cancel</button>

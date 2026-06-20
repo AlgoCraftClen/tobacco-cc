@@ -14,34 +14,49 @@ function ShipStatus({ status }) {
 }
 const boxWord = (n) => n + " " + (Number(n) === 1 ? "box" : "boxes");
 const avOf = (partner) => (partner === "Clanny" ? "av-3" : "av-1");
+const partnerNames = ["Clanny", "Clenny"];
 
 /* merge all transaction types into a chronological activity feed */
 function buildActivity(shipments, purchases, expenses, contributions) {
   const ev = [];
+  const shipmentById = new Map((shipments || []).map(s => [s.id, s]));
   (shipments || []).forEach(s => {
+    const f = DATA.shipmentFinance(s, expenses);
     ev.push({ kind: "sent", who: s.sender, act: "sent a shipment",
-      obj: `${boxWord(s.boxes)} · ${s.brand}`, amount: s.grandTotal, time: s.createdAt, pip: "pip-sent", av: "av-3" });
+      obj: `${boxWord(s.boxes)} · ${s.brand}`, amount: f.productTotal, time: s.createdAt, pip: "pip-sent", av: "av-3" });
     if (s.status === "received" && s.receivedAt)
       ev.push({ kind: "received", who: s.receiver, act: "received", obj: `${s.brand} shipment`,
-        amount: s.grandTotal, time: s.receivedAt, pip: "pip-received", av: "av-1" });
+        amount: f.productTotal, time: s.receivedAt, pip: "pip-received", av: "av-1" });
     if (s.status === "disputed" && s.receivedAt)
       ev.push({ kind: "disputed", who: s.receiver, act: "reported an issue on", obj: `${s.brand} shipment`,
         amount: null, time: s.receivedAt, pip: "pip-disputed", av: "av-1" });
     if ((Number(s.saleTotal) || 0) > 0 && s.soldAt)
-      ev.push({ kind: "sold", who: s.receiver, act: "sold", obj: `${s.brand} shipment`,
+      ev.push({ kind: "sold", who: s.receiver, act: "recorded sales for", obj: `${s.brand} shipment`,
         amount: s.saleTotal, time: s.soldAt, pip: "pip-received", av: "av-1" });
   });
   (purchases || []).forEach(p => {
-    ev.push({ kind: "purchase", who: p.partner, act: "logged a purchase",
+    ev.push({ kind: "purchase", who: p.partner, act: "logged an older purchase",
       obj: `${p.cans} cans · ${p.brand}`, amount: p.total, time: p.createdAt, pip: "pip-purchase", av: avOf(p.partner) });
   });
   (expenses || []).forEach(e => {
-    ev.push({ kind: "expense", who: e.partner, act: "logged an expense",
-      obj: e.description || e.category || "expense", amount: e.amount, time: e.createdAt, pip: "pip-disputed", av: avOf(e.partner) });
+    const kind = DATA.expenseKind(e);
+    const meta = DATA.parseExpenseMeta(e) || {};
+    const s = shipmentById.get(e.shipmentId);
+    if (kind === DATA.EXPENSE_KINDS.PRODUCT) {
+      ev.push({ kind: "funding", who: e.partner, act: "funded product",
+        obj: s ? `${s.brand} · ${fmt(meta.rolls || 0)} rolls` : `${fmt(meta.cans || 0)} cans`,
+        amount: e.amount, time: e.createdAt, pip: "pip-purchase", av: avOf(e.partner) });
+    } else if (kind === DATA.EXPENSE_KINDS.DISTRIBUTION) {
+      ev.push({ kind: "distribution", who: e.partner, act: "paid distribution cost",
+        obj: `${DATA.displayExpenseCategory(e)}${s ? ` · ${s.brand}` : ""}`, amount: e.amount, time: e.createdAt, pip: "pip-disputed", av: avOf(e.partner) });
+    } else {
+      ev.push({ kind: "expense", who: e.partner, act: e.shipmentId ? "paid shipment cost" : "logged an expense",
+        obj: `${DATA.displayExpenseCategory(e)}${s ? ` · ${s.brand}` : ""}`, amount: e.amount, time: e.createdAt, pip: "pip-disputed", av: avOf(e.partner) });
+    }
   });
   (contributions || []).forEach(c => {
-    ev.push({ kind: "contribution", who: c.partner, act: "added a contribution",
-      obj: c.description || "capital", amount: c.amount, time: c.createdAt, pip: "pip-received", av: avOf(c.partner) });
+    ev.push({ kind: "contribution", who: c.partner, act: "added capital",
+      obj: c.description || "business cash", amount: c.amount, time: c.createdAt, pip: "pip-received", av: avOf(c.partner) });
   });
   return ev.filter(e => e.time).sort((a, b) => new Date(b.time) - new Date(a.time));
 }
@@ -65,37 +80,31 @@ function ActivityRow({ a }) {
 /* ---- Partnership: per-partner financial position (expandable) ---- */
 function PartnerCard({ name, roleLabel, pos }) {
   const [open, setOpen] = React.useState(false);
-  const putIn = pos.invested + pos.expenses;
+  const gainy = pos.net >= 0;
   return (
     <div className="list-card">
       <button className="lc-head" onClick={() => setOpen(o => !o)}>
         <Avatar name={name} cls={avOf(name)} size={40} />
         <div className="lc-main">
           <div className="lc-title">{name}</div>
-          <div className="lc-sub" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <div>{roleLabel}</div>
-            <div className="faint" style={{ fontSize: 11 }}>
-              Total Put In: <span className="mono" style={{ fontWeight: 600, color: "var(--text)" }}>{money(putIn)}</span> (Inv: {money(pos.invested)} · Exp: {money(pos.expenses)})
-            </div>
-          </div>
+          <div className="lc-sub">{roleLabel}</div>
         </div>
-        <div className="lc-amt" style={{ color: pos.net >= 0 ? "var(--text)" : "var(--danger)" }}>
-          {money(pos.net)}<span className="sub">net position</span>
+        <div className="lc-amt" style={{ color: gainy ? "var(--pos)" : "var(--danger)" }}>
+          {money(pos.net)}<span className="sub">net gain</span>
         </div>
         <Icon name="chevR" size={16} className={"lc-chev" + (open ? " open" : "")} />
       </button>
       {open && (
         <div className="lc-body">
-          <div className="kv"><span className="k">Invested (contributions)</span><span className="v mono">{money(pos.invested)}</span></div>
-          <div className="kv"><span className="k">Expenses paid for business</span><span className="v mono">{money(pos.expenses)}</span></div>
-          {pos.purchases > 0 && (
-            <div className="kv"><span className="k">Personal purchases (deducted)</span><span className="v mono" style={{ color: "var(--danger)" }}>-{money(pos.purchases)}</span></div>
-          )}
-          <div className="kv"><span className="k">{pos.share >= 0 ? "Profit share (50%)" : "Loss share (50%)"}</span>
-            <span className="v mono" style={{ color: pos.share >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(pos.share)}</span></div>
+          <div className="kv"><span className="k">Product funded</span><span className="v mono">{money(pos.productFunded)}</span></div>
+          <div className="kv"><span className="k">Revenue share</span><span className="v mono">{money(pos.revenueShare)}</span></div>
+          <div className="kv"><span className="k">Product gain</span><span className="v mono" style={{ color: pos.productProfit >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(pos.productProfit)}</span></div>
+          <div className="kv"><span className="k">Shipment costs paid</span><span className="v mono">{money(pos.shipmentCosts)}</span></div>
+          <div className="kv"><span className="k">Distribution costs paid</span><span className="v mono">{money(pos.distributionCosts)}</span></div>
+          <div className="kv"><span className="k">Other costs paid</span><span className="v mono">{money(pos.costsPaid - pos.shipmentCosts - pos.distributionCosts)}</span></div>
           <div className="kv" style={{ borderTop: "1px solid var(--border-2)" }}>
-            <span className="k" style={{ fontWeight: 600, color: "var(--text)" }}>Net position</span>
-            <span className="v mono" style={{ fontWeight: 700 }}>{money(pos.net)}</span></div>
+            <span className="k" style={{ fontWeight: 600, color: "var(--text)" }}>Net gain after costs</span>
+            <span className="v mono" style={{ fontWeight: 700, color: gainy ? "var(--pos)" : "var(--danger)" }}>{money(pos.net)}</span></div>
         </div>
       )}
     </div>
@@ -107,29 +116,37 @@ function PartnershipView({ pt }) {
   return (
     <div className="fade-in">
       <div className="metric-grid mb12">
-        <MetricCard icon="dollar" iconBg="var(--pos-bg)" iconColor="var(--pos)" value={fmt(pt.revenue)} cur label="Total revenue" />
-        <MetricCard icon="wallet" iconBg="var(--danger-bg)" iconColor="var(--danger)" value={fmt(pt.totalExpenses)} cur label="Total expenses" />
-        <MetricCard icon="reports" iconBg="var(--info-bg)" iconColor="var(--info)" value={fmt(pt.grossProfit)} cur label="Gross profit" />
-        <MetricCard icon="check" iconBg={lossy ? "var(--danger-bg)" : "var(--pos-bg)"} iconColor={lossy ? "var(--danger)" : "var(--pos)"} value={fmt(pt.netProfit)} cur label={lossy ? "Net loss" : "Net profit"} />
+        <MetricCard icon="dollar" iconBg="var(--pos-bg)" iconColor="var(--pos)" value={fmt(pt.revenue)} cur label="Sales revenue" />
+        <MetricCard icon="cart" iconBg="var(--accent-soft)" iconColor="var(--accent)" value={fmt(pt.productTotal + pt.manualPurchases)} cur label="Product funded" />
+        <MetricCard icon="wallet" iconBg="var(--danger-bg)" iconColor="var(--danger)" value={fmt(pt.extraCosts)} cur label="Extra costs" />
+        <MetricCard icon="trendUp" iconBg={lossy ? "var(--danger-bg)" : "var(--pos-bg)"} iconColor={lossy ? "var(--danger)" : "var(--pos)"} value={fmt(pt.netProfit)} cur label={lossy ? "Net loss" : "Net gain"} />
       </div>
 
       <div className="card card-pad mb16" style={{ borderColor: lossy ? "var(--danger)" : "var(--accent-line)", background: lossy ? "var(--danger-bg)" : "var(--accent-softer)" }}>
         <div className="between">
-          <span style={{ fontWeight: 600 }}>{lossy ? "Net loss" : "Net profit"}</span>
+          <span style={{ fontWeight: 600 }}>{lossy ? "Net loss after all costs" : "Net gain after all costs"}</span>
           <span className="mono" style={{ fontSize: 22, fontWeight: 700, color: lossy ? "var(--danger)" : "var(--pos)" }}>{money(pt.netProfit)}</span>
         </div>
-        <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>revenue − expenses · split 50/50 ({money(pt.sharePer)} each)</div>
+        <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>sales revenue - product funding - shipment/distribution costs</div>
         <div className="kv" style={{ marginTop: 10, borderTop: "1px solid var(--border-2)", paddingTop: 10 }}>
-          <span className="k">Total invested (both partners)</span><span className="v mono">{money(pt.totalContributions)}</span>
+          <span className="k">Sales are allocated by each shipment's funded product share</span><span className="v mono">not 50/50</span>
         </div>
       </div>
 
       <div className="sec-head"><span className="sec-title">Each partner's position</span></div>
       <div className="grid g-2" style={{ gap: 12 }}>
-        <PartnerCard name="Clanny" roleLabel="Sender · funds shipments"
-          pos={{ invested: pt.contributed.Clanny, expenses: pt.expensesPaid.Clanny, share: pt.sharePer, purchases: pt.purchasesVal.Clanny, net: pt.netPosition.Clanny }} />
-        <PartnerCard name="Clenny" roleLabel="Receiver · sells locally"
-          pos={{ invested: pt.contributed.Clenny, expenses: pt.expensesPaid.Clenny, share: pt.sharePer, purchases: pt.purchasesVal.Clenny, net: pt.netPosition.Clenny }} />
+        {partnerNames.map(name => (
+          <PartnerCard key={name} name={name} roleLabel={name === "Clanny" ? "Sender · funds and ships" : "Receiver · sells locally"}
+            pos={{
+              productFunded: pt.productFunded[name],
+              revenueShare: pt.revenueShare[name],
+              productProfit: pt.productProfit[name],
+              costsPaid: pt.costsPaid[name],
+              shipmentCosts: pt.shipmentCostsPaid[name],
+              distributionCosts: pt.distributionCostsPaid[name],
+              net: pt.netGain[name],
+            }} />
+        ))}
       </div>
     </div>
   );
@@ -138,11 +155,11 @@ function PartnershipView({ pt }) {
 function Dashboard({ role, shipments, purchases, expenses, contributions, loading, go }) {
   const [seg, setSeg] = React.useState("overview");
 
-  const sent     = shipments.length;
-  const value    = shipments.reduce((s, x) => s + x.grandTotal, 0);
-  const pending  = shipments.filter(s => s.status === "pending").length;
-  const received = shipments.filter(s => s.status === "received").length;
+  const sent = shipments.length;
   const pt = DATA.computePartnership(shipments, purchases, expenses, contributions);
+  const value = pt.productTotal + pt.manualPurchases;
+  const pending = shipments.filter(s => s.status === "pending").length;
+  const received = shipments.filter(s => s.status === "received").length;
   const activity = buildActivity(shipments, purchases, expenses, contributions).slice(0, 12);
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
   const lossy = pt.netProfit < 0;
@@ -168,20 +185,17 @@ function Dashboard({ role, shipments, purchases, expenses, contributions, loadin
             <div className="metric-grid">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 110, borderRadius: 14 }} />)}</div>
           ) : (
             <div className="metric-grid stagger">
-              <MetricCard icon="send"   iconBg="var(--accent-soft)" iconColor="var(--accent)" value={fmt(sent)} label="Shipments Sent" onClick={() => go("shipments")} />
-              <MetricCard icon="dollar" iconBg="var(--pos-bg)"      iconColor="var(--pos)"    value={fmt(value)} cur label="Shipment Value" onClick={() => go("shipments")} />
+              <MetricCard icon="send"   iconBg="var(--accent-soft)" iconColor="var(--accent)" value={fmt(sent)} label="Shipments" onClick={() => go("shipments")} />
+              <MetricCard icon="cart"   iconBg="var(--pos-bg)"      iconColor="var(--pos)"    value={fmt(value)} cur label="Product Funded" onClick={() => go("purchases")} />
               <MetricCard icon="clock"  iconBg="var(--warn-bg)"     iconColor="var(--warn)"   value={fmt(pending)} label="Pending" onClick={() => go("receive")} />
               <MetricCard icon="check"  iconBg="var(--info-bg)"     iconColor="var(--info)"   value={fmt(received)} label="Received" onClick={() => go("history")} />
             </div>
           )}
-          {/* net profit teaser → opens Partnership */}
           <div className="card card-pad mt16" onClick={() => setSeg("partnership")} style={{ cursor: "pointer", borderColor: lossy ? "var(--danger)" : "var(--accent-line)" }}>
             <div className="between">
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{lossy ? "Net loss" : "Net profit"}</div>
-                <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
-                  Gross profit: {money(pt.grossProfit)} · Net: {money(pt.netProfit)}
-                </div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{lossy ? "Net loss" : "Net gain"}</div>
+                <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>{money(pt.revenue)} sales - {money(pt.productTotal + pt.manualPurchases)} product - {money(pt.extraCosts)} costs</div>
               </div>
               <div className="center gap6">
                 <span className="mono" style={{ fontSize: 18, fontWeight: 700, color: lossy ? "var(--danger)" : "var(--pos)" }}>{money(pt.netProfit)}</span>
@@ -202,7 +216,7 @@ function Dashboard({ role, shipments, purchases, expenses, contributions, loadin
               <div className="empty">
                 <Icon name="bell" size={28} />
                 <div className="empty-title">No activity yet</div>
-                <div className="empty-desc">Send a shipment, log a purchase/expense, or add a contribution</div>
+                <div className="empty-desc">Create a shipment, record sales, or log a cost</div>
               </div>
             )}
         </div>

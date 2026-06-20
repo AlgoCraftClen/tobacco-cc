@@ -9,12 +9,12 @@ const TABS = [
   { k: "shipments", label: "Shipments", icon: "send" },
   { k: "receive",   label: "Receive",   icon: "inbox" },
   { k: "sale",      label: "Sale",      icon: "reports" },
-  { k: "purchases", label: "Purchases", icon: "cart" },
+  { k: "purchases", label: "Funding",   icon: "cart" },
   { k: "history",   label: "History",   icon: "history" },
 ];
 const TITLES = {
   dashboard: "Dashboard", shipments: "Shipments", newshipment: "New Shipment",
-  receive: "Receive", sale: "Sale", purchases: "Purchases", history: "History",
+  receive: "Receive", sale: "Sale", purchases: "Funding", history: "History",
 };
 // which tab is highlighted for a given screen
 const tabFor = (screen) => screen === "newshipment" ? "shipments" : screen;
@@ -138,7 +138,7 @@ function BottomTabs({ screen, go }) {
 }
 
 /* ---- Command palette (⌘K) ---- */
-function CommandPalette({ open, setOpen, go, openPurchase, onSwitchRole }) {
+function CommandPalette({ open, setOpen, go, onSwitchRole }) {
   const [q, setQ] = React.useState("");
   const [hi, setHi] = React.useState(0);
   const inputRef = React.useRef(null);
@@ -147,11 +147,11 @@ function CommandPalette({ open, setOpen, go, openPurchase, onSwitchRole }) {
 
   const items = React.useMemo(() => ([
     { group: "Actions", label: "New shipment", sub: "Send tobacco to Clenny", icon: "send", run: () => go("newshipment") },
-    { group: "Actions", label: "Log purchase", sub: "Record a personal purchase", icon: "cart", run: openPurchase },
+    { group: "Actions", label: "Product funding", sub: "Review who funded each shipment", icon: "cart", run: () => go("purchases") },
     { group: "Actions", label: "Switch role", sub: "Change sender / receiver", icon: "swap", run: onSwitchRole },
     { group: "Go to", label: "Updated Running Sales Report", sub: "Sale page", icon: "reports", run: () => go("sale") },
     ...TABS.map(t => ({ group: "Go to", label: t.label, sub: "Page", icon: t.icon, run: () => go(t.k) })),
-  ]), [go, openPurchase, onSwitchRole]);
+  ]), [go, onSwitchRole]);
 
   const filtered = React.useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -349,10 +349,8 @@ function App() {
   }, []);
 
   const pickRole = (name) => { localStorage.setItem("cc_role", name); setRoleName(name); setRoleSheet(false); };
-  const openPurchase = () => setModal("purchase");
   const fabActions = [
     { label: "New Shipment",     icon: "send",   run: () => go("newshipment") },
-    { label: "Log Purchase",     icon: "cart",   run: () => setModal("purchase") },
     { label: "Log Expense",      icon: "wallet", run: () => setModal("expense") },
     { label: "Add Contribution", icon: "dollar", run: () => setModal("contribution") },
   ];
@@ -425,7 +423,6 @@ function App() {
         </div>
       </Sheet>
 
-      <AddPurchaseSheet open={modal === "purchase"} onClose={() => setModal(null)} role={role} showToast={showToast} refresh={refresh} />
       <AddExpenseSheet open={modal === "expense"} onClose={() => setModal(null)} role={role} showToast={showToast} refresh={refresh} />
       <AddContributionSheet open={modal === "contribution"} onClose={() => setModal(null)} role={role} showToast={showToast} refresh={refresh} />
 
@@ -436,7 +433,7 @@ function App() {
       )}
 
       <CommandPalette open={cmdOpen} setOpen={setCmdOpen} go={go}
-        openPurchase={openPurchase} onSwitchRole={() => setRoleSheet(true)} />
+        onSwitchRole={() => setRoleSheet(true)} />
 
       <Sheet open={roleSheet} onClose={() => setRoleSheet(false)} title="Switch role" icon="swap">
         <div className="role-q" style={{ marginBottom: 16 }}>Clanny is the Sender · Clenny is the Receiver.</div>

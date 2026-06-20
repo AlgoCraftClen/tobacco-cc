@@ -11,17 +11,60 @@ function Cell({ k, v, accent }) {
     </div>
   );
 }
-/* Editable version of Cell — used for the linked Boxes/Cases/Rolls/Cans inputs */
-function UnitCell({ k, unit, value, onChange, accent }) {
+function EditableUnitCell({ label, marker, value, onChange, accent }) {
   return (
-    <div className={"calc-cell" + (accent ? " accent" : "")}>
-      <div className="ck">{k}</div>
-      <input
-        className="cv" type="number" inputMode="decimal" min="0" step="any" placeholder="0"
-        value={value} onChange={e => onChange(unit, e.target.value)}
-        style={{ width: "100%", background: "transparent", border: "none", outline: "none", padding: 0,
-                 color: accent ? "var(--accent)" : "var(--text)" }}
-      />
+    <label className={"calc-cell editable" + (accent ? " accent" : "")}>
+      <div className="ck">{marker && <span className={"uq " + marker} />}{label}</div>
+      <input className="calc-input" type="number" inputMode="decimal" min="0" step="any" placeholder="0" value={value} onChange={e => onChange(e.target.value)} />
+    </label>
+  );
+}
+function SplitInput({ split, setSplit, splitSummary }) {
+  const partners = ["Clanny", "Clenny"];
+  return (
+    <div className="split-box mt18">
+      <div className="between mb12">
+        <div>
+          <div className="split-title">Product funding</div>
+          <div className="split-sub">Enter what one person paid for. The remaining product is assigned to the other person.</div>
+        </div>
+      </div>
+      <div className="split-grid">
+        <div className="field">
+          <label className="label">Who paid for product?</label>
+          <select className="input" value={split.partner} onChange={e => setSplit({ ...split, partner: e.target.value })}>
+            {partners.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label className="label">Unit</label>
+          <select className="input" value={split.unit} onChange={e => setSplit({ ...split, unit: e.target.value })}>
+            <option value="rolls">Rolls</option>
+            <option value="cans">Cans</option>
+            <option value="cases">Cases</option>
+            <option value="boxes">Boxes</option>
+          </select>
+        </div>
+        <div className="field split-amount">
+          <label className="label">Amount paid for</label>
+          <input className="input" type="number" inputMode="decimal" min="0" step="any" placeholder="0" value={split.amount} onChange={e => setSplit({ ...split, amount: e.target.value })} />
+        </div>
+      </div>
+      {splitSummary.totalCans > 0 && split.amount !== "" && (
+        <div className={"split-summary" + (splitSummary.over ? " danger" : "")}>
+          <div className="split-person">
+            <span>{split.partner}</span>
+            <strong>paid for {fmt(splitSummary.primaryRolls)} rolls · {fmt(splitSummary.primaryCans)} cans</strong>
+            {splitSummary.canPrice > 0 && <em>{money(splitSummary.primaryValue)}</em>}
+          </div>
+          <div className="split-person">
+            <span>{splitSummary.otherPartner}</span>
+            <strong>paid for {fmt(splitSummary.remainingRolls)} rolls · {fmt(splitSummary.remainingCans)} cans</strong>
+            {splitSummary.canPrice > 0 && <em>{money(splitSummary.remainingValue)}</em>}
+          </div>
+          {splitSummary.over && <div className="split-warning">This is more than the product coming in.</div>}
+        </div>
+      )}
     </div>
   );
 }
@@ -34,18 +77,24 @@ function ReviewRow({ k, v, total }) {
 }
 
 /* ---- Optional operating-expense line editor (attributed to a partner) ---- */
-function ExpenseLines({ lines, setLines, categories }) {
-  const add = () => setLines([...lines, { category: categories[0], amount: "" }]);
+function ExpenseLines({ lines, setLines, categories, defaultPartner = "Clanny", showPartner = true }) {
+  const add = () => setLines([...lines, { partner: defaultPartner, category: categories[0], amount: "" }]);
   const upd = (i, k, v) => setLines(lines.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
   const rm = (i) => setLines(lines.filter((_, idx) => idx !== i));
   return (
     <div className="col gap10">
       {lines.map((l, i) => (
-        <div key={i} className="center gap8">
-          <select className="input" style={{ height: 42, flex: 1 }} value={l.category} onChange={e => upd(i, "category", e.target.value)}>
+        <div key={i} className="expense-line">
+          {showPartner && (
+            <select className="input" value={l.partner || defaultPartner} onChange={e => upd(i, "partner", e.target.value)}>
+              <option value="Clanny">Clanny</option>
+              <option value="Clenny">Clenny</option>
+            </select>
+          )}
+          <select className="input" value={l.category} onChange={e => upd(i, "category", e.target.value)}>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <div className="bignum-wrap" style={{ width: 118 }}>
+          <div className="bignum-wrap expense-amount">
             <span className="bignum-cur" style={{ fontSize: 15 }}>$</span>
             <input className="bignum prefixed" style={{ height: 42, fontSize: 16, textAlign: "right", paddingRight: 10 }}
               type="number" inputMode="decimal" min="0" step="0.01" placeholder="0" value={l.amount} onChange={e => upd(i, "amount", e.target.value)} />
@@ -54,25 +103,73 @@ function ExpenseLines({ lines, setLines, categories }) {
         </div>
       ))}
       <button className="btn btn-sm btn-ghost" style={{ alignSelf: "flex-start" }} onClick={add}>
-        <Icon name="plus" size={13} />Add expense
+        <Icon name="plus" size={13} />Add cost
       </button>
     </div>
   );
 }
-async function insertExpenseLines(lines, partner, shipmentId) {
+
+async function insertExpenseLines(lines, defaultPartner, shipmentId, kind = DATA.EXPENSE_KINDS.SHIPMENT) {
   for (const l of (lines || [])) {
     const amt = Number(l.amount) || 0;
-    if (amt > 0) await DB.expenses.insert({ partner, amount: amt, category: l.category, description: l.category, shipmentId });
+    if (amt > 0) await DB.expenses.insert({
+      partner: l.partner || defaultPartner || "Clanny",
+      amount: amt,
+      category: l.category,
+      description: DATA.makeExpenseDescription(kind, { category: l.category }),
+      shipmentId,
+    });
+  }
+}
+
+async function insertProductFunding(shipmentId, split, splitSummary) {
+  const rows = [
+    {
+      partner: split.partner,
+      amount: splitSummary.primaryValue,
+      cans: splitSummary.primaryCans,
+      rolls: splitSummary.primaryRolls,
+      unit: split.unit,
+      enteredAmount: Number(split.amount) || 0,
+    },
+    {
+      partner: splitSummary.otherPartner,
+      amount: splitSummary.remainingValue,
+      cans: splitSummary.remainingCans,
+      rolls: splitSummary.remainingRolls,
+      unit: "cans",
+      enteredAmount: splitSummary.remainingCans,
+    },
+  ];
+  for (const row of rows) {
+    if ((Number(row.amount) || 0) <= 0 && (Number(row.cans) || 0) <= 0) continue;
+    await DB.expenses.insert({
+      partner: row.partner,
+      amount: row.amount,
+      category: DATA.PRODUCT_FUNDING_CATEGORY,
+      description: DATA.makeExpenseDescription(DATA.EXPENSE_KINDS.PRODUCT, {
+        category: DATA.PRODUCT_FUNDING_CATEGORY,
+        cans: row.cans,
+        rolls: row.rolls,
+        unit: row.unit,
+        enteredAmount: row.enteredAmount,
+        pricePerCan: splitSummary.canPrice,
+      }),
+      shipmentId,
+    });
   }
 }
 
 /* ---- Expandable shipment card (reused by list + history) ---- */
-function ShipmentCard({ s, defaultOpen, onSell, onReceive, onReport, busy, role }) {
+function ShipmentCard({ s, expenses = [], defaultOpen, onSell, onReceive, onReport, busy, role }) {
   const [open, setOpen] = React.useState(!!defaultOpen);
+  const finance = DATA.shipmentFinance(s, expenses);
   const sold = (s.saleTotal || 0) > 0;
-  const profit = (s.saleTotal || 0) - s.grandTotal;
-  const canSell = s.status === "received" && !sold && !!onSell && role?.name === "Clenny";
+  const profit = finance.grossProfit;
+  const net = finance.netProfit;
+  const canSell = s.status === "received" && !!onSell && role?.name === "Clenny";
   const canReceive = s.status === "pending" && !!onReceive && role?.name === "Clenny";
+  const fundingPartners = ["Clanny", "Clenny"];
   return (
     <div className="list-card">
       <button className="lc-head" onClick={() => setOpen(o => !o)}>
@@ -81,7 +178,7 @@ function ShipmentCard({ s, defaultOpen, onSell, onReceive, onReport, busy, role 
           <div className="lc-title">{s.brand} <ShipStatus status={s.status} /></div>
           <div className="lc-sub">{boxWord(s.boxes)} · {fmt(s.cans)} cans · {fmtDate(s.createdAt)}</div>
         </div>
-        <div className="lc-amt">{money(s.grandTotal)}</div>
+        <div className="lc-amt">{money(finance.productTotal)}<span className="sub">product</span></div>
         <Icon name="chevR" size={16} className={"lc-chev" + (open ? " open" : "")} />
       </button>
       {open && (
@@ -94,17 +191,31 @@ function ShipmentCard({ s, defaultOpen, onSell, onReceive, onReport, busy, role 
           </div>
           <div className="review-card mt16">
             <ReviewRow k="Price / can" v={money(s.pricePerCan, 2)} />
-            <ReviewRow k="Subtotal" v={money(s.subtotal)} />
-            {s.miscCost > 0 && <ReviewRow k={s.miscDesc || "Misc cost"} v={money(s.miscCost)} />}
-            <ReviewRow k="Grand total" v={money(s.grandTotal)} total />
+            <ReviewRow k="Product total" v={money(finance.productTotal)} />
+            {fundingPartners.map(p => (
+              <ReviewRow key={p} k={`${p} funded`} v={`${fmt(finance.funding[p].rolls)} rolls · ${money(finance.funding[p].amount)}`} />
+            ))}
+            {finance.shipmentCosts > 0 && <ReviewRow k="Extra shipment costs" v={money(finance.shipmentCosts)} />}
+            {finance.distributionCosts > 0 && <ReviewRow k="Distribution costs" v={money(finance.distributionCosts)} />}
+            <ReviewRow k="All-in total" v={money(finance.allInTotal)} total />
           </div>
+          {finance.costRows.length > 0 && (
+            <div className="review-card mt12">
+              {finance.costRows.map(row => (
+                <ReviewRow key={row.id} k={`${row.partner} paid ${DATA.displayExpenseCategory(row)}`} v={money(row.amount)} />
+              ))}
+            </div>
+          )}
           {sold && (
             <div className="review-card mt12">
               <ReviewRow k="Sold for" v={money(s.saleTotal)} />
-              <ReviewRow k="Sale price / can" v={money(s.salePricePerCan, 2)} />
+              <ReviewRow k="Avg sale price / can" v={money(s.salePricePerCan, 2)} />
+              {fundingPartners.map(p => (
+                <ReviewRow key={p} k={`${p} sale share`} v={`${money(finance.revenueShare[p])} · ${money(finance.productProfit[p])} gain`} />
+              ))}
               <div className="review-row total">
-                <span className="rk">{profit >= 0 ? "Profit" : "Loss"}</span>
-                <span className="rv" style={{ color: profit >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(profit)}</span>
+                <span className="rk">{net >= 0 ? "Net gain after costs" : "Net loss after costs"}</span>
+                <span className="rv" style={{ color: net >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(net)}</span>
               </div>
             </div>
           )}
@@ -126,12 +237,17 @@ function ShipmentCard({ s, defaultOpen, onSell, onReceive, onReport, busy, role 
               </button>
             </>
           ) : sold ? (
-            <div className="between" style={{ flex: 1, fontSize: 13 }}>
-              <span className="muted">Sold for {money(s.saleTotal)}</span>
-              <span className="mono" style={{ fontWeight: 600, color: profit >= 0 ? "var(--pos)" : "var(--danger)" }}>
-                {profit >= 0 ? "+" : ""}{money(profit)} {profit >= 0 ? "profit" : "loss"}
-              </span>
-            </div>
+            <>
+              <div className="between" style={{ flex: 1, fontSize: 13 }}>
+                <span className="muted">Sold for {money(s.saleTotal)}</span>
+                <span className="mono" style={{ fontWeight: 600, color: net >= 0 ? "var(--pos)" : "var(--danger)" }}>
+                  {net >= 0 ? "+" : ""}{money(net)} {net >= 0 ? "net gain" : "net loss"}
+                </span>
+              </div>
+              <button className="btn btn-primary" onClick={() => onSell(s)}>
+                <Icon name="plus" size={15} />Add sale
+              </button>
+            </>
           ) : (
             <button className="btn btn-primary" onClick={() => onSell(s)}>
               <Icon name="dollar" size={15} />Record sale
@@ -143,181 +259,113 @@ function ShipmentCard({ s, defaultOpen, onSell, onReceive, onReport, busy, role 
   );
 }
 
-/* ---- Helper component for editing multiple sale lines ---- */
-function SaleLines({ lines, setLines }) {
-  const add = () => setLines([...lines, { unit: "Can", quantity: "", price: "" }]);
-  const upd = (i, k, v) => setLines(lines.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
-  const rm = (i) => setLines(lines.filter((_, idx) => idx !== i));
-  return (
-    <div className="col gap12" style={{ marginBottom: 16 }}>
-      {lines.map((l, i) => {
-        const factor = DATA.TO_CANS[l.unit] || 1;
-        const lineCans = (Number(l.quantity) || 0) * factor;
-        const lineTotal = (Number(l.quantity) || 0) * (Number(l.price) || 0);
-        return (
-          <div key={i} className="center gap8" style={{ borderBottom: "1px solid var(--border-soft)", paddingBottom: 12, alignItems: "flex-end" }}>
-            <div className="col gap4" style={{ width: 85 }}>
-              <label className="label" style={{ fontSize: 11, marginBottom: 2 }}>Unit</label>
-              <select className="input" style={{ height: 42, padding: "0 8px", fontSize: 13 }} value={l.unit} onChange={e => upd(i, "unit", e.target.value)}>
-                {["Can", "Roll", "Case", "Box"].map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
-            
-            <div className="col gap4" style={{ flex: 1, minWidth: 50 }}>
-              <label className="label" style={{ fontSize: 11, marginBottom: 2 }}>Qty</label>
-              <input className="input" style={{ height: 42, textAlign: "center", fontSize: 14 }} type="number" inputMode="numeric" placeholder="0" value={l.quantity} onChange={e => upd(i, "quantity", e.target.value)} />
-            </div>
-
-            <div className="col gap4" style={{ width: 95 }}>
-              <label className="label" style={{ fontSize: 11, marginBottom: 2 }}>Price / {l.unit}</label>
-              <div className="bignum-wrap" style={{ height: 42 }}>
-                <span className="bignum-cur" style={{ fontSize: 13, left: 8 }}>$</span>
-                <input className="bignum prefixed" style={{ height: 42, fontSize: 14, textAlign: "right", paddingRight: 8 }}
-                  type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={l.price} onChange={e => upd(i, "price", e.target.value)} />
-              </div>
-            </div>
-
-            <div className="col gap4" style={{ width: 75, textAlign: "right", paddingRight: 4 }}>
-              <span className="label" style={{ fontSize: 11, marginBottom: 2 }}>Total</span>
-              <div style={{ fontSize: 13, fontWeight: "600", height: 42, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                <div>{money(lineTotal, 2)}</div>
-                <div className="faint" style={{ fontSize: 9, fontWeight: "normal", marginTop: -2 }}>{lineCans} cans</div>
-              </div>
-            </div>
-
-            {lines.length > 1 && (
-              <button className="icon-btn" style={{ height: 42, padding: 4 }} onClick={() => rm(i)}>
-                <Icon name="x" size={14} className="faint" />
-              </button>
-            )}
-          </div>
-        );
-      })}
-      <button className="btn btn-sm btn-ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={add}>
-        <Icon name="plus" size={13} />Add another sale
-      </button>
-    </div>
-  );
-}
-
 /* ---- Record a resale against a received shipment ---- */
-function RecordSaleSheet({ shipment, onClose, showToast, refresh }) {
+function RecordSaleSheet({ shipment, expenses = [], onClose, showToast, refresh }) {
   const open = !!shipment;
-  const [salesLines, setSalesLines] = React.useState([{ unit: "Can", quantity: "", price: "" }]);
+  const [saleLines, setSaleLines] = React.useState([{ cans: "", price: "" }]);
   const [expLines, setExpLines] = React.useState([]);
   const [saving, setSaving] = React.useState(false);
+  React.useEffect(() => { if (open) { setSaleLines([{ cans: "", price: "" }]); setExpLines([]); } }, [open, shipment]);
 
-  React.useEffect(() => {
-    if (open) {
-      setSalesLines([{ unit: "Can", quantity: "", price: "" }]);
-      setExpLines([]);
-    }
-  }, [open, shipment]);
+  const finance = shipment ? DATA.shipmentFinance(shipment, expenses) : null;
+  const totalCans = shipment ? Number(shipment.cans) || 0 : 0;
+  const existingSaleTotal = shipment ? Number(shipment.saleTotal) || 0 : 0;
+  const existingAvgPrice = shipment ? Number(shipment.salePricePerCan) || 0 : 0;
+  const existingSoldCans = existingSaleTotal > 0 && existingAvgPrice > 0 ? existingSaleTotal / existingAvgPrice : 0;
+  const remainingCans = Math.max(0, totalCans - existingSoldCans);
 
-  const cans = shipment ? shipment.cans : 0;
-  
-  const totalCansSold = salesLines.reduce((sum, line) => {
-    const qty = Number(line.quantity) || 0;
-    const factor = DATA.TO_CANS[line.unit] || 1;
-    return sum + (qty * factor);
-  }, 0);
+  const updateSaleLine = (i, key, value) => setSaleLines(saleLines.map((line, idx) => idx === i ? { ...line, [key]: value } : line));
+  const addSaleLine = () => setSaleLines([...saleLines, { cans: "", price: "" }]);
+  const removeSaleLine = (i) => setSaleLines(saleLines.length === 1 ? [{ cans: "", price: "" }] : saleLines.filter((_, idx) => idx !== i));
 
-  const totalRevenue = salesLines.reduce((sum, line) => {
-    const qty = Number(line.quantity) || 0;
-    const price = Number(line.price) || 0;
-    return sum + (qty * price);
-  }, 0);
-
-  const remainingCans = cans - totalCansSold;
-  const opsCost = expLines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
-  const grandTotal = shipment ? shipment.grandTotal : 0;
-  // Net profit = resale revenue − product cost − operations costs entered below.
-  const profit = totalRevenue - grandTotal - opsCost;
-  const remainingColor = remainingCans < 0 ? "var(--danger)" : "var(--text-2)";
-
-  const valid = salesLines.length > 0 && 
-    salesLines.every(l => (Number(l.quantity) || 0) > 0 && (Number(l.price) || 0) > 0) &&
-    totalCansSold <= cans;
+  const newSoldCans = saleLines.reduce((sum, line) => sum + (Number(line.cans) || 0), 0);
+  const newSaleTotal = saleLines.reduce((sum, line) => sum + ((Number(line.cans) || 0) * (Number(line.price) || 0)), 0);
+  const newDistributionCosts = expLines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
+  const aggregateSoldCans = existingSoldCans + newSoldCans;
+  const aggregateSaleTotal = existingSaleTotal + newSaleTotal;
+  const aggregateAvgPrice = aggregateSoldCans > 0 ? aggregateSaleTotal / aggregateSoldCans : 0;
+  const productGain = aggregateSaleTotal - (finance ? finance.productTotal : 0);
+  const netGain = aggregateSaleTotal - (finance ? finance.productTotal + finance.extraCosts : 0) - newDistributionCosts;
+  const soldOver = newSoldCans > remainingCans;
+  const valid = newSoldCans > 0 && newSaleTotal > 0 && !soldOver;
 
   const save = async () => {
     setSaving(true);
     try {
-      const avgPrice = totalCansSold > 0 ? totalRevenue / totalCansSold : 0;
-      await DB.shipments.recordSale(shipment.id, { salePricePerCan: avgPrice, saleTotal: totalRevenue });
-      
-      // Write each sale line to running sales
-      for (const l of salesLines) {
-        const qty = Number(l.quantity) || 0;
-        const price = Number(l.price) || 0;
-        if (qty > 0 && price > 0) {
-          const lineCans = qty * DATA.TO_CANS[l.unit];
-          const linePricePerCan = price / DATA.TO_CANS[l.unit];
-          await DB.sales.insert({
-            quantityCases: lineCans / DATA.TO_CANS.Case,
-            cans: lineCans,
-            pricePerCan: linePricePerCan,
-          });
-        }
-      }
-      
-      await insertExpenseLines(expLines, "Clenny", shipment.id);
+      await DB.shipments.recordSale(shipment.id, { salePricePerCan: aggregateAvgPrice, saleTotal: aggregateSaleTotal });
+      await insertExpenseLines(expLines, "Clenny", shipment.id, DATA.EXPENSE_KINDS.DISTRIBUTION);
       await refresh();
-      showToast("Sales recorded successfully");
+      showToast("Sale recorded");
       onClose();
-    } catch (e) {
-      showToast("Couldn't save — check connection");
-    }
+    } catch (e) { showToast("Couldn't save — check connection"); }
     setSaving(false);
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title="Record sale" icon="dollar">
-      {shipment && (
+    <Sheet open={open} onClose={onClose} title={existingSaleTotal > 0 ? "Add sale" : "Record sale"} icon="dollar">
+      {shipment && finance && (
         <>
           <div className="review-card mb16">
             <ReviewRow k="Shipment" v={`${shipment.brand} · ${boxWord(shipment.boxes)}`} />
-            <ReviewRow k="Total Shipment Cans" v={fmt(cans)} />
-            <ReviewRow k="Cost (grand total)" v={money(shipment.grandTotal)} />
+            <ReviewRow k="Total cans" v={fmt(totalCans)} />
+            {existingSoldCans > 0 && <ReviewRow k="Already sold" v={`${fmt(existingSoldCans)} cans · ${money(existingSaleTotal)}`} />}
+            <ReviewRow k="Available" v={fmt(remainingCans)} />
+            <ReviewRow k="Product funded" v={money(finance.productTotal)} />
           </div>
 
           <div className="field mb16">
-            <label className="label">Sales Entries</label>
-            <SaleLines lines={salesLines} setLines={setSalesLines} />
-          </div>
-
-          <div className="review-card mb16">
-            <ReviewRow k="Total Cans Sold" v={`${fmt(totalCansSold)} of ${fmt(cans)}`} />
-            <ReviewRow 
-              k="Cans Remaining" 
-              v={<span style={{ color: remainingColor, fontWeight: remainingCans < 0 ? "bold" : "normal" }}>{fmt(remainingCans)}</span>} 
-            />
-            <ReviewRow k="Total Revenue" v={money(totalRevenue, 2)} />
-            <ReviewRow k="Product cost (grand total)" v={`-${money(grandTotal)}`} />
-            {opsCost > 0 && <ReviewRow k="Operations cost (billed to Clenny)" v={`-${money(opsCost, 2)}`} />}
-            <div className="review-row total">
-              <span className="rk">{profit >= 0 ? "Net Profit" : "Net Loss"}</span>
-              <span className="rv" style={{ color: profit >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(profit)}</span>
+            <label className="label">Sale batches</label>
+            <div className="sale-lines">
+              {saleLines.map((line, i) => (
+                <div key={i} className="sale-line">
+                  <input className="input" type="number" inputMode="decimal" min="0" step="any" placeholder="Cans sold"
+                    value={line.cans} onChange={e => updateSaleLine(i, "cans", e.target.value)} autoFocus={i === 0} />
+                  <div className="bignum-wrap sale-price">
+                    <span className="bignum-cur" style={{ fontSize: 15 }}>$</span>
+                    <input className="bignum prefixed" style={{ height: 42, fontSize: 16, textAlign: "right", paddingRight: 10 }}
+                      type="number" inputMode="decimal" min="0" step="0.01" placeholder="Price / can"
+                      value={line.price} onChange={e => updateSaleLine(i, "price", e.target.value)} />
+                  </div>
+                  <button className="icon-btn" onClick={() => removeSaleLine(i)}><Icon name="x" size={15} className="faint" /></button>
+                </div>
+              ))}
             </div>
+            <button className="btn btn-sm btn-ghost" style={{ alignSelf: "flex-start" }} onClick={addSaleLine}>
+              <Icon name="plus" size={13} />Add sale line
+            </button>
           </div>
 
-          {/* ---- Separate operations cost section ---- */}
+          {(newSoldCans > 0 || existingSaleTotal > 0) && (
+            <div className="review-card mb16">
+              {newSoldCans > 0 && <ReviewRow k={`${fmt(newSoldCans)} cans in this sale`} v={money(newSaleTotal)} />}
+              <ReviewRow k="Total sold" v={`${fmt(aggregateSoldCans)} cans · ${money(aggregateSaleTotal)}`} />
+              <ReviewRow k="Avg sale price" v={money(aggregateAvgPrice, 2)} />
+              <ReviewRow k="Product gain" v={money(productGain)} />
+              <div className="review-row total">
+                <span className="rk">{netGain >= 0 ? "Net gain after costs" : "Net loss after costs"}</span>
+                <span className="rv" style={{ color: netGain >= 0 ? "var(--pos)" : "var(--danger)" }}>{money(netGain)}</span>
+              </div>
+              {soldOver && <div className="split-warning" style={{ padding: "0 16px 13px" }}>This sale is more than the available cans.</div>}
+            </div>
+          )}
+
           <div className="field mb16">
-            <label className="label">Cost of operations (optional · billed to Clenny)</label>
-            <div className="step-hint" style={{ marginBottom: 10, fontSize: 12 }}>Add expenses for gas, delivery, transportation, etc. These are separate from product costs.</div>
-            <ExpenseLines lines={expLines} setLines={setExpLines} categories={["Gas", "Delivery", "Transportation", "Storage", "Other"]} />
+            <label className="label">Distribution costs (optional · paid by Clenny unless changed)</label>
+            <ExpenseLines lines={expLines} setLines={setExpLines} defaultPartner="Clenny" categories={["Gas", "Delivery", "Transportation", "Storage", "Other"]} />
           </div>
 
-          <button className="btn btn-primary" style={{ width: "100%", height: 48 }} onClick={save} disabled={!valid || saving}>
-            <Icon name="check" size={15} />{saving ? "Saving…" : "Record Sale"}
-          </button>
+          <div className="sheet-actions">
+            <button className="btn btn-primary" style={{ width: "100%", height: 48 }} onClick={save} disabled={!valid || saving}>
+              <Icon name="check" size={15} />{saving ? "Saving…" : (existingSaleTotal > 0 ? "Add Sale" : "Record Sale")}
+            </button>
+          </div>
         </>
       )}
     </Sheet>
   );
 }
-
 /* ---- Shipments list (tab) ---- */
-function Shipments({ shipments, loading, go, role, showToast, refresh }) {
+function Shipments({ shipments, expenses = [], loading, go, role, showToast, refresh }) {
   const [filter, setFilter] = React.useState("all");
   const [sellFor, setSellFor] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
@@ -370,7 +418,7 @@ function Shipments({ shipments, loading, go, role, showToast, refresh }) {
       </div>
 
       {loading ? <SkeletonList count={5} /> :
-        filtered.length > 0 ? filtered.map(s => <ShipmentCard key={s.id} s={s} onSell={setSellFor} onReceive={receive} onReport={openIssue} busy={busy} role={role} />) : (
+        filtered.length > 0 ? filtered.map(s => <ShipmentCard key={s.id} s={s} expenses={expenses} onSell={setSellFor} onReceive={receive} onReport={openIssue} busy={busy} role={role} />) : (
           <div className="empty">
             <Icon name="send" size={30} />
             <div className="empty-title">No shipments {filter !== "all" ? `(${filter})` : "yet"}</div>
@@ -383,7 +431,7 @@ function Shipments({ shipments, loading, go, role, showToast, refresh }) {
           <>
             <div className="review-card mb16">
               <ReviewRow k="Shipment" v={`${issueFor.brand} · ${boxWord(issueFor.boxes)}`} />
-              <ReviewRow k="Value" v={money(issueFor.grandTotal)} />
+              <ReviewRow k="Product total" v={money(DATA.shipmentFinance(issueFor, expenses).productTotal)} />
             </div>
             <div className="field mb16">
               <label className="label">What's wrong? (e.g. 2 cans damaged)</label>
@@ -396,7 +444,7 @@ function Shipments({ shipments, loading, go, role, showToast, refresh }) {
         )}
       </Sheet>
 
-      <RecordSaleSheet shipment={sellFor} onClose={() => setSellFor(null)} showToast={showToast} refresh={refresh} />
+      <RecordSaleSheet shipment={sellFor} expenses={expenses} onClose={() => setSellFor(null)} showToast={showToast} refresh={refresh} />
 
       <div className="m-foot">© {new Date().getFullYear()} Clenny Minor · All Rights Reserved</div>
     </div>
@@ -407,40 +455,69 @@ function Shipments({ shipments, loading, go, role, showToast, refresh }) {
 function NewShipment({ go, showToast, refresh, role }) {
   const [step, setStep] = React.useState(1);
   const [brand, setBrand] = React.useState("");
-  const [boxes, setBoxes] = React.useState("");
-  const [cases, setCases] = React.useState("");
-  const [rolls, setRolls] = React.useState("");
-  const [cans,  setCans]  = React.useState("");
+  const [qty, setQty] = React.useState({ boxes: "", cases: "", rolls: "", cans: "" });
+  const [split, setSplit] = React.useState({ partner: role && role.name ? role.name : "Clanny", unit: "rolls", amount: "" });
   const [canPrice, setCanPrice] = React.useState("");
-  const [miscCost, setMiscCost] = React.useState("");
-  const [miscDesc, setMiscDesc] = React.useState("");
   const [expLines, setExpLines] = React.useState([]);
   const [saving, setSaving] = React.useState(false);
 
-  // Boxes / Cases / Rolls / Cans are all editable and kept in sync via total cans.
-  const totalCans = Number(cans) || 0;
-  const u = {
-    boxes: totalCans / DATA.TO_CANS.Box,
-    cases: totalCans / DATA.TO_CANS.Case,
-    rolls: totalCans / DATA.TO_CANS.Roll,
-    cans:  totalCans,
+  const num = (v) => Number(v) || 0;
+  const formatQty = (n) => n ? String(Number(n.toFixed(4))) : "";
+  const setUnit = (unit, value) => {
+    const n = num(value);
+    const next = { boxes: "", cases: "", rolls: "", cans: "" };
+    if (value !== "") {
+      if (unit === "boxes") {
+        next.boxes = value; next.cases = formatQty(n * DATA.BOX_TO.Case); next.rolls = formatQty(n * DATA.BOX_TO.Roll); next.cans = formatQty(n * DATA.BOX_TO.Can);
+      } else if (unit === "cases") {
+        next.boxes = formatQty(n / DATA.BOX_TO.Case); next.cases = value; next.rolls = formatQty(n * DATA.CASE_TO.Roll); next.cans = formatQty(n * DATA.CASE_TO.Can);
+      } else if (unit === "rolls") {
+        next.boxes = formatQty(n / DATA.BOX_TO.Roll); next.cases = formatQty(n / DATA.CASE_TO.Roll); next.rolls = value; next.cans = formatQty(n * DATA.ROLL_TO.Can);
+      } else if (unit === "cans") {
+        next.boxes = formatQty(n / DATA.BOX_TO.Can); next.cases = formatQty(n / DATA.CASE_TO.Can); next.rolls = formatQty(n / DATA.ROLL_TO.Can); next.cans = value;
+      }
+    }
+    setQty(next);
   };
-  // Edit any unit → set that field to the raw text, derive the other three.
-  const applyUnit = (unit, raw) => {
-    const total = (Number(raw) || 0) * (DATA.TO_CANS[unit] || 1);
-    const t = (n) => { const x = Number(n); return x ? String(+x.toFixed(4)) : ""; };
-    setBoxes(unit === "Box"  ? raw : t(total / DATA.TO_CANS.Box));
-    setCases(unit === "Case" ? raw : t(total / DATA.TO_CANS.Case));
-    setRolls(unit === "Roll" ? raw : t(total / DATA.TO_CANS.Roll));
-    setCans (unit === "Can"  ? raw : t(total));
+  const u = { boxes: num(qty.boxes), cases: num(qty.cases), rolls: num(qty.rolls), cans: num(qty.cans) };
+  const splitToCans = (unit, amount) => {
+    const n = num(amount);
+    if (unit === "boxes") return n * DATA.TO_CANS.Box;
+    if (unit === "cases") return n * DATA.TO_CANS.Case;
+    if (unit === "rolls") return n * DATA.TO_CANS.Roll;
+    return n;
+  };
+  const splitCans = split.amount === "" ? 0 : splitToCans(split.unit, split.amount);
+  const splitOver = splitCans > u.cans;
+  const remainingCans = Math.max(0, u.cans - splitCans);
+  const otherPartner = split.partner === "Clanny" ? "Clenny" : "Clanny";
+  const splitSummary = {
+    totalCans: u.cans,
+    canPrice: Number(canPrice) || 0,
+    primaryCans: splitCans,
+    primaryRolls: splitCans / DATA.TO_CANS.Roll,
+    primaryValue: splitCans * (Number(canPrice) || 0),
+    remainingCans,
+    remainingRolls: remainingCans / DATA.TO_CANS.Roll,
+    remainingValue: remainingCans * (Number(canPrice) || 0),
+    otherPartner,
+    over: splitOver,
   };
   const lad = DATA.priceLadder(canPrice);
   const subtotal = u.cans * (Number(canPrice) || 0);
-  const grandTotal = subtotal + (Number(miscCost) || 0);
+  const shipmentCosts = expLines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
+  const paidBy = expLines.reduce((acc, l) => {
+    const partner = l.partner || "Clanny";
+    acc[partner] = (acc[partner] || 0) + (Number(l.amount) || 0);
+    return acc;
+  }, { Clanny: 0, Clenny: 0 });
+  const allInTotal = subtotal + shipmentCosts;
+  const grandTotal = subtotal;
 
   const canNext =
-    step === 1 ? (brand && totalCans > 0) :
-    step === 2 ? (Number(canPrice) > 0) : true;
+    step === 1 ? (brand && u.cans > 0) :
+    step === 2 ? (split.amount !== "" && !splitOver) :
+    step === 3 ? (Number(canPrice) > 0) : true;
 
   const submit = async () => {
     setSaving(true);
@@ -448,10 +525,11 @@ function NewShipment({ go, showToast, refresh, role }) {
       const created = await DB.shipments.insert({
         brand, boxes: u.boxes, cases: u.cases, rolls: u.rolls, cans: u.cans,
         pricePerCan: Number(canPrice) || 0, subtotal,
-        miscCost: Number(miscCost) || 0, miscDesc,
+        miscCost: 0, miscDesc: "",
         grandTotal, sender: "Clanny", receiver: "Clenny", status: "pending",
       });
-      await insertExpenseLines(expLines, "Clanny", created && created.id);
+      await insertProductFunding(created && created.id, split, splitSummary);
+      await insertExpenseLines(expLines, "Clanny", created && created.id, DATA.EXPENSE_KINDS.SHIPMENT);
       await refresh();
       showToast("Shipment sent to Clenny");
       go("shipments");
@@ -468,16 +546,16 @@ function NewShipment({ go, showToast, refresh, role }) {
           <Icon name="chevL" size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <Progress value={(step / 4) * 100} />
+          <Progress value={(step / 5) * 100} />
         </div>
-        <span className="faint mono" style={{ fontSize: 12 }}>{step}/4</span>
+        <span className="faint mono" style={{ fontSize: 12 }}>{step}/5</span>
       </div>
 
       {step === 1 && (
         <div className="step-card" key="s1">
           <div className="steplabel">Step 1 · Brand & Quantity</div>
-          <div className="step-q">What are you sending?</div>
-          <div className="step-hint">Pick a brand, then enter the amount — boxes, cases, rolls and cans all stay in sync.</div>
+          <div className="step-q">What product is coming?</div>
+          <div className="step-hint">Pick a brand, then enter the total shipment quantity in any unit.</div>
 
           <div className="choice-row mb20">
             {DATA.BRANDS.map(b => (
@@ -488,27 +566,29 @@ function NewShipment({ go, showToast, refresh, role }) {
             ))}
           </div>
 
-          <div className="field">
-            <label className="label">How many boxes are you sending?</label>
-            <input className="bignum" type="number" inputMode="decimal" min="0" step="any" placeholder="0"
-              value={boxes} onChange={e => applyUnit("Box", e.target.value)} />
-          </div>
-
-          <div className="step-hint" style={{ marginTop: 12, marginBottom: 2 }}>Sending less than a box? Enter cases, rolls or cans:</div>
-          <div className="calc-grid" style={{ marginTop: 8 }}>
-            <UnitCell k={<span><span className="uq uq-case" /> Cases</span>} unit="Case" value={cases} onChange={applyUnit} />
-            <UnitCell k={<span><span className="uq uq-roll" /> Rolls</span>} unit="Roll" value={rolls} onChange={applyUnit} />
-            <UnitCell k={<span><span className="uq uq-can" /> Cans</span>} unit="Can" value={cans} onChange={applyUnit} accent />
-            <Cell k="Per box" v="540 cans" />
+          <div className="calc-grid editable-units">
+            <EditableUnitCell label="Boxes" marker="uq-box" value={qty.boxes} onChange={v => setUnit("boxes", v)} />
+            <EditableUnitCell label="Cases" marker="uq-case" value={qty.cases} onChange={v => setUnit("cases", v)} />
+            <EditableUnitCell label="Rolls" marker="uq-roll" value={qty.rolls} onChange={v => setUnit("rolls", v)} />
+            <EditableUnitCell label="Cans" marker="uq-can" value={qty.cans} onChange={v => setUnit("cans", v)} accent />
           </div>
         </div>
       )}
 
       {step === 2 && (
         <div className="step-card" key="s2">
-          <div className="steplabel">Step 2 · Pricing</div>
-          <div className="step-q">How much is each can?</div>
-          <div className="step-hint">We'll work out roll, case, box and the subtotal automatically.</div>
+          <div className="steplabel">Step 2 · Product Funding</div>
+          <div className="step-q">Who paid for the product?</div>
+          <div className="step-hint">Enter the amount one person paid for. The remaining product is assigned to the other person.</div>
+          <SplitInput split={split} setSplit={setSplit} splitSummary={splitSummary} />
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="step-card" key="s3">
+          <div className="steplabel">Step 3 · Product Price</div>
+          <div className="step-q">What was the product price?</div>
+          <div className="step-hint">This calculates the product purchase total and each person's product funding amount.</div>
 
           <div className="field">
             <label className="label">Price per can</label>
@@ -528,46 +608,41 @@ function NewShipment({ go, showToast, refresh, role }) {
                 <Cell k={`${fmt(u.cans)} cans`} v={money(subtotal)} accent />
               </div>
               <div className="review-row total" style={{ borderRadius: 12, marginTop: 12, border: "1px solid var(--accent-line)" }}>
-                <span className="rk">Subtotal</span><span className="rv">{money(subtotal)}</span>
+                <span className="rk">Product total</span><span className="rv">{money(subtotal)}</span>
               </div>
+              <SplitInput split={split} setSplit={setSplit} splitSummary={splitSummary} />
             </>
           )}
         </div>
       )}
 
-      {step === 3 && (
-        <div className="step-card" key="s3">
-          <div className="steplabel">Step 3 · Overhead & Operations Costs</div>
-          <div className="step-q">Any extra costs?</div>
-          <div className="step-hint">These are separate from product cost — shipping, freight, handling, fuel, etc. Leave blank to skip.</div>
-
-          <div className="field mb16">
-            <label className="label">Overhead cost amount</label>
-            <div className="bignum-wrap">
-              <span className="bignum-cur">$</span>
-              <input className="bignum prefixed" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00"
-                value={miscCost} onChange={e => setMiscCost(e.target.value)} />
-            </div>
-          </div>
-          <div className="field mb16">
-            <label className="label">Overhead description</label>
-            <input className="input" style={{ height: 46, fontSize: 15 }} placeholder="e.g. Freight"
-              value={miscDesc} onChange={e => setMiscDesc(e.target.value)} />
-          </div>
+      {step === 4 && (
+        <div className="step-card" key="s4">
+          <div className="steplabel">Step 4 · Extra Shipment Costs</div>
+          <div className="step-q">Who paid extra costs?</div>
+          <div className="step-hint">Keep shipping, handling, gas, and freight separate from the product purchase.</div>
 
           <div className="field">
-            <label className="label">Operations expenses (optional · billed to Clanny)</label>
-            <div className="step-hint" style={{ marginBottom: 10, fontSize: 12 }}>Separate operating costs like fuel, pickup travel, port fees. These are tracked independently from product pricing.</div>
-            <ExpenseLines lines={expLines} setLines={setExpLines} categories={["Freight", "Pickup travel", "Fuel", "Port fees", "Loading", "Other"]} />
+            <label className="label">Extra shipment costs</label>
+            <ExpenseLines lines={expLines} setLines={setExpLines} defaultPartner={role && role.name ? role.name : "Clanny"}
+              categories={["Shipping", "Handling", "Freight", "Gas", "Port fees", "Loading", "Other"]} />
+          </div>
+
+          <div className="review-card mt20">
+            <ReviewRow k="Product total" v={money(subtotal)} />
+            <ReviewRow k="Clanny extra costs" v={money(paidBy.Clanny || 0)} />
+            <ReviewRow k="Clenny extra costs" v={money(paidBy.Clenny || 0)} />
+            <ReviewRow k="Extra costs" v={money(shipmentCosts)} />
+            <ReviewRow k="All-in total" v={money(allInTotal)} total />
           </div>
         </div>
       )}
 
-      {step === 4 && (
-        <div className="step-card" key="s4">
-          <div className="steplabel">Step 4 · Review</div>
+      {step === 5 && (
+        <div className="step-card" key="s5">
+          <div className="steplabel">Step 5 · Review</div>
           <div className="step-q">Ready to send?</div>
-          <div className="step-hint">From <strong>Clanny</strong> to <strong>Clenny</strong>. Confirm the details below.</div>
+          <div className="step-hint">Confirm the product funding and extra costs before saving the shipment.</div>
 
           <div className="review-card">
             <ReviewRow k="Brand" v={brand} />
@@ -575,45 +650,23 @@ function NewShipment({ go, showToast, refresh, role }) {
             <ReviewRow k="Cases" v={fmt(u.cases)} />
             <ReviewRow k="Rolls" v={fmt(u.rolls)} />
             <ReviewRow k="Cans" v={fmt(u.cans)} />
+            <ReviewRow k={`${split.partner} paid for`} v={`${fmt(splitSummary.primaryRolls)} rolls · ${money(splitSummary.primaryValue)}`} />
+            <ReviewRow k={`${splitSummary.otherPartner} paid for`} v={`${fmt(splitSummary.remainingRolls)} rolls · ${money(splitSummary.remainingValue)}`} />
             <ReviewRow k="Price / can" v={money(Number(canPrice) || 0, 2)} />
-            <ReviewRow k="Subtotal" v={money(subtotal)} />
+            <ReviewRow k="Product total" v={money(subtotal)} />
+            <ReviewRow k="Clanny extra costs" v={money(paidBy.Clanny || 0)} />
+            <ReviewRow k="Clenny extra costs" v={money(paidBy.Clenny || 0)} />
+            <ReviewRow k="Extra costs" v={money(shipmentCosts)} />
+            <ReviewRow k="All-in total" v={money(allInTotal)} total />
           </div>
-
-          {Number(miscCost) > 0 && (
-            <div className="review-card mt12">
-              <div className="review-row" style={{ fontWeight: 600, color: "var(--text-2)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                <span className="rk">Overhead (included in total)</span><span className="rv"></span>
-              </div>
-              <ReviewRow k={miscDesc || "Overhead cost"} v={money(Number(miscCost))} />
-            </div>
-          )}
-
-          <div className="review-card mt12">
-            <ReviewRow k="Grand total" v={money(grandTotal)} total />
-          </div>
-
-          {expLines.some(l => Number(l.amount) > 0) && (
-            <div className="review-card mt12">
-              <div className="review-row" style={{ fontWeight: 600, color: "var(--text-2)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                <span className="rk">Operations expenses</span><span className="rv"></span>
-              </div>
-              {expLines.filter(l => Number(l.amount) > 0).map((l, i) => (
-                <ReviewRow key={i} k={l.category} v={money(Number(l.amount))} />
-              ))}
-              <div className="step-hint" style={{ fontSize: 11, marginTop: 8 }}>
-                Billed to Clanny · tracked separately, not part of the shipment grand total.
-              </div>
-            </div>
-          )}
         </div>
       )}
-
       <div className="sticky-actions">
         {step > 1 && <button className="btn" onClick={() => setStep(step - 1)} disabled={saving}>Back</button>}
-        {step < 4 && <button className="btn btn-primary" onClick={() => setStep(step + 1)} disabled={!canNext}>
+        {step < 5 && <button className="btn btn-primary" onClick={() => setStep(step + 1)} disabled={!canNext}>
           Continue <Icon name="arrowR" size={15} />
         </button>}
-        {step === 4 && <button className="btn btn-primary" onClick={submit} disabled={saving}>
+        {step === 5 && <button className="btn btn-primary" onClick={submit} disabled={saving}>
           <Icon name="send" size={15} />{saving ? "Sending…" : "Send Shipment"}
         </button>}
       </div>
@@ -621,4 +674,4 @@ function NewShipment({ go, showToast, refresh, role }) {
   );
 }
 
-Object.assign(window, { Shipments, NewShipment, ShipmentCard, Cell, ReviewRow });
+Object.assign(window, { Shipments, NewShipment, ShipmentCard, Cell, EditableUnitCell, SplitInput, ReviewRow });
