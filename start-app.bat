@@ -5,8 +5,8 @@ if exist node_modules (
   rmdir /s /q node_modules
   if errorlevel 1 goto failed
 )
-echo Installing packages (this takes 2-3 minutes)...
-call npm.cmd install --legacy-peer-deps
+echo Installing exact locked packages (this takes 2-3 minutes)...
+call npm.cmd ci --legacy-peer-deps
 if errorlevel 1 goto failed
 echo Starting app...
 set EXPO_NO_DEPENDENCY_VALIDATION=1
