@@ -1,10 +1,13 @@
 @echo off
 cd /d "%~dp0ios-app"
-if not exist node_modules (
-  echo Installing packages (this takes 2-3 minutes)...
-  call npm.cmd install --legacy-peer-deps
+echo Cleaning old install...
+if exist node_modules (
+  rmdir /s /q node_modules
   if errorlevel 1 goto failed
 )
+echo Installing packages (this takes 2-3 minutes)...
+call npm.cmd install --legacy-peer-deps
+if errorlevel 1 goto failed
 echo Starting app...
 set EXPO_NO_DEPENDENCY_VALIDATION=1
 call npx.cmd expo start --clear
