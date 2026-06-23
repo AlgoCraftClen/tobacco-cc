@@ -10,6 +10,8 @@ import Sheet from '../../src/components/Sheet';
 import { useToast } from '../../src/components/Toast';
 
 type RoleName = 'Clanny' | 'Clenny';
+type TabScreenOptionsArgs = { route: { name: string } };
+type TabBarIconArgs = { color: string; focused: boolean };
 
 const TABS = [
   { key: 'dashboard', label: 'Home',     icon: 'home'    },
@@ -49,7 +51,7 @@ export default function TabsLayout() {
   return (
     <>
       <Tabs
-        screenOptions={({ route }) => {
+        screenOptions={({ route }: TabScreenOptionsArgs) => {
           const tab = TABS.find(t => t.key === route.name);
           return {
             headerShown: true,
@@ -79,7 +81,7 @@ export default function TabsLayout() {
             tabBarActiveTintColor: colors.accent,
             tabBarInactiveTintColor: colors.text4,
             tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: -2 },
-            tabBarIcon: ({ color, focused }) => (
+            tabBarIcon: ({ color, focused }: TabBarIconArgs) => (
               <TabBarIcon name={tab?.icon || 'grid'} color={color} focused={focused} />
             ),
           };

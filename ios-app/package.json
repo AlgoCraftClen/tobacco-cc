@@ -3,9 +3,9 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start",
-    "ios": "expo start --ios",
-    "android": "expo start --android"
+    "start": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start",
+    "ios": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --ios",
+    "android": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --android"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
