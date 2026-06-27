@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "CC Tobacco",
-    "slug": "tobacco-cc",
+    "slug": "cc-tobacco",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "tobacco-cc",
+    "scheme": "cc-tobacco",
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash.png",
@@ -19,18 +19,6 @@
         "NSCameraUsageDescription": "Camera access for scanning",
         "UIBackgroundModes": []
       }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0a0a0a"
-      },
-      "package": "com.ccminor.tobacco"
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
