@@ -4,8 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start",
-    "ios": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --ios",
-    "android": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --android"
+    "ios": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
