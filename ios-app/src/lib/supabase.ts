@@ -8,6 +8,11 @@ const SUPABASE_ANON_KEY =
 
 export const SB = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
+  global: {
+    headers: {
+      'x-cc-app-secret': 'CC_TOBACCO_SECRET_2026',
+    },
+  },
 });
 
 /* ---- Row mappers ---- */
