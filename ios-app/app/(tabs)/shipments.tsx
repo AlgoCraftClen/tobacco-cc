@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useData } from '../../src/hooks/useAppData';
-import { shipmentFinance, money, fmt, fmtDate, relTime, boxWord, type Shipment, type Expense } from '../../src/lib/data';
+import {
+  deriveUnits, computeShipmentSettlement, shipmentFinance, money, fmt, fmtDate, boxWord,
+  type Shipment, type Expense,
+} from '../../src/lib/data';
 import { DB } from '../../src/lib/supabase';
 import { colors, radius } from '../../src/theme';
 import Icon from '../../src/components/Icon';
@@ -24,11 +27,15 @@ function ShipmentCard({ s, expenses, onSell, onReceive, onReport, busy, roleName
   roleName: string;
 }) {
   const [open, setOpen] = useState(false);
-  const finance = shipmentFinance(s, expenses);
-  const sold = (s.saleTotal || 0) > 0;
-  const net = finance.netProfit;
+  const { sales } = useData();
+  const units = deriveUnits(s);
+  const settlement = computeShipmentSettlement(s, expenses, sales);
+  const sold = settlement.grossSalesToDate > 0;
+  const net = settlement.currentProfit;
   const canSell = s.status === 'received' && roleName === 'Clenny';
-  const canReceive = s.status === 'pending' && roleName === 'Clenny';
+  const canReceive = (s.status === 'pending' || s.status === 'in_transit') && roleName === 'Clenny';
+  const productCost = units.cases * (s.costPerCase || 0);
+  const projectedRevenue = units.totalCans * (s.targetSalePricePerCan || 0);
 
   return (
     <View style={styles.card}>
@@ -41,11 +48,11 @@ function ShipmentCard({ s, expenses, onSell, onReceive, onReport, busy, roleName
             <Text style={styles.cardTitle}>{s.brand}</Text>
             <ShipBadge status={s.status} />
           </View>
-          <Text style={styles.cardSub}>{boxWord(s.boxes)} · {fmt(s.cans)} cans · {fmtDate(s.createdAt)}</Text>
+          <Text style={styles.cardSub}>{boxWord(s.boxes)} · {fmt(units.totalCans)} cans · {fmtDate(s.createdAt)}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.cardAmt}>{money(finance.productTotal)}</Text>
-          <Text style={styles.cardAmtSub}>product</Text>
+          <Text style={styles.cardAmt}>{money(productCost)}</Text>
+          <Text style={styles.cardAmtSub}>product cost</Text>
         </View>
         <Icon name={open ? 'chevD' : 'chevR'} size={15} color={colors.text4} />
       </TouchableOpacity>
@@ -53,7 +60,7 @@ function ShipmentCard({ s, expenses, onSell, onReceive, onReport, busy, roleName
       {open && (
         <View style={styles.cardBody}>
           <View style={styles.calcGrid}>
-            {[['Boxes', fmt(s.boxes)], ['Cases', fmt(s.cases)], ['Rolls', fmt(s.rolls)], ['Cans', fmt(s.cans)]].map(([k, v]) => (
+            {[['Boxes', fmt(s.boxes)], ['Cases', fmt(units.cases)], ['Rolls', fmt(units.rolls)], ['Cans', fmt(units.totalCans)]].map(([k, v]) => (
               <View key={k} style={styles.calcCell}>
                 <Text style={styles.calcK}>{k}</Text>
                 <Text style={styles.calcV}>{v}</Text>
@@ -61,21 +68,20 @@ function ShipmentCard({ s, expenses, onSell, onReceive, onReport, busy, roleName
             ))}
           </View>
           <View style={styles.reviewCard}>
-            <ReviewRow k="Price / can" v={money(s.pricePerCan, 2)} />
-            <ReviewRow k="Product total" v={money(finance.productTotal)} />
-            <ReviewRow k="Clanny funded" v={`${fmt(finance.funding.Clanny.rolls)} rolls · ${money(finance.funding.Clanny.amount)}`} />
-            <ReviewRow k="Clenny funded" v={`${fmt(finance.funding.Clenny.rolls)} rolls · ${money(finance.funding.Clenny.amount)}`} />
-            {finance.shipmentCosts > 0 && <ReviewRow k="Extra shipment costs" v={money(finance.shipmentCosts)} />}
-            {finance.distributionCosts > 0 && <ReviewRow k="Distribution costs" v={money(finance.distributionCosts)} />}
-            <ReviewRow k="All-in total" v={money(finance.allInTotal)} total />
+            <ReviewRow k="Cost / case" v={money(s.costPerCase, 2)} />
+            <ReviewRow k="Product cost" v={money(productCost)} />
+            <ReviewRow k="Target price / can" v={money(s.targetSalePricePerCan, 2)} />
+            <ReviewRow k="Projected revenue" v={money(projectedRevenue)} />
+            <ReviewRow k="Clenny invest" v={money(s.clennyProductInvest)} />
+            <ReviewRow k="Clanny invest" v={money(s.clannyProductInvest)} />
+            <ReviewRow k="All-in product cost" v={money(productCost)} total />
           </View>
           {sold && (
             <View style={[styles.reviewCard, { marginTop: 10 }]}>
-              <ReviewRow k="Sold for" v={money(s.saleTotal)} />
-              <ReviewRow k="Avg sale price / can" v={money(s.salePricePerCan, 2)} />
-              <ReviewRow k="Clanny sale share" v={`${money(finance.revenueShare.Clanny)} · ${money(finance.productProfit.Clanny)} gain`} />
-              <ReviewRow k="Clenny sale share" v={`${money(finance.revenueShare.Clenny)} · ${money(finance.productProfit.Clenny)} gain`} />
-              <ReviewRow k={net >= 0 ? 'Net gain after costs' : 'Net loss after costs'} v={money(net)} total />
+              <ReviewRow k="Gross sales to date" v={money(settlement.grossSalesToDate)} />
+              <ReviewRow k="Inventory sold" v={`${fmt(settlement.inventorySoldCans)} cans`} />
+              <ReviewRow k="Inventory remaining" v={`${fmt(settlement.inventoryRemainingCans)} cans`} />
+              <ReviewRow k={net >= 0 ? 'Current profit' : 'Current loss'} v={money(net)} total />
             </View>
           )}
           {s.notes ? (
@@ -103,7 +109,7 @@ function ShipmentCard({ s, expenses, onSell, onReceive, onReport, busy, roleName
           ) : sold ? (
             <>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text3, fontSize: 12 }}>Sold for {money(s.saleTotal)}</Text>
+                <Text style={{ color: colors.text3, fontSize: 12 }}>Sold for {money(settlement.grossSalesToDate)}</Text>
                 <Text style={{ color: net >= 0 ? colors.pos : colors.danger, fontSize: 13, fontWeight: '700' }}>
                   {net >= 0 ? '+' : ''}{money(net)} net {net >= 0 ? 'gain' : 'loss'}
                 </Text>
@@ -153,6 +159,7 @@ export default function ShipmentsScreen() {
   const counts = {
     all: shipments.length,
     pending: shipments.filter(s => s.status === 'pending').length,
+    in_transit: shipments.filter(s => s.status === 'in_transit').length,
     received: shipments.filter(s => s.status === 'received').length,
     disputed: shipments.filter(s => s.status === 'disputed').length,
   };
@@ -168,7 +175,7 @@ export default function ShipmentsScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <View>
             <Text style={styles.pageTitle}>Shipments</Text>
-            <Text style={styles.pageDesc}>{counts.all} total · {counts.pending} pending</Text>
+            <Text style={styles.pageDesc}>{counts.all} total · {counts.pending} pending · {counts.in_transit} in transit</Text>
           </View>
           <TouchableOpacity style={styles.newBtn} onPress={() => router.push('/new-shipment')} activeOpacity={0.8}>
             <Icon name="plus" size={15} color="#fff" />
@@ -180,6 +187,7 @@ export default function ShipmentsScreen() {
           options={[
             { key: 'all', label: 'All', count: counts.all },
             { key: 'pending', label: 'Pending', count: counts.pending },
+            { key: 'in_transit', label: 'In Transit', count: counts.in_transit },
             { key: 'received', label: 'Received', count: counts.received },
             { key: 'disputed', label: 'Disputed', count: counts.disputed },
           ]}

@@ -12,7 +12,7 @@ import { colors, radius } from '../../src/theme';
 import Icon from '../../src/components/Icon';
 import Sheet from '../../src/components/Sheet';
 import Avatar from '../../src/components/Avatar';
-import { SegmentedControl, SkeletonList, EmptyState, ReviewRow, Field, BigInput, PartnerPick, BrandPick, Btn, SectionHeader } from '../../src/components/Ui';
+import { SegmentedControl, SkeletonList, EmptyState, ReviewRow, Field, BigInput, PartnerPick, BrandPick, Btn, SectionHeader, Input } from '../../src/components/Ui';
 import { useToast } from '../../src/components/Toast';
 
 function FundingCard({ row, shipment }: { row: Expense; shipment?: Shipment }) {
@@ -33,6 +33,35 @@ function FundingCard({ row, shipment }: { row: Expense; shipment?: Shipment }) {
         </View>
         <Text style={styles.cardAmt}>{money(row.amount)}</Text>
       </View>
+    </View>
+  );
+}
+
+function OperationsCard({ row, onToggle }: { row: Expense; onToggle: () => void }) {
+  const av = row.partner === 'Clanny' ? 'av-3' : 'av-1';
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHead}>
+        <Avatar name={row.partner} cls={av} size={42} />
+        <View style={styles.cardMain}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.cardTitle}>{row.category}</Text>
+            <View style={[styles.chip, row.approved && styles.chipApproved]}>
+              <Text style={[styles.chipText, row.approved && { color: colors.pos }]}>{row.approved ? 'Approved' : 'Pending'}</Text>
+            </View>
+          </View>
+          <Text style={styles.cardSub}>{row.partner} · {fmtDate(row.date || row.createdAt)}</Text>
+        </View>
+        <Text style={styles.cardAmt}>{money(row.amount)}</Text>
+        <TouchableOpacity onPress={onToggle} style={{ padding: 4 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Icon name={row.approved ? 'check' : 'x'} size={18} color={row.approved ? colors.pos : colors.text4} />
+        </TouchableOpacity>
+      </View>
+      {row.description ? (
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardFooterText}>{row.description}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -92,11 +121,92 @@ function AddPurchaseSheet({ open, onClose }: { open: boolean; onClose: () => voi
   );
 }
 
+function AddExpenseSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { refresh } = useData();
+  const { showToast } = useToast();
+  const [partner, setPartner] = useState('Clanny');
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('Operations');
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  });
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const categories = ['Shipping', 'Handling', 'Freight', 'Gas', 'Port fees', 'Loading', 'Operations', 'Other'];
+
+  React.useEffect(() => {
+    if (open) {
+      setPartner('Clanny');
+      setAmount('');
+      setCategory('Operations');
+      setDate(new Date().toISOString().split('T')[0]);
+      setDescription('');
+    }
+  }, [open]);
+
+  const valid = partner && Number(amount) > 0 && category && date;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await DB.expenses.insert({
+        partner,
+        amount: Number(amount) || 0,
+        category: category.toLowerCase(),
+        description,
+        date,
+        approved: false,
+        shipmentId: null,
+      });
+      await refresh();
+      showToast('Expense logged');
+      onClose();
+    } catch { showToast("Couldn't save — check connection"); }
+    setSaving(false);
+  };
+
+  return (
+    <Sheet open={open} onClose={onClose} title="Add expense" icon="wallet">
+      <PartnerPick partner={partner} setPartner={setPartner} label="Who paid?" />
+      <Field label="Category">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {categories.map(c => (
+            <TouchableOpacity
+              key={c}
+              style={[styles.catBtn, category === c && styles.catBtnActive]}
+              onPress={() => setCategory(c)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.catBtnText, category === c && { color: colors.accent }]}>{c}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Field>
+      <Field label="Date">
+        <Input value={date} onChange={setDate} placeholder="YYYY-MM-DD" />
+      </Field>
+      <Field label="Amount">
+        <BigInput value={amount} onChange={setAmount} prefix="$" placeholder="0.00" inputMode="decimal" />
+      </Field>
+      <Field label="Description (optional)">
+        <Input value={description} onChange={setDescription} placeholder="What was this for?" />
+      </Field>
+      <View style={{ height: 14 }} />
+      <Btn variant="primary" onPress={save} disabled={!valid || saving} fullWidth icon="check">
+        {saving ? 'Saving…' : 'Save Expense'}
+      </Btn>
+    </Sheet>
+  );
+}
+
 export default function PurchasesScreen() {
   const { purchases, shipments, expenses, loading, refresh } = useData();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [addOpen, setAddOpen] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
   const [scope, setScope] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -109,6 +219,22 @@ export default function PurchasesScreen() {
   const filteredPurchases = scope === 'all' ? purchases : purchases.filter(p => p.partner === scope);
   const fundingTotal = filteredFunding.reduce((s, r) => s + r.amount, 0);
   const olderTotal = filteredPurchases.reduce((s, p) => s + p.total, 0);
+
+  const operationsRows = expenses.filter(e => e.category === 'operations').sort((a, b) =>
+    new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  const filteredOps = scope === 'all' ? operationsRows : operationsRows.filter(r => r.partner === scope);
+  const opsTotal = filteredOps.reduce((s, r) => s + r.amount, 0);
+  const approvedOpsTotal = filteredOps.filter(e => e.approved).reduce((s, r) => s + r.amount, 0);
+
+  const toggleApproval = async (expense: Expense) => {
+    try {
+      await DB.expenses.update(expense.id, { approved: !expense.approved });
+      await refresh();
+      showToast(expense.approved ? 'Approval revoked' : 'Expense approved');
+    } catch {
+      showToast("Couldn't update — check connection");
+    }
+  };
 
   const removePurchase = (p: Purchase) => {
     Alert.alert('Remove purchase?', `${fmt(p.cans)} cans of ${p.brand} — ${money(p.total)}`, [
@@ -185,9 +311,31 @@ export default function PurchasesScreen() {
             </View>
           </>
         )}
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 14 }}>
+          <View>
+            <Text style={styles.pageTitle}>Operations</Text>
+            <Text style={styles.pageDesc}>{filteredOps.length} expense{filteredOps.length !== 1 ? 's' : ''} · {money(approvedOpsTotal)} approved · {money(opsTotal)} total</Text>
+          </View>
+          <TouchableOpacity style={styles.addBtn} onPress={() => setExpenseOpen(true)} activeOpacity={0.8}>
+            <Icon name="plus" size={15} color="#fff" />
+            <Text style={styles.addBtnText}>Add Expense</Text>
+          </TouchableOpacity>
+        </View>
+
+        {filteredOps.length > 0 ? (
+          <View style={{ gap: 8 }}>
+            {filteredOps.map(row => (
+              <OperationsCard key={row.id} row={row} onToggle={() => toggleApproval(row)} />
+            ))}
+          </View>
+        ) : (
+          <EmptyState icon="wallet" title="No operations expenses" desc="Add an expense with category 'Operations'" />
+        )}
       </ScrollView>
 
       <AddPurchaseSheet open={addOpen} onClose={() => setAddOpen(false)} />
+      <AddExpenseSheet open={expenseOpen} onClose={() => setExpenseOpen(false)} />
     </View>
   );
 }
@@ -211,12 +359,29 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.text, fontSize: 14, fontWeight: '600' },
   cardSub: { color: colors.text3, fontSize: 12, marginTop: 2 },
   cardAmt: { color: colors.text, fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  cardFooter: {
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  cardFooterText: { color: colors.text3, fontSize: 12 },
   chip: {
     backgroundColor: colors.panel2, borderRadius: 5,
     paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: colors.border,
+  },
+  chipApproved: {
+    backgroundColor: colors.posBg,
+    borderColor: colors.pos,
   },
   chipText: { color: colors.text3, fontSize: 11, fontWeight: '500' },
   hintBox: { backgroundColor: colors.panel2, borderRadius: radius.sm, padding: 12, marginBottom: 16 },
   hintText: { color: colors.text3, fontSize: 12.5, lineHeight: 18 },
   reviewCard: { borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  catBtn: {
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.sm,
+    backgroundColor: colors.panel2, borderWidth: 1, borderColor: colors.border,
+  },
+  catBtnActive: { borderColor: colors.accentLine, backgroundColor: colors.accentSofter },
+  catBtnText: { color: colors.text2, fontSize: 13, fontWeight: '500' },
 });

@@ -4,8 +4,8 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useData } from '../../src/hooks/useAppData';
 import {
-  computePartnership, buildActivity, money, fmt, relTime, avOf,
-  type ActivityEvent, shipmentFinance,
+  deriveUnits, computeShipmentSettlement, computePartnership, buildActivity, money, fmt, relTime, avOf, boxWord,
+  type ActivityEvent, type Shipment, type Expense, type Sale,
 } from '../../src/lib/data';
 import { colors, radius, spacing } from '../../src/theme';
 import Icon from '../../src/components/Icon';
@@ -16,18 +16,20 @@ import { ShipBadge } from '../../src/components/Badge';
 function ActivityRow({ a }: { a: ActivityEvent }) {
   const kindColor: Record<string, string> = {
     sent:         colors.info,
+    in_transit:   colors.info,
     received:     colors.pos,
     disputed:     colors.danger,
     sold:         colors.pos,
     purchase:     colors.accent,
     funding:      colors.accent,
     distribution: colors.danger,
+    operations:   colors.danger,
     expense:      colors.danger,
     contribution: colors.accent,
   };
   const kindIcon: Record<string, string> = {
-    sent: 'send', received: 'check', disputed: 'alert', sold: 'dollar',
-    purchase: 'cart', funding: 'cart', distribution: 'truck', expense: 'wallet', contribution: 'dollar',
+    sent: 'send', in_transit: 'truck', received: 'check', disputed: 'alert', sold: 'dollar',
+    purchase: 'cart', funding: 'cart', distribution: 'truck', operations: 'wallet', expense: 'wallet', contribution: 'dollar',
   };
   const c = kindColor[a.kind] || colors.text3;
   const ic = kindIcon[a.kind] || 'clock';
@@ -50,40 +52,95 @@ function ActivityRow({ a }: { a: ActivityEvent }) {
   );
 }
 
-function PartnerCard({ name, roleLabel, pos }: {
-  name: string;
-  roleLabel: string;
-  pos: {
-    productFunded: number; revenueShare: number; productProfit: number;
-    costsPaid: number; shipmentCosts: number; distributionCosts: number; net: number;
-  };
+function SettlementCard({ shipment, expenses, sales }: {
+  shipment: Shipment;
+  expenses: Expense[];
+  sales: Sale[];
 }) {
-  const [open, setOpen] = useState(false);
-  const isGain = pos.net >= 0;
+  const settlement = computeShipmentSettlement(shipment, expenses, sales);
+  const units = deriveUnits(shipment);
+  const check = settlement.projectedRevenue - (settlement.clennyProjectedPayout + settlement.clannyProjectedPayout);
+  const isBalanced = Math.abs(check) < 0.01;
+
   return (
-    <View style={styles.listCard}>
-      <TouchableOpacity style={styles.lcHead} onPress={() => setOpen(o => !o)} activeOpacity={0.7}>
-        <Avatar name={name} cls={avOf(name)} size={40} />
-        <View style={styles.lcMain}>
-          <Text style={styles.lcTitle}>{name}</Text>
-          <Text style={styles.lcSub}>{roleLabel}</Text>
+    <View style={{ gap: 10 }}>
+      <View style={[styles.summaryCard, { borderColor: colors.accentLine, backgroundColor: colors.accentSofter }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={styles.summaryLabel}>Selected shipment</Text>
+          <ShipBadge status={shipment.status} />
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[styles.lcAmt, { color: isGain ? colors.pos : colors.danger }]}>{money(pos.net)}</Text>
-          <Text style={styles.lcAmtSub}>net gain</Text>
-        </View>
-        <Icon name={open ? 'chevD' : 'chevR'} size={15} color={colors.text4} />
-      </TouchableOpacity>
-      {open && (
+        <Text style={styles.summaryDesc}>{shipment.brand} · {boxWord(shipment.boxes)} · {fmt(units.totalCans)} cans</Text>
+      </View>
+
+      <View style={styles.metricsGrid}>
+        <MetricCard icon="cart" iconBg={colors.accentSoft} iconColor={colors.accent} value={money(settlement.productCost)} label="Product Cost" />
+        <MetricCard icon="dollar" iconBg={colors.posBg} iconColor={colors.pos} value={money(settlement.projectedRevenue)} label="Projected Revenue" />
+        <MetricCard icon="trendUp" iconBg={settlement.projectedProfit >= 0 ? colors.posBg : colors.dangerBg} iconColor={settlement.projectedProfit >= 0 ? colors.pos : colors.danger} value={money(settlement.projectedProfit)} label={settlement.projectedProfit >= 0 ? 'Projected Profit' : 'Projected Loss'} />
+        <MetricCard icon="box" iconBg={colors.infoBg} iconColor={colors.info} value={fmt(settlement.inventoryRemainingCans)} label="Inventory Left" />
+      </View>
+
+      <View style={styles.listCard}>
+        <TouchableOpacity style={styles.lcHead} activeOpacity={0.7}>
+          <Avatar name="Clenny" cls="av-1" size={40} />
+          <View style={styles.lcMain}>
+            <Text style={styles.lcTitle}>Clenny</Text>
+            <Text style={styles.lcSub}>Receiver · sells locally</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.lcAmt}>{money(settlement.clennyProjectedPayout)}</Text>
+            <Text style={styles.lcAmtSub}>projected payout</Text>
+          </View>
+        </TouchableOpacity>
         <View style={styles.lcBody}>
-          <KV k="Product funded" v={money(pos.productFunded)} />
-          <KV k="Revenue share" v={money(pos.revenueShare)} />
-          <KV k="Product gain" v={money(pos.productProfit)} color={pos.productProfit >= 0 ? colors.pos : colors.danger} />
-          <KV k="Shipment costs paid" v={money(pos.shipmentCosts)} />
-          <KV k="Distribution costs" v={money(pos.distributionCosts)} />
-          <KV k="Net gain after costs" v={money(pos.net)} color={isGain ? colors.pos : colors.danger} bold />
+          <KV k="Product invest" v={money(settlement.clennyInvest)} />
+          <KV k="Approved ops" v={money(settlement.clennyApprovedOps)} />
+          <KV k="Contribution basis" v={money(settlement.clennyContributionBasis)} />
+          <KV k="Contribution %" v={`${(settlement.clennyContributionPct * 100).toFixed(1)}%`} />
+          <KV k="Projected profit share" v={money(settlement.clennyProjectedProfitShare)} />
+          <KV k="Cash collected" v={money(settlement.cashCollectedByClenny)} />
         </View>
-      )}
+      </View>
+
+      <View style={styles.listCard}>
+        <TouchableOpacity style={styles.lcHead} activeOpacity={0.7}>
+          <Avatar name="Clanny" cls="av-3" size={40} />
+          <View style={styles.lcMain}>
+            <Text style={styles.lcTitle}>Clanny</Text>
+            <Text style={styles.lcSub}>Sender · funds and ships</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.lcAmt}>{money(settlement.clannyProjectedPayout)}</Text>
+            <Text style={styles.lcAmtSub}>projected payout</Text>
+          </View>
+        </TouchableOpacity>
+        <View style={styles.lcBody}>
+          <KV k="Product invest" v={money(settlement.clannyInvest)} />
+          <KV k="Approved ops" v={money(settlement.clannyApprovedOps)} />
+          <KV k="Contribution basis" v={money(settlement.clannyContributionBasis)} />
+          <KV k="Contribution %" v={`${(settlement.clannyContributionPct * 100).toFixed(1)}%`} />
+          <KV k="Projected profit share" v={money(settlement.clannyProjectedProfitShare)} />
+          <KV k="Cash collected" v={money(settlement.cashCollectedByClanny)} />
+        </View>
+      </View>
+
+      <View style={[styles.summaryCard, { borderColor: isBalanced ? colors.pos : colors.danger, backgroundColor: isBalanced ? colors.posBg : colors.dangerBg }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={styles.summaryLabel}>{isBalanced ? 'Formulas balance ✓' : 'Check mismatch'}</Text>
+          <Text style={[styles.summaryAmt, { color: isBalanced ? colors.pos : colors.danger }]}>{money(check, 2)}</Text>
+        </View>
+        <Text style={styles.summaryDesc}>
+          Projected revenue − (Clenny payout + Clanny payout) should be $0
+        </Text>
+      </View>
+
+      <View style={styles.listCard}>
+        <View style={styles.lcBody}>
+          <KV k="Gross sales to date" v={money(settlement.grossSalesToDate)} />
+          <KV k="Current profit" v={money(settlement.currentProfit)} color={settlement.currentProfit >= 0 ? colors.pos : colors.danger} bold />
+          <KV k="Inventory sold" v={`${fmt(settlement.inventorySoldCans)} cans`} />
+          <KV k="Inventory remaining" v={`${fmt(settlement.inventoryRemainingCans)} cans`} bold />
+        </View>
+      </View>
     </View>
   );
 }
@@ -98,9 +155,10 @@ function KV({ k, v, color, bold }: { k: string; v: string; color?: string; bold?
 }
 
 export default function DashboardScreen() {
-  const { shipments, purchases, expenses, contributions, loading, refresh } = useData();
+  const { shipments, purchases, expenses, contributions, sales, loading, refresh } = useData();
   const [seg, setSeg] = useState('overview');
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   const onRefresh = async () => {
@@ -109,13 +167,14 @@ export default function DashboardScreen() {
     setRefreshing(false);
   };
 
-  const pt = computePartnership(shipments, purchases, expenses, contributions);
+  const selectedShipment = shipments.find(s => s.id === selectedShipmentId) || shipments[0] || null;
+
+  const pt = computePartnership(shipments, purchases, expenses, contributions, sales);
   const sent = shipments.length;
   const pending = shipments.filter(s => s.status === 'pending').length;
+  const inTransit = shipments.filter(s => s.status === 'in_transit').length;
   const received = shipments.filter(s => s.status === 'received').length;
-  const value = pt.productTotal + pt.manualPurchases;
   const activity = buildActivity(shipments, purchases, expenses, contributions).slice(0, 15);
-  const lossy = pt.netProfit < 0;
 
   return (
     <ScrollView
@@ -125,7 +184,7 @@ export default function DashboardScreen() {
       showsVerticalScrollIndicator={false}
     >
       <SegmentedControl
-        options={[{ key: 'overview', label: 'Overview' }, { key: 'partnership', label: 'P&L' }, { key: 'activity', label: 'Activity' }]}
+        options={[{ key: 'overview', label: 'Overview' }, { key: 'settlement', label: 'Settlement' }, { key: 'activity', label: 'Activity' }]}
         value={seg}
         onChange={setSeg}
       />
@@ -137,67 +196,80 @@ export default function DashboardScreen() {
           {loading ? <SkeletonList count={4} /> : (
             <View style={styles.metricsGrid}>
               <MetricCard icon="send" iconBg={colors.accentSoft} iconColor={colors.accent} value={fmt(sent)} label="Shipments" onPress={() => router.push('/(tabs)/shipments')} />
-              <MetricCard icon="cart" iconBg={colors.posBg} iconColor={colors.pos} value={'$' + fmt(value)} label="Product Funded" onPress={() => router.push('/(tabs)/purchases')} />
-              <MetricCard icon="clock" iconBg={colors.warnBg} iconColor={colors.warn} value={fmt(pending)} label="Pending" onPress={() => router.push('/(tabs)/receive')} />
-              <MetricCard icon="check" iconBg={colors.infoBg} iconColor={colors.info} value={fmt(received)} label="Received" onPress={() => router.push('/(tabs)/history')} />
+              <MetricCard icon="dollar" iconBg={colors.posBg} iconColor={colors.pos} value={'$' + fmt(pt.totalProjectedRevenue)} label="Projected Revenue" />
+              <MetricCard icon="clock" iconBg={colors.warnBg} iconColor={colors.warn} value={fmt(pending + inTransit)} label="Pending / In Transit" onPress={() => router.push('/(tabs)/receive')} />
+              <MetricCard icon="check" iconBg={colors.infoBg} iconColor={colors.info} value={fmt(received)} label="Received" onPress={() => router.push('/(tabs)/shipments')} />
             </View>
           )}
-          <TouchableOpacity
-            style={[styles.netCard, { borderColor: lossy ? colors.danger : colors.accentLine, backgroundColor: lossy ? colors.dangerBg : colors.accentSofter }]}
-            onPress={() => setSeg('partnership')}
-            activeOpacity={0.8}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.netLabel}>{lossy ? 'Net loss' : 'Net gain'}</Text>
-              <Text style={styles.netDesc}>
-                {money(pt.revenue)} sales · {money(pt.productTotal + pt.manualPurchases)} product · {money(pt.extraCosts)} costs
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={[styles.netAmt, { color: lossy ? colors.danger : colors.pos }]}>{money(pt.netProfit)}</Text>
-              <Icon name="chevR" size={15} color={colors.text4} />
-            </View>
-          </TouchableOpacity>
+
+          {loading ? <SkeletonList count={2} /> : (
+            <>
+              <View style={[styles.netCard, { borderColor: pt.totalProjectedProfit >= 0 ? colors.accentLine : colors.danger, backgroundColor: pt.totalProjectedProfit >= 0 ? colors.accentSofter : colors.dangerBg }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.netLabel}>{pt.totalProjectedProfit >= 0 ? 'Projected profit' : 'Projected loss'}</Text>
+                  <Text style={styles.netDesc}>
+                    {money(pt.totalProjectedRevenue)} projected revenue · {money(pt.totalProductCost)} product cost · {money(pt.totalOps)} ops
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.netAmt, { color: pt.totalProjectedProfit >= 0 ? colors.pos : colors.danger }]}>{money(pt.totalProjectedProfit)}</Text>
+                  <Icon name="chevR" size={15} color={colors.text4} />
+                </View>
+              </View>
+
+              <View style={[styles.summaryCard, { borderColor: colors.border, backgroundColor: colors.panel }]}>
+                <Text style={styles.summaryLabel}>Global position</Text>
+                <View style={{ marginTop: 10, gap: 6 }}>
+                  <KV k="Gross sales to date" v={money(pt.totalGrossSales)} />
+                  <KV k="Current profit" v={money(pt.totalCurrentProfit)} color={pt.totalCurrentProfit >= 0 ? colors.pos : colors.danger} bold />
+                  <KV k="Clenny net position" v={money(pt.settlementNetPosition.Clenny)} color={pt.settlementNetPosition.Clenny >= 0 ? colors.pos : colors.danger} />
+                  <KV k="Clanny net position" v={money(pt.settlementNetPosition.Clanny)} color={pt.settlementNetPosition.Clanny >= 0 ? colors.pos : colors.danger} />
+                  <KV k="Inventory remaining" v={`${fmt(pt.totalInventoryRemaining)} cans`} />
+                </View>
+              </View>
+            </>
+          )}
         </>
       )}
 
-      {seg === 'partnership' && (
-        loading ? <SkeletonList count={3} /> : (
+      {seg === 'settlement' && (
+        loading ? <SkeletonList count={5} /> : (
           <View>
-            <View style={styles.metricsGrid}>
-              <MetricCard icon="dollar" iconBg={colors.posBg} iconColor={colors.pos} value={'$' + fmt(pt.revenue)} label="Sales Revenue" />
-              <MetricCard icon="cart" iconBg={colors.accentSoft} iconColor={colors.accent} value={'$' + fmt(pt.productTotal + pt.manualPurchases)} label="Product Funded" />
-              <MetricCard icon="wallet" iconBg={colors.dangerBg} iconColor={colors.danger} value={'$' + fmt(pt.extraCosts)} label="Extra Costs" />
-              <MetricCard icon="trendUp" iconBg={lossy ? colors.dangerBg : colors.posBg} iconColor={lossy ? colors.danger : colors.pos} value={'$' + fmt(pt.netProfit)} label={lossy ? 'Net Loss' : 'Net Gain'} />
-            </View>
+            {shipments.length > 0 ? (
+              <>
+                <Text style={styles.shipmentPickerLabel}>Select a shipment</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {shipments.map(s => {
+                      const active = selectedShipment?.id === s.id;
+                      return (
+                        <TouchableOpacity
+                          key={s.id}
+                          style={[styles.shipmentChip, active && styles.shipmentChipActive]}
+                          onPress={() => setSelectedShipmentId(s.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.shipmentChipText, active && { color: colors.accent, fontWeight: '700' }]}>
+                            {s.brand} · {boxWord(s.boxes)}
+                          </Text>
+                          <ShipBadge status={s.status} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
 
-            <View style={[styles.summaryCard, { borderColor: lossy ? colors.danger : colors.accentLine, backgroundColor: lossy ? colors.dangerBg : colors.accentSofter }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={styles.summaryLabel}>{lossy ? 'Net loss after all costs' : 'Net gain after all costs'}</Text>
-                <Text style={[styles.summaryAmt, { color: lossy ? colors.danger : colors.pos }]}>{money(pt.netProfit)}</Text>
-              </View>
-              <Text style={styles.summaryDesc}>Sales revenue − product funding − shipment/distribution costs</Text>
-            </View>
-
-            <SectionHeader title="Each partner's position" />
-            <View style={{ gap: 10 }}>
-              {(['Clanny', 'Clenny'] as const).map(name => (
-                <PartnerCard
-                  key={name}
-                  name={name}
-                  roleLabel={name === 'Clanny' ? 'Sender · funds and ships' : 'Receiver · sells locally'}
-                  pos={{
-                    productFunded: pt.productFunded[name],
-                    revenueShare: pt.revenueShare[name],
-                    productProfit: pt.productProfit[name],
-                    costsPaid: pt.costsPaid[name],
-                    shipmentCosts: pt.shipmentCostsPaid[name],
-                    distributionCosts: pt.distributionCostsPaid[name],
-                    net: pt.netGain[name],
-                  }}
-                />
-              ))}
-            </View>
+                {selectedShipment && (
+                  <SettlementCard
+                    shipment={selectedShipment}
+                    expenses={expenses}
+                    sales={sales}
+                  />
+                )}
+              </>
+            ) : (
+              <EmptyState icon="send" title="No shipments yet" desc="Create a shipment to view settlement" />
+            )}
           </View>
         )
       )}
@@ -347,5 +419,30 @@ const styles = StyleSheet.create({
     color: colors.text4,
     fontSize: 10,
     marginTop: 1,
+  },
+  shipmentPickerLabel: {
+    color: colors.text2,
+    fontSize: 12.5,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  shipmentChip: {
+    backgroundColor: colors.panel,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 10,
+    gap: 6,
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  shipmentChipActive: {
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSofter,
+  },
+  shipmentChipText: {
+    color: colors.text,
+    fontSize: 12.5,
+    fontWeight: '500',
   },
 });

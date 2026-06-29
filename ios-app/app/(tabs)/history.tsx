@@ -12,12 +12,14 @@ import { useToast } from '../../src/components/Toast';
 
 const KIND_ICON: Record<string, { icon: string; bg: string; color: string }> = {
   sent:         { icon: 'send',    bg: 'rgba(56,189,248,0.12)',   color: '#38bdf8' },
+  in_transit:   { icon: 'truck',   bg: 'rgba(82,113,255,0.1)',    color: '#5271ff' },
   received:     { icon: 'check',   bg: 'rgba(34,197,94,0.12)',    color: '#22c55e' },
   disputed:     { icon: 'alert',   bg: 'rgba(239,68,68,0.12)',    color: '#ef4444' },
   sold:         { icon: 'dollar',  bg: 'rgba(34,197,94,0.12)',    color: '#22c55e' },
   purchase:     { icon: 'cart',    bg: 'rgba(82,113,255,0.1)',    color: '#5271ff' },
   funding:      { icon: 'cart',    bg: 'rgba(82,113,255,0.1)',    color: '#5271ff' },
   distribution: { icon: 'truck',   bg: 'rgba(239,68,68,0.12)',    color: '#ef4444' },
+  operations:   { icon: 'wallet',  bg: 'rgba(239,68,68,0.12)',    color: '#ef4444' },
   expense:      { icon: 'wallet',  bg: 'rgba(239,68,68,0.12)',    color: '#ef4444' },
   contribution: { icon: 'dollar',  bg: 'rgba(82,113,255,0.1)',    color: '#5271ff' },
 };
@@ -46,14 +48,14 @@ function HistoryRow({ a }: { a: ActivityEvent }) {
 }
 
 export default function HistoryScreen() {
-  const { shipments, purchases, expenses, contributions, loading, refresh } = useData();
+  const { shipments, purchases, expenses, contributions, sales, loading, refresh } = useData();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [scope, setScope] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
   const [clearing, setClearing] = useState(false);
 
-  const SHIP_KINDS = ['sent', 'received', 'disputed', 'sold'];
+  const SHIP_KINDS = ['sent', 'received', 'disputed', 'sold', 'in_transit'];
   const all = buildActivity(shipments, purchases, expenses, contributions);
   const events = scope === 'all' ? all
     : scope === 'shipments' ? all.filter(e => SHIP_KINDS.includes(e.kind))

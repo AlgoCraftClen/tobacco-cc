@@ -221,6 +221,10 @@ export const DB = {
       const { error } = await SB.from('expenses').delete().eq('id', id);
       if (error) { console.error('expenses.delete:', error); throw error; }
     },
+    update: async (id: string, fields: Record<string, unknown>) => {
+      const { error } = await SB.from('expenses').update(fields).eq('id', id);
+      if (error) { console.error('expenses.update:', error); throw error; }
+    },
   },
   sales: {
     list: async (): Promise<Sale[]> => {

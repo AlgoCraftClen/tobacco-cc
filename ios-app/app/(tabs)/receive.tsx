@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useData } from '../../src/hooks/useAppData';
-import { shipmentFinance, money, fmt, fmtDate, boxWord, type Shipment } from '../../src/lib/data';
+import { deriveUnits, shipmentFinance, money, fmt, fmtDate, boxWord, type Shipment } from '../../src/lib/data';
 import { DB } from '../../src/lib/supabase';
 import { colors, radius } from '../../src/theme';
 import Icon from '../../src/components/Icon';
@@ -23,6 +23,7 @@ function ReceiveCard({ s, onConfirm, onReport, busy, roleName }: {
   const { expenses } = useData();
   const [open, setOpen] = useState(false);
   const finance = shipmentFinance(s, expenses);
+  const units = deriveUnits(s);
   const showActions = roleName === 'Clenny';
 
   return (
@@ -36,7 +37,7 @@ function ReceiveCard({ s, onConfirm, onReport, busy, roleName }: {
             <Text style={styles.cardTitle}>{s.brand}</Text>
             <ShipBadge status={s.status} />
           </View>
-          <Text style={styles.cardSub}>{boxWord(s.boxes)} · {fmt(s.cans)} cans · from {s.sender}</Text>
+          <Text style={styles.cardSub}>{boxWord(s.boxes)} · {fmt(units.totalCans)} cans · from Clanny</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={styles.cardAmt}>{money(finance.productTotal)}</Text>
@@ -48,7 +49,7 @@ function ReceiveCard({ s, onConfirm, onReport, busy, roleName }: {
       {open && (
         <View style={styles.cardBody}>
           <View style={styles.calcGrid}>
-            {[['Boxes', fmt(s.boxes)], ['Cases', fmt(s.cases)], ['Rolls', fmt(s.rolls)], ['Cans', fmt(s.cans)]].map(([k, v]) => (
+            {[['Boxes', fmt(s.boxes)], ['Cases', fmt(units.cases)], ['Rolls', fmt(units.rolls)], ['Cans', fmt(units.totalCans)]].map(([k, v]) => (
               <View key={k} style={styles.calcCell}>
                 <Text style={styles.calcK}>{k}</Text>
                 <Text style={styles.calcV}>{v}</Text>
@@ -56,10 +57,10 @@ function ReceiveCard({ s, onConfirm, onReport, busy, roleName }: {
             ))}
           </View>
           <View style={styles.reviewCard}>
-            <ReviewRow k="Price / can" v={money(s.pricePerCan, 2)} />
+            <ReviewRow k="Cost / case" v={money(s.costPerCase, 2)} />
             <ReviewRow k="Product total" v={money(finance.productTotal)} />
-            <ReviewRow k="Clanny funded" v={`${fmt(finance.funding.Clanny.rolls)} rolls · ${money(finance.funding.Clanny.amount)}`} />
-            <ReviewRow k="Clenny funded" v={`${fmt(finance.funding.Clenny.rolls)} rolls · ${money(finance.funding.Clenny.amount)}`} />
+            <ReviewRow k="Clenny invest" v={money(s.clennyProductInvest)} />
+            <ReviewRow k="Clanny invest" v={money(s.clannyProductInvest)} />
             {finance.shipmentCosts > 0 && <ReviewRow k="Extra shipment costs" v={money(finance.shipmentCosts)} />}
             <ReviewRow k="All-in total" v={money(finance.allInTotal)} total />
           </View>
@@ -88,7 +89,7 @@ export default function ReceiveScreen() {
 
   useEffect(() => { getRole().then(r => { if (r) setRoleName(r); }); }, []);
 
-  const pending = shipments.filter(s => s.status === 'pending');
+  const pending = shipments.filter(s => s.status === 'pending' || s.status === 'in_transit');
 
   const onRefresh = async () => { setRefreshing(true); await refresh(); setRefreshing(false); };
 

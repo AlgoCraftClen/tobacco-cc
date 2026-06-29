@@ -29,9 +29,10 @@ export default function Badge({ kind = 'neutral', children }: BadgeProps) {
 
 export function ShipBadge({ status }: { status: string }) {
   const map: Record<string, { kind: BadgeKind; label: string }> = {
-    pending:  { kind: 'warn',    label: 'Pending' },
-    received: { kind: 'pos',     label: 'Received' },
-    disputed: { kind: 'danger',  label: 'Disputed' },
+    pending:    { kind: 'warn',    label: 'Pending' },
+    in_transit: { kind: 'info',    label: 'In Transit' },
+    received:   { kind: 'pos',     label: 'Received' },
+    disputed:   { kind: 'danger',  label: 'Disputed' },
   };
   const s = map[status] || map.pending;
   return <Badge kind={s.kind}>{s.label}</Badge>;
