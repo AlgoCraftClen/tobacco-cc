@@ -1,13 +1,13 @@
 import { useState, useCallback, useEffect, createContext, useContext } from 'react';
 import { DB } from '../lib/supabase';
-import type { Shipment, Purchase, Expense, Contribution, SaleEntry } from '../lib/data';
+import type { Shipment, Purchase, Expense, Contribution, Sale } from '../lib/data';
 
 export interface AppData {
   shipments: Shipment[];
   purchases: Purchase[];
   expenses: Expense[];
   contributions: Contribution[];
-  sales: SaleEntry[];
+  sales: Sale[];
   loading: boolean;
   refresh: () => Promise<void>;
 }
@@ -17,7 +17,7 @@ export function useAppData(): AppData {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [contributions, setContributions] = useState<Contribution[]>([]);
-  const [sales, setSales] = useState<SaleEntry[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
