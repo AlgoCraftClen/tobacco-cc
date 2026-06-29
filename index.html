@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CC Tobacco Tracker">
+  <meta name="theme-color" content="#0f172a">
+  <title>CC Tobacco Tracker</title>
+  <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ0MgVG9iYWNjbyBUcmFja2VyIiwic2hvcnRfbmFtZSI6IkNDIFRyYWNrZXIiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzBmMTcyYSIsInRoZW1lX2NvbG9yIjoiIzBmMTcyYSJ9">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg: #0f172a; --surface: #1e293b; --surface-2: #334155;
+      --text: #f1f5f9; --text-2: #94a3b8; --accent: #3b82f6; --accent-2: #8b5cf6;
+      --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+      --clenny: #06b6d4; --clanny: #ec4899;
+    }
+    html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; -webkit-tap-highlight-color: transparent; }
+    #app { display: flex; flex-direction: column; height: 100%; max-width: 480px; margin: 0 auto; position: relative; }
+    .safe-top { padding-top: env(safe-area-inset-top); }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+    .app-header { background: rgba(15,23,42,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--surface-2); padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top)); position: sticky; top: 0; z-index: 100; flex-shrink: 0; }
+    .app-header h1 { margin: 0; font-size: 17px; font-weight: 700; text-align: center; letter-spacing: -0.3px; }
+    .app-header .subtitle { text-align: center; font-size: 12px; color: var(--text-2); margin-top: 2px; }
+    .header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .header-select { background: var(--surface); color: var(--text); border: 1px solid var(--surface-2); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 600; flex: 1; }
+
+    .content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; padding-bottom: 100px; }
+    .content::-webkit-scrollbar { display: none; }
+
+    .card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); }
+    .card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; color: var(--text-2); margin-bottom: 12px; letter-spacing: 0.5px; }
+    .card-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .card-row:last-child { border-bottom: none; }
+    .card-label { font-size: 14px; color: var(--text-2); }
+    .card-value { font-size: 15px; font-weight: 600; }
+    .card-value.accent { color: var(--accent); }
+    .card-value.success { color: var(--success); }
+    .card-value.danger { color: var(--danger); }
+    .card-value.clenny { color: var(--clenny); }
+    .card-value.clanny { color: var(--clanny); }
+
+    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
+    .metric-card { background: var(--surface); border-radius: 16px; padding: 16px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+    .metric-value { font-size: 28px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .metric-label { font-size: 12px; color: var(--text-2); font-weight: 500; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 20px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; color: white; background: var(--accent); width: 100%; margin-bottom: 8px; }
+    .btn:active { transform: scale(0.97); opacity: 0.8; }
+    .btn.secondary { background: var(--surface-2); color: var(--text); }
+    .btn.success { background: var(--success); }
+    .btn.danger { background: var(--danger); }
+    .btn.clenny { background: var(--clenny); }
+    .btn.clanny { background: var(--clanny); }
+    .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; }
+    .btn-row { display: flex; gap: 8px; }
+    .btn-row .btn { flex: 1; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input, .form-select { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--surface-2); background: var(--bg); color: var(--text); font-size: 15px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+    .form-input:focus, .form-select:focus { border-color: var(--accent); }
+    .form-input::placeholder { color: var(--text-2); opacity: 0.6; }
+    textarea.form-input { min-height: 80px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+    .list-item { background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); position: relative; }
+    .list-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .list-item-title { font-weight: 700; font-size: 15px; }
+    .list-item-amount { font-weight: 800; font-size: 16px; }
+    .list-item-amount.clenny { color: var(--clenny); }
+    .list-item-amount.clanny { color: var(--clanny); }
+    .list-item-meta { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+    .list-item-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-included { background: rgba(34,197,94,0.15); color: var(--success); }
+    .badge-excluded { background: rgba(239,68,68,0.15); color: var(--danger); }
+    .badge-paid { background: rgba(34,197,94,0.15); color: var(--success); }
+    .badge-unpaid { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .badge-planned { background: rgba(148,163,184,0.15); color: var(--text-2); }
+    .badge-transit { background: rgba(59,130,246,0.15); color: var(--accent); }
+    .badge-arrived { background: rgba(34,197,94,0.15); color: var(--success); }
+    .badge-soldout { background: rgba(236,72,153,0.15); color: var(--clanny); }
+    .badge-settled { background: rgba(139,92,246,0.15); color: var(--accent-2); }
+
+    .tab-bar { display: flex; background: rgba(15,23,42,0.9); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--surface-2); position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; padding-bottom: env(safe-area-inset-bottom); max-width: 480px; margin: 0 auto; }
+    .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 2px; background: none; border: none; color: var(--text-2); font-size: 10px; font-weight: 600; cursor: pointer; transition: color 0.2s; }
+    .tab-btn svg { width: 22px; height: 22px; margin-bottom: 2px; stroke-width: 2; }
+    .tab-btn.active { color: var(--accent); }
+    .tab-btn.active svg { stroke: var(--accent); }
+    .tab-btn svg { stroke: var(--text-2); fill: none; }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal-sheet { background: var(--surface); width: 100%; max-width: 480px; border-radius: 24px 24px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s ease; }
+    .modal-overlay.active .modal-sheet { transform: translateY(0); }
+    .modal-handle { width: 40px; height: 4px; background: var(--surface-2); border-radius: 2px; margin: 0 auto 16px; }
+    .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; text-align: center; }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text-2); }
+    .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; stroke: var(--text-2); opacity: 0.5; }
+    .empty-state p { font-size: 15px; margin-bottom: 20px; }
+
+    .partner-bar { display: flex; height: 28px; border-radius: 8px; overflow: hidden; margin: 8px 0; }
+    .partner-bar-clenny { background: var(--clenny); transition: width 0.5s ease; }
+    .partner-bar-clanny { background: var(--clanny); transition: width 0.5s ease; }
+    .partner-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-2); margin-top: 4px; }
+
+    .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); padding: 8px 0; }
+    .check-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+    .check-dot.fail { background: var(--danger); }
+
+    .rule-item { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .rule-item:last-child { border-bottom: none; }
+    .rule-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .rule-meaning { font-size: 13px; color: var(--text-2); margin-bottom: 4px; }
+    .rule-note { font-size: 12px; color: var(--text-2); font-style: italic; }
+
+    .ship-card { background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: border-color 0.2s; }
+    .ship-card:hover { border-color: var(--accent); }
+    .ship-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .ship-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .ship-card-title { font-weight: 700; font-size: 15px; }
+    .ship-card-meta { font-size: 13px; color: var(--text-2); }
+
+    .hide { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header safe-top">
+      <div class="header-row">
+        <select class="header-select" id="shipmentSelect" onchange="selectShipment(this.value)">
+          <option value="">Select shipment...</option>
+        </select>
+        <button class="btn btn-sm" style="width:auto;flex-shrink:0;" onclick="openShipmentModal()">+</button>
+      </div>
+    </header>
+
+    <div class="content" id="contentArea">
+      <div id="screen-dashboard" class="screen active">
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="dashTotalCans">0</div>
+            <div class="metric-label">Total Cans</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value accent" id="dashProjRevenue">$0</div>
+            <div class="metric-label">Projected Revenue</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value success" id="dashProjProfit">$0</div>
+            <div class="metric-label">Projected Profit</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="dashRemaining">0</div>
+            <div class="metric-label">Remaining Cans</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Active Shipment</div>
+          <div class="card-row"><span class="card-label">Shipment ID</span><span class="card-value" id="dashShipId">-</span></div>
+          <div class="card-row"><span class="card-label">Product</span><span class="card-value" id="dashProduct">-</span></div>
+          <div class="card-row"><span class="card-label">Status</span><span class="card-value" id="dashStatus">-</span></div>
+          <div class="card-row"><span class="card-label">Boxes</span><span class="card-value" id="dashBoxes">0</span></div>
+          <div class="card-row"><span class="card-label">Cases</span><span class="card-value" id="dashCases">0</span></div>
+          <div class="card-row"><span class="card-label">Rolls</span><span class="card-value" id="dashRolls">0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Partner Contributions</div>
+          <div class="partner-bar">
+            <div class="partner-bar-clenny" id="barClenny" style="width:0%"></div>
+            <div class="partner-bar-clanny" id="barClanny" style="width:0%"></div>
+          </div>
+          <div class="partner-legend">
+            <span id="legendClenny">Clenny 0%</span>
+            <span id="legendClanny">Clanny 0%</span>
+          </div>
+          <div class="card-row" style="margin-top:10px"><span class="card-label">Clenny Payout</span><span class="card-value clenny" id="dashClennyPayout">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Payout</span><span class="card-value clanny" id="dashClannyPayout">$0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Financial Health</div>
+          <div class="card-row"><span class="card-label">Product Cost</span><span class="card-value" id="dashProdCost">$0</span></div>
+          <div class="card-row"><span class="card-label">Ops Entered</span><span class="card-value" id="dashOpsEntered">$0</span></div>
+          <div class="card-row"><span class="card-label">Sales Entered</span><span class="card-value" id="dashSalesEntered">$0</span></div>
+          <div class="card-row"><span class="card-label">Current P/L</span><span class="card-value" id="dashCurrentPL">$0</span></div>
+          <div class="check-row"><div class="check-dot" id="checkDot1"></div><span id="checkText1">Formulas balanced</span></div>
+        </div>
+      </div>
+
+      <div id="screen-setup" class="screen">
+        <div class="card">
+          <div class="card-title">Shipment Details</div>
+          <div class="form-group"><label class="form-label">Shipment ID</label><input class="form-input" id="sShipId" placeholder="e.g. SHP-002"></div>
+          <div class="form-group"><label class="form-label">Product</label><input class="form-input" id="sProduct" placeholder="e.g. Copenhagen"></div>
+          <div class="form-group"><label class="form-label">Status</label>
+            <select class="form-select" id="sStatus">
+              <option>Planned</option><option>In Transit</option><option>Arrived</option><option>Sold Out</option><option>Settled</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="sNotes" placeholder="Expected arrival, special notes..."></textarea></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Inventory Math</div>
+          <div class="form-row-3">
+            <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" id="sBoxes" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Cases/Box</label><input class="form-input" type="number" id="sCasesPerBox" placeholder="6"></div>
+            <div class="form-group"><label class="form-label">Rolls/Case</label><input class="form-input" type="number" id="sRollsPerCase" placeholder="18"></div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label class="form-label">Cans/Roll</label><input class="form-input" type="number" id="sCansPerRoll" placeholder="5"></div>
+            <div class="form-group"><label class="form-label">Cost/Case ($)</label><input class="form-input" type="number" id="sCostPerCase" placeholder="608"></div>
+            <div class="form-group"><label class="form-label">Target Price/Can ($)</label><input class="form-input" type="number" id="sTargetPrice" placeholder="12"></div>
+          </div>
+          <div class="card-row" style="margin-top:8px"><span class="card-label">Cans/Case</span><span class="card-value" id="calcCansPerCase">0</span></div>
+          <div class="card-row"><span class="card-label">Cans/Box</span><span class="card-value" id="calcCansPerBox">0</span></div>
+          <div class="card-row"><span class="card-label">Cases Ordered</span><span class="card-value" id="calcCasesOrdered">0</span></div>
+          <div class="card-row"><span class="card-label">Rolls Ordered</span><span class="card-value" id="calcRollsOrdered">0</span></div>
+          <div class="card-row"><span class="card-label">Total Cans</span><span class="card-value accent" id="calcTotalCans">0</span></div>
+          <div class="card-row"><span class="card-label">Total Product Cost</span><span class="card-value" id="calcTotalCost">$0</span></div>
+          <div class="card-row"><span class="card-label">Projected Revenue</span><span class="card-value success" id="calcProjRevenue">$0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Partner Investments</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Clenny Invest ($)</label><input class="form-input" type="number" id="sClennyInvest" placeholder="501"></div>
+            <div class="form-group"><label class="form-label">Clanny Invest ($)</label><input class="form-input" type="number" id="sClannyInvest" placeholder="6795"></div>
+          </div>
+          <div class="check-row"><div class="check-dot" id="checkInvest"></div><span id="checkInvestText">Total = Product Cost</span></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn" onclick="saveSetup()">Save Shipment</button>
+          <button class="btn danger" onclick="deleteShipment()">Delete</button>
+        </div>
+      </div>
+
+      <div id="screen-ops" class="screen">
+        <div id="opsList"></div>
+        <button class="btn" onclick="openOpsModal()">+ Add Operation</button>
+      </div>
+
+      <div id="screen-sales" class="screen">
+        <div id="salesList"></div>
+        <button class="btn" onclick="openSalesModal()">+ Add Sale</button>
+      </div>
+
+      <div id="screen-settlement" class="screen">
+        <div class="card">
+          <div class="card-title">Investment Basis</div>
+          <div class="card-row"><span class="card-label">Product Cost</span><span class="card-value" id="setProdCost">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Product Invest</span><span class="card-value clenny" id="setClennyInvest">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Product Invest</span><span class="card-value clanny" id="setClannyInvest">$0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Approved Operations</div>
+          <div class="card-row"><span class="card-label">Clenny Approved Ops</span><span class="card-value clenny" id="setClennyOps">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Approved Ops</span><span class="card-value clanny" id="setClannyOps">$0</span></div>
+          <div class="card-row"><span class="card-label">Total Operations</span><span class="card-value" id="setTotalOps">$0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Contribution &amp; Payout</div>
+          <div class="card-row"><span class="card-label">Total Contribution Basis</span><span class="card-value" id="setTotalBasis">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Basis</span><span class="card-value clenny" id="setClennyBasis">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Basis</span><span class="card-value clanny" id="setClannyBasis">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Contribution %</span><span class="card-value clenny" id="setClennyPct">0%</span></div>
+          <div class="card-row"><span class="card-label">Clanny Contribution %</span><span class="card-value clanny" id="setClannyPct">0%</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Revenue &amp; Profit</div>
+          <div class="card-row"><span class="card-label">Gross Sales To Date</span><span class="card-value" id="setGrossSales">$0</span></div>
+          <div class="card-row"><span class="card-label">Projected Revenue</span><span class="card-value success" id="setProjRevenue">$0</span></div>
+          <div class="card-row"><span class="card-label">Projected Profit After Ops</span><span class="card-value success" id="setProjProfit">$0</span></div>
+          <div class="card-row"><span class="card-label">Current P/L Based On Sales</span><span class="card-value" id="setCurrentPL">$0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Projected Profit Share</div>
+          <div class="card-row"><span class="card-label">Clenny Projected Profit Share</span><span class="card-value clenny" id="setClennyProfitShare">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Projected Profit Share</span><span class="card-value clanny" id="setClannyProfitShare">$0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Projected Payouts</div>
+          <div class="card-row"><span class="card-label">Clenny Projected Payout</span><span class="card-value clenny" id="setClennyPayout">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Projected Payout</span><span class="card-value clanny" id="setClannyPayout">$0</span></div>
+          <div class="card-row"><span class="card-label">Total Projected Payout</span><span class="card-value accent" id="setTotalPayout">$0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Cash &amp; Inventory</div>
+          <div class="card-row"><span class="card-label">Cash Collected by Clenny</span><span class="card-value clenny" id="setCashClenny">$0</span></div>
+          <div class="card-row"><span class="card-label">Cash Collected by Clanny</span><span class="card-value clanny" id="setCashClanny">$0</span></div>
+          <div class="card-row"><span class="card-label">Inventory Sold (cans)</span><span class="card-value" id="setSoldCans">0</span></div>
+          <div class="card-row"><span class="card-label">Inventory Remaining</span><span class="card-value" id="setRemainingCans">0</span></div>
+          <div class="card-row"><span class="card-label">Remaining Value @ Target</span><span class="card-value" id="setRemainingValue">$0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Balances</div>
+          <div class="card-row"><span class="card-label">Clenny Balance After Sales</span><span class="card-value clenny" id="setClennyBal">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Balance After Sales</span><span class="card-value clanny" id="setClannyBal">$0</span></div>
+          <div class="check-row"><div class="check-dot" id="setCheck1"></div><span id="setCheckText1">Payouts match projected revenue</span></div>
+          <div class="check-row"><div class="check-dot" id="setCheck2"></div><span id="setCheckText2">Contribution basis balanced</span></div>
+        </div>
+      </div>
+
+      <div id="screen-shipments" class="screen">
+        <div id="shipmentsList"></div>
+      </div>
+
+      <div id="screen-rules" class="screen">
+        <div class="card">
+          <div class="card-title">Business Rules</div>
+          <div class="rule-item">
+            <div class="rule-title">First shipment excluded</div>
+            <div class="rule-meaning">The proof-of-concept loss is not carried forward.</div>
+            <div class="rule-note">Starting clean with SHP-002.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Clenny product investment</div>
+            <div class="rule-meaning">$501.00 starts as Clenny's investment for the Copenhagen shipment.</div>
+            <div class="rule-note">Editable if cash contribution changes.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Clanny product investment</div>
+            <div class="rule-meaning">The remainder of the product cost belongs to Clanny.</div>
+            <div class="rule-note">Formula: total product cost minus Clenny investment.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Own operations entered separately</div>
+            <div class="rule-meaning">Clanny enters Clanny costs; Clenny enters Clenny costs.</div>
+            <div class="rule-note">Gas, rental, freight, pickup, loading, etc.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">No even split on operations</div>
+            <div class="rule-meaning">Operational costs are not automatically split 50/50.</div>
+            <div class="rule-note">Each person's approved ops increase their contribution basis.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Approved business ops only</div>
+            <div class="rule-meaning">Personal expenses should not be included.</div>
+            <div class="rule-note">Do not let random lunch receipts become corporate finance.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Product taken personally</div>
+            <div class="rule-meaning">Enter as sale/withdrawal, not as operations.</div>
+            <div class="rule-note">This prevents product taken from hiding inside operations.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Final payout method</div>
+            <div class="rule-meaning">Payout = contribution reimbursement + profit share.</div>
+            <div class="rule-note">Profit share is based on total approved contribution basis.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Cash collection matters</div>
+            <div class="rule-meaning">Whoever collects customer money is tracked separately.</div>
+            <div class="rule-note">Settlement balances compare payout due versus cash held.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Inventory math</div>
+            <div class="rule-meaning">2 boxes = 12 cases = 216 rolls = 1,080 cans.</div>
+            <div class="rule-note">Based on 6 cases/box, 18 rolls/case, 5 cans/roll.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Target sale price</div>
+            <div class="rule-meaning">Workbook uses $12/can as projected sales price.</div>
+            <div class="rule-note">Change this if actual selling price changes.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        Dash
+      </button>
+      <button class="tab-btn" data-tab="ops" onclick="switchTab('ops')">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Ops
+      </button>
+      <button class="tab-btn" data-tab="sales" onclick="switchTab('sales')">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Sales
+      </button>
+      <button class="tab-btn" data-tab="settlement" onclick="switchTab('settlement')">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Settle
+      </button>
+      <button class="tab-btn" data-tab="more" onclick="showMoreMenu()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        More
+      </button>
+    </nav>
+
+    <div class="modal-overlay" id="moreMenuModal">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">More</div>
+        <button class="btn" onclick="switchTab('setup'); closeModal('moreMenuModal');">Shipment Setup</button>
+        <button class="btn secondary" onclick="switchTab('shipments'); closeModal('moreMenuModal');">All Shipments</button>
+        <button class="btn secondary" onclick="switchTab('rules'); closeModal('moreMenuModal');">Business Rules</button>
+        <button class="btn secondary" onclick="exportData(); closeModal('moreMenuModal');">Export Data</button>
+        <button class="btn danger" onclick="if(confirm('Clear ALL data?')){localStorage.clear();location.reload();}">Clear All Data</button>
+        <button class="btn secondary" onclick="closeModal('moreMenuModal')">Cancel</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="newShipModal">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">New Shipment</div>
+        <div class="form-group"><label class="form-label">Shipment ID</label><input class="form-input" id="newShipId" placeholder="e.g. SHP-003"></div>
+        <div class="form-group"><label class="form-label">Product</label><input class="form-input" id="newShipProduct" placeholder="e.g. Copenhagen"></div>
+        <button class="btn" onclick="createShipment()">Create Shipment</button>
+        <button class="btn secondary" onclick="closeModal('newShipModal')">Cancel</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="opsModal">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Add Operation</div>
+        <div class="form-group"><label class="form-label">Owner</label>
+          <select class="form-select" id="mOpsOwner"><option>Clenny</option><option>Clanny</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="mOpsDate"></div>
+        <div class="form-group"><label class="form-label">Category</label><input class="form-input" id="mOpsCategory" placeholder="e.g. Gas, Rental, Freight"></div>
+        <div class="form-group"><label class="form-label">Amount ($)</label><input class="form-input" type="number" id="mOpsAmount" placeholder="0.00"></div>
+        <div class="form-group"><label class="form-label">Included in Settlement?</label>
+          <select class="form-select" id="mOpsIncluded"><option value="Yes">Yes</option><option value="No">No</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" id="mOpsDesc" placeholder="Details..."></textarea></div>
+        <div class="form-group"><label class="form-label">Receipt Link</label><input class="form-input" id="mOpsReceipt" placeholder="URL or note"></div>
+        <button class="btn" onclick="saveOps()">Save Operation</button>
+        <button class="btn secondary" onclick="closeModal('opsModal')">Cancel</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="salesModal">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Add Sale</div>
+        <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="mSalesDate"></div>
+        <div class="form-group"><label class="form-label">Customer / Store</label><input class="form-input" id="mSalesCustomer" placeholder="e.g. Joe's Corner Store"></div>
+        <div class="form-row-3">
+          <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" id="mSalesBoxes" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Cases</label><input class="form-input" type="number" id="mSalesCases" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Rolls</label><input class="form-input" type="number" id="mSalesRolls" placeholder="0"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Loose Cans</label><input class="form-input" type="number" id="mSalesLoose" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Price/Can ($)</label><input class="form-input" type="number" id="mSalesPrice" placeholder="12"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Collected By</label>
+          <select class="form-select" id="mSalesCollector"><option>Clenny</option><option>Clanny</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Payment Status</label>
+          <select class="form-select" id="mSalesStatus"><option>Paid</option><option>Unpaid</option><option>Partial</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="mSalesNotes" placeholder="Any details..."></textarea></div>
+        <div class="card-row" style="margin-bottom:12px"><span class="card-label">Total Cans</span><span class="card-value accent" id="mSalesTotalCans">0</span></div>
+        <div class="card-row" style="margin-bottom:12px"><span class="card-label">Gross Sales</span><span class="card-value success" id="mSalesGross">$0</span></div>
+        <button class="btn" onclick="saveSales()">Save Sale</button>
+        <button class="btn secondary" onclick="closeModal('salesModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const defaultState = () => ({
+      selectedShipmentId: 'SHP-002',
+      shipments: [{
+        id: 'SHP-002',
+        product: 'Copenhagen',
+        status: 'In Transit',
+        boxes: 2,
+        casesPerBox: 6,
+        rollsPerCase: 18,
+        cansPerRoll: 5,
+        costPerCase: 608,
+        targetPrice: 12,
+        clennyInvest: 501,
+        clannyInvest: 6795,
+        notes: 'Expected arrival: July 1. Base planning assumption: most cans sell at $12 each, with some possibly sold at $13.',
+        ops: [],
+        sales: []
+      }]
+    });
+
+    let state = defaultState();
+
+    const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n || 0);
+    const fmtInt = (n) => new Intl.NumberFormat('en-US').format(Math.round(n || 0));
+    const fmtPct = (n) => (n * 100).toFixed(2) + '%';
+    const today = () => new Date().toISOString().split('T')[0];
+    const el = (id) => document.getElementById(id);
+    const on = (id, ev, fn) => el(id)?.addEventListener(ev, fn);
+    const currentShipment = () => state.shipments.find(s => s.id === state.selectedShipmentId) || state.shipments[0];
+
+    function calcShipment(s) {
+      const cansPerCase = (s.rollsPerCase || 0) * (s.cansPerRoll || 0);
+      const cansPerBox = (s.casesPerBox || 0) * cansPerCase;
+      const casesOrdered = (s.boxes || 0) * (s.casesPerBox || 0);
+      const rollsOrdered = casesOrdered * (s.rollsPerCase || 0);
+      const totalCans = (s.boxes || 0) * cansPerBox;
+      const totalCost = casesOrdered * (s.costPerCase || 0);
+      const projRevenue = totalCans * (s.targetPrice || 0);
+      return { cansPerCase, cansPerBox, casesOrdered, rollsOrdered, totalCans, totalCost, projRevenue };
+    }
+
+    function calcSettlement(sh) {
+      const c = calcShipment(sh);
+      const clennyOps = sh.ops.filter(o => o.included === 'Yes' && o.owner === 'Clenny').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+      const clannyOps = sh.ops.filter(o => o.included === 'Yes' && o.owner === 'Clanny').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+      const totalOps = clennyOps + clannyOps;
+      const totalBasis = c.totalCost + totalOps;
+      const clennyBasis = (sh.clennyInvest || 0) + clennyOps;
+      const clannyBasis = (sh.clannyInvest || 0) + clannyOps;
+      const clennyPct = totalBasis === 0 ? 0 : clennyBasis / totalBasis;
+      const clannyPct = totalBasis === 0 ? 0 : clannyBasis / totalBasis;
+      const grossSales = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
+      const projProfit = c.projRevenue - totalBasis;
+      const currentPL = grossSales - totalBasis;
+      const clennyProfitShare = projProfit * clennyPct;
+      const clannyProfitShare = projProfit * clannyPct;
+      const clennyPayout = clennyBasis + clennyProfitShare;
+      const clannyPayout = clannyBasis + clannyProfitShare;
+      const cashClenny = sh.sales.filter(sa => sa.collectedBy === 'Clenny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
+      const cashClanny = sh.sales.filter(sa => sa.collectedBy === 'Clanny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
+      const soldCans = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.totalCans) || 0), 0);
+      const remainingCans = c.totalCans - soldCans;
+      const remainingValue = remainingCans * (sh.targetPrice || 0);
+      const clennyBal = clennyPayout - cashClenny;
+      const clannyBal = clannyPayout - cashClanny;
+      const checkPayout = Math.abs((clennyPayout + clannyPayout) - c.projRevenue) < 0.01;
+      const checkBasis = Math.abs((clennyBasis + clannyBasis) - totalBasis) < 0.01;
+      return { clennyOps, clannyOps, totalOps, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, projProfit, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, cashClenny, cashClanny, soldCans, remainingCans, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, ...c };
+    }
+
+    function load() {
+      try {
+        const raw = localStorage.getItem('ccTobaccoTracker');
+        if (raw) { state = JSON.parse(raw); }
+      } catch (e) { console.error(e); }
+    }
+    function save() { localStorage.setItem('ccTobaccoTracker', JSON.stringify(state)); }
+    function exportData() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'cc-tobacco-tracker.json';
+      a.click(); URL.revokeObjectURL(url);
+    }
+
+    function updateShipmentSelect() {
+      const sel = el('shipmentSelect');
+      sel.innerHTML = '<option value="">Select shipment...</option>' + state.shipments.map(s =>
+        `<option value="${s.id}"${s.id === state.selectedShipmentId ? ' selected' : ''}>${s.id} — ${s.product}</option>`
+      ).join('');
+    }
+    function selectShipment(id) {
+      if (!id) return;
+      state.selectedShipmentId = id;
+      save();
+      renderCurrentScreen();
+    }
+    function openShipmentModal() { el('newShipId').value = ''; el('newShipProduct').value = ''; el('newShipModal').classList.add('active'); }
+    function createShipment() {
+      const id = el('newShipId').value.trim();
+      const product = el('newShipProduct').value.trim();
+      if (!id) { alert('Enter a Shipment ID'); return; }
+      if (state.shipments.find(s => s.id === id)) { alert('Shipment ID already exists'); return; }
+      const newShip = {
+        id, product, status: 'Planned', boxes: 0, casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
+        costPerCase: 0, targetPrice: 12, clennyInvest: 0, clannyInvest: 0, notes: '', ops: [], sales: []
+      };
+      state.shipments.push(newShip);
+      state.selectedShipmentId = id;
+      save(); updateShipmentSelect(); closeModal('newShipModal'); renderCurrentScreen();
+    }
+    function deleteShipment() {
+      const sh = currentShipment();
+      if (!sh) return;
+      if (!confirm(`Delete ${sh.id} permanently?`)) return;
+      state.shipments = state.shipments.filter(s => s.id !== sh.id);
+      state.selectedShipmentId = state.shipments[0]?.id || '';
+      save(); updateShipmentSelect(); renderCurrentScreen();
+    }
+
+    let currentTab = 'dashboard';
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      const screenEl = el('screen-' + tab);
+      if (screenEl) screenEl.classList.add('active');
+      const btn = document.querySelector(`[data-tab="${tab}"]`);
+      if (btn) btn.classList.add('active');
+      renderCurrentScreen();
+    }
+    function renderCurrentScreen() {
+      if (currentTab === 'dashboard') renderDashboard();
+      else if (currentTab === 'setup') renderSetup();
+      else if (currentTab === 'ops') renderOps();
+      else if (currentTab === 'sales') renderSales();
+      else if (currentTab === 'settlement') renderSettlement();
+      else if (currentTab === 'shipments') renderShipments();
+    }
+    function showMoreMenu() { el('moreMenuModal').classList.add('active'); }
+
+    function renderDashboard() {
+      const sh = currentShipment(); if (!sh) return;
+      const c = calcShipment(sh);
+      const st = calcSettlement(sh);
+      el('dashShipId').textContent = sh.id || '-';
+      el('dashProduct').textContent = sh.product || '-';
+      el('dashStatus').textContent = sh.status || '-';
+      el('dashBoxes').textContent = fmtInt(sh.boxes);
+      el('dashCases').textContent = fmtInt(c.casesOrdered);
+      el('dashRolls').textContent = fmtInt(c.rollsOrdered);
+      el('dashTotalCans').textContent = fmtInt(c.totalCans);
+      el('dashProjRevenue').textContent = fmt(c.projRevenue);
+      el('dashProjProfit').textContent = fmt(st.projProfit);
+      el('dashRemaining').textContent = fmtInt(st.remainingCans);
+      el('dashProdCost').textContent = fmt(c.totalCost);
+      el('dashOpsEntered').textContent = fmt(st.totalOps);
+      el('dashSalesEntered').textContent = fmt(st.grossSales);
+      el('dashCurrentPL').textContent = fmt(st.currentPL);
+      el('dashClennyPayout').textContent = fmt(st.clennyPayout);
+      el('dashClannyPayout').textContent = fmt(st.clannyPayout);
+      el('barClenny').style.width = fmtPct(st.clennyPct);
+      el('barClanny').style.width = fmtPct(st.clannyPct);
+      el('legendClenny').textContent = `Clenny ${fmtPct(st.clennyPct)}`;
+      el('legendClanny').textContent = `Clanny ${fmtPct(st.clannyPct)}`;
+      const checkBal = st.checkPayout && st.checkBasis;
+      el('checkDot1').className = 'check-dot' + (checkBal ? '' : ' fail');
+      el('checkText1').textContent = checkBal ? 'Formulas balanced' : 'Check imbalance detected';
+    }
+
+    function renderSetup() {
+      const sh = currentShipment(); if (!sh) return;
+      el('sShipId').value = sh.id || '';
+      el('sProduct').value = sh.product || '';
+      el('sStatus').value = sh.status || 'Planned';
+      el('sBoxes').value = sh.boxes || '';
+      el('sCasesPerBox').value = sh.casesPerBox || '';
+      el('sRollsPerCase').value = sh.rollsPerCase || '';
+      el('sCansPerRoll').value = sh.cansPerRoll || '';
+      el('sCostPerCase').value = sh.costPerCase || '';
+      el('sTargetPrice').value = sh.targetPrice || '';
+      el('sClennyInvest').value = sh.clennyInvest || '';
+      el('sClannyInvest').value = sh.clannyInvest || '';
+      el('sNotes').value = sh.notes || '';
+      updateSetupCalc();
+    }
+    function updateSetupCalc() {
+      const s = {
+        boxes: parseFloat(el('sBoxes').value) || 0,
+        casesPerBox: parseFloat(el('sCasesPerBox').value) || 0,
+        rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0,
+        cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0,
+        costPerCase: parseFloat(el('sCostPerCase').value) || 0,
+        targetPrice: parseFloat(el('sTargetPrice').value) || 0,
+      };
+      const c = calcShipment(s);
+      el('calcCansPerCase').textContent = fmtInt(c.cansPerCase);
+      el('calcCansPerBox').textContent = fmtInt(c.cansPerBox);
+      el('calcCasesOrdered').textContent = fmtInt(c.casesOrdered);
+      el('calcRollsOrdered').textContent = fmtInt(c.rollsOrdered);
+      el('calcTotalCans').textContent = fmtInt(c.totalCans);
+      el('calcTotalCost').textContent = fmt(c.totalCost);
+      el('calcProjRevenue').textContent = fmt(c.projRevenue);
+      const clenny = parseFloat(el('sClennyInvest').value) || 0;
+      const clanny = parseFloat(el('sClannyInvest').value) || 0;
+      const total = c.totalCost;
+      const match = Math.abs((clenny + clanny) - total) < 0.01 && total > 0;
+      el('checkInvest').className = 'check-dot' + (match ? '' : ' fail');
+      el('checkInvestText').textContent = match ? 'Total = Product Cost' : `Mismatch: ${fmt(clenny + clanny)} vs ${fmt(total)}`;
+    }
+    ['sBoxes','sCasesPerBox','sRollsPerCase','sCansPerRoll','sCostPerCase','sTargetPrice','sClennyInvest','sClannyInvest'].forEach(id => {
+      on(id, 'input', updateSetupCalc);
+    });
+    function saveSetup() {
+      const sh = currentShipment(); if (!sh) return;
+      sh.id = el('sShipId').value;
+      sh.product = el('sProduct').value;
+      sh.status = el('sStatus').value;
+      sh.boxes = parseFloat(el('sBoxes').value) || 0;
+      sh.casesPerBox = parseFloat(el('sCasesPerBox').value) || 0;
+      sh.rollsPerCase = parseFloat(el('sRollsPerCase').value) || 0;
+      sh.cansPerRoll = parseFloat(el('sCansPerRoll').value) || 0;
+      sh.costPerCase = parseFloat(el('sCostPerCase').value) || 0;
+      sh.targetPrice = parseFloat(el('sTargetPrice').value) || 0;
+      sh.clennyInvest = parseFloat(el('sClennyInvest').value) || 0;
+      sh.clannyInvest = parseFloat(el('sClannyInvest').value) || 0;
+      sh.notes = el('sNotes').value;
+      save(); updateShipmentSelect(); alert('Shipment saved!');
+    }
+
+    function renderOps() {
+      const sh = currentShipment(); if (!sh) return;
+      const container = el('opsList');
+      if (!sh.ops.length) {
+        container.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><p>No operations yet. Add the first one.</p></div>`;
+        return;
+      }
+      container.innerHTML = sh.ops.map((o, i) => `
+        <div class="list-item">
+          <div class="list-item-header">
+            <span class="list-item-title" style="color:${o.owner==='Clenny'?'var(--clenny)':'var(--clanny)'}">${o.owner}</span>
+            <span class="list-item-amount ${o.owner==='Clenny'?'clenny':'clanny'}">${fmt(o.amount)}</span>
+          </div>
+          <div class="list-item-meta">${o.category || 'Uncategorized'} &bull; ${o.date || 'No date'}</div>
+          <div class="list-item-meta">${o.description || ''}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+            <span class="list-item-badge ${o.included==='Yes'?'badge-included':'badge-excluded'}">${o.included==='Yes'?'Included':'Excluded'}</span>
+            <button class="btn btn-sm danger" onclick="deleteOps(${i})">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    function openOpsModal() { el('mOpsDate').value = today(); el('mOpsOwner').value = 'Clenny'; el('mOpsCategory').value = ''; el('mOpsAmount').value = ''; el('mOpsIncluded').value = 'Yes'; el('mOpsDesc').value = ''; el('mOpsReceipt').value = ''; el('opsModal').classList.add('active'); }
+    function closeModal(id) { el(id).classList.remove('active'); }
+    function saveOps() {
+      const sh = currentShipment(); if (!sh) return;
+      const amount = parseFloat(el('mOpsAmount').value) || 0;
+      if (!amount) { alert('Please enter an amount'); return; }
+      sh.ops.push({
+        owner: el('mOpsOwner').value, date: el('mOpsDate').value, category: el('mOpsCategory').value,
+        amount: amount, included: el('mOpsIncluded').value, description: el('mOpsDesc').value, receipt: el('mOpsReceipt').value
+      });
+      save(); closeModal('opsModal'); renderOps();
+    }
+    function deleteOps(i) { const sh = currentShipment(); if (!sh) return; if (confirm('Delete this operation?')) { sh.ops.splice(i, 1); save(); renderOps(); } }
+
+    function renderSales() {
+      const sh = currentShipment(); if (!sh) return;
+      const container = el('salesList');
+      if (!sh.sales.length) {
+        container.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><p>No sales yet. Add the first one.</p></div>`;
+        return;
+      }
+      container.innerHTML = sh.sales.map((sa, i) => `
+        <div class="list-item">
+          <div class="list-item-header">
+            <span class="list-item-title">${sa.customer || 'Unknown'}</span>
+            <span class="list-item-amount success">${fmt(sa.grossSales)}</span>
+          </div>
+          <div class="list-item-meta">${sa.date || 'No date'} &bull; ${sa.product || ''} &bull; ${fmtInt(sa.totalCans)} cans @ ${fmt(sa.pricePerCan)}/can</div>
+          <div class="list-item-meta">Collected by ${sa.collectedBy}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+            <span class="list-item-badge ${sa.paymentStatus==='Paid'?'badge-paid':'badge-unpaid'}">${sa.paymentStatus}</span>
+            <button class="btn btn-sm danger" onclick="deleteSales(${i})">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    function openSalesModal() {
+      const sh = currentShipment(); if (!sh) return;
+      el('mSalesDate').value = today(); el('mSalesCustomer').value = ''; el('mSalesBoxes').value = ''; el('mSalesCases').value = ''; el('mSalesRolls').value = ''; el('mSalesLoose').value = ''; el('mSalesPrice').value = sh.targetPrice || 12; el('mSalesCollector').value = 'Clenny'; el('mSalesStatus').value = 'Paid'; el('mSalesNotes').value = ''; updateSalesCalc(); el('salesModal').classList.add('active');
+    }
+    function updateSalesCalc() {
+      const sh = currentShipment(); if (!sh) return;
+      const boxes = parseFloat(el('mSalesBoxes').value) || 0;
+      const cases = parseFloat(el('mSalesCases').value) || 0;
+      const rolls = parseFloat(el('mSalesRolls').value) || 0;
+      const loose = parseFloat(el('mSalesLoose').value) || 0;
+      const cansPerCase = (sh.rollsPerCase || 0) * (sh.cansPerRoll || 0);
+      const totalCans = boxes * (sh.casesPerBox || 0) * cansPerCase + cases * cansPerCase + rolls * (sh.cansPerRoll || 0) + loose;
+      const price = parseFloat(el('mSalesPrice').value) || 0;
+      const gross = totalCans * price;
+      el('mSalesTotalCans').textContent = fmtInt(totalCans);
+      el('mSalesGross').textContent = fmt(gross);
+    }
+    ['mSalesBoxes','mSalesCases','mSalesRolls','mSalesLoose','mSalesPrice'].forEach(id => { on(id, 'input', updateSalesCalc); });
+    function saveSales() {
+      const sh = currentShipment(); if (!sh) return;
+      const boxes = parseFloat(el('mSalesBoxes').value) || 0;
+      const cases = parseFloat(el('mSalesCases').value) || 0;
+      const rolls = parseFloat(el('mSalesRolls').value) || 0;
+      const loose = parseFloat(el('mSalesLoose').value) || 0;
+      const price = parseFloat(el('mSalesPrice').value) || 0;
+      const cansPerCase = (sh.rollsPerCase || 0) * (sh.cansPerRoll || 0);
+      const totalCans = boxes * (sh.casesPerBox || 0) * cansPerCase + cases * cansPerCase + rolls * (sh.cansPerRoll || 0) + loose;
+      const gross = totalCans * price;
+      if (totalCans <= 0) { alert('Please enter at least some quantity'); return; }
+      sh.sales.push({
+        date: el('mSalesDate').value, product: sh.product, customer: el('mSalesCustomer').value,
+        boxes, cases, rolls, looseCans: loose, totalCans, pricePerCan: price, grossSales: gross,
+        collectedBy: el('mSalesCollector').value, paymentStatus: el('mSalesStatus').value, notes: el('mSalesNotes').value
+      });
+      save(); closeModal('salesModal'); renderSales();
+    }
+    function deleteSales(i) { const sh = currentShipment(); if (!sh) return; if (confirm('Delete this sale?')) { sh.sales.splice(i, 1); save(); renderSales(); } }
+
+    function renderSettlement() {
+      const sh = currentShipment(); if (!sh) return;
+      const st = calcSettlement(sh);
+      el('setProdCost').textContent = fmt(st.totalCost);
+      el('setClennyInvest').textContent = fmt(sh.clennyInvest);
+      el('setClannyInvest').textContent = fmt(sh.clannyInvest);
+      el('setClennyOps').textContent = fmt(st.clennyOps);
+      el('setClannyOps').textContent = fmt(st.clannyOps);
+      el('setTotalOps').textContent = fmt(st.totalOps);
+      el('setTotalBasis').textContent = fmt(st.totalBasis);
+      el('setClennyBasis').textContent = fmt(st.clennyBasis);
+      el('setClannyBasis').textContent = fmt(st.clannyBasis);
+      el('setClennyPct').textContent = fmtPct(st.clennyPct);
+      el('setClannyPct').textContent = fmtPct(st.clannyPct);
+      el('setGrossSales').textContent = fmt(st.grossSales);
+      el('setProjRevenue').textContent = fmt(st.projRevenue);
+      el('setProjProfit').textContent = fmt(st.projProfit);
+      el('setCurrentPL').textContent = fmt(st.currentPL);
+      el('setClennyProfitShare').textContent = fmt(st.clennyProfitShare);
+      el('setClannyProfitShare').textContent = fmt(st.clannyProfitShare);
+      el('setClennyPayout').textContent = fmt(st.clennyPayout);
+      el('setClannyPayout').textContent = fmt(st.clannyPayout);
+      el('setTotalPayout').textContent = fmt(st.clennyPayout + st.clannyPayout);
+      el('setCashClenny').textContent = fmt(st.cashClenny);
+      el('setCashClanny').textContent = fmt(st.cashClanny);
+      el('setSoldCans').textContent = fmtInt(st.soldCans);
+      el('setRemainingCans').textContent = fmtInt(st.remainingCans);
+      el('setRemainingValue').textContent = fmt(st.remainingValue);
+      el('setClennyBal').textContent = fmt(st.clennyBal);
+      el('setClannyBal').textContent = fmt(st.clannyBal);
+      el('setCheck1').className = 'check-dot' + (st.checkPayout ? '' : ' fail');
+      el('setCheckText1').textContent = st.checkPayout ? 'Payouts match projected revenue' : 'PAYOUT MISMATCH!';
+      el('setCheck2').className = 'check-dot' + (st.checkBasis ? '' : ' fail');
+      el('setCheckText2').textContent = st.checkBasis ? 'Contribution basis balanced' : 'BASIS MISMATCH!';
+    }
+
+    function renderShipments() {
+      const container = el('shipmentsList');
+      if (!state.shipments.length) { container.innerHTML = '<div class="empty-state"><p>No shipments yet.</p></div>'; return; }
+      container.innerHTML = state.shipments.map(sh => {
+        const c = calcShipment(sh);
+        const st = calcSettlement(sh);
+        const statusClass = {
+          'Planned': 'badge-planned', 'In Transit': 'badge-transit', 'Arrived': 'badge-arrived',
+          'Sold Out': 'badge-soldout', 'Settled': 'badge-settled'
+        }[sh.status] || 'badge-planned';
+        return `
+          <div class="ship-card ${sh.id === state.selectedShipmentId ? 'active' : ''}" onclick="selectShipment('${sh.id}'); switchTab('dashboard');">
+            <div class="ship-card-header">
+              <span class="ship-card-title">${sh.id} — ${sh.product || 'Untitled'}</span>
+              <span class="list-item-badge ${statusClass}">${sh.status}</span>
+            </div>
+            <div class="ship-card-meta">${fmtInt(c.totalCans)} cans &bull; Cost ${fmt(c.totalCost)} &bull; Revenue ${fmt(c.projRevenue)}</div>
+            <div class="ship-card-meta">Sold ${fmtInt(st.soldCans)} &bull; Remaining ${fmtInt(st.remainingCans)} &bull; P/L ${fmt(st.currentPL)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    load();
+    updateShipmentSelect();
+    renderDashboard();
+    el('mOpsDate').value = today();
+    el('mSalesDate').value = today();
+  </script>
+</body>
+</html>
