@@ -1,19 +1,16 @@
-# CC Tobacco — iPhone App
+# CC Tobacco OS
 
-A mobile-first iOS app for tracking tobacco shipments between Clanny (Sender) and Clenny (Receiver). Built with **Expo + React Native**.
-
-> **iPhone only.** No Android or web build targets.
+An iPhone app for tracking tobacco shipments and managing the Clanny ↔ Clenny partnership.
 
 ---
 
 ## What it does
 
-- **Send shipments** (Clanny): brand + boxes → price/can → review → send
-- **Receive shipments** (Clenny): confirm received or report issues
-- **Record sales**: track resale price per can, revenue, profit per shipment
-- **Log purchases, expenses, and contributions**: track who funded what
-- **Dashboard**: 50/50 partnership economics, net position, activity feed
-- **History**: chronological view of all transactions
+- **Shipments**: Create, track, and receive shipments with per-box unit ratios
+- **Operations**: Log expenses with approval workflow (only approved ops count in settlement)
+- **Sales**: Record sales per shipment with cash collector tracking
+- **Settlement**: Per-shipment partnership economics — contribution %, projected payouts, profit/loss
+- **Dashboard**: Overview, shipment selector, activity feed
 
 ---
 
@@ -25,7 +22,6 @@ A mobile-first iOS app for tracking tobacco shipments between Clanny (Sender) an
 | Router | expo-router (file-based) |
 | State | React Context + hooks |
 | Backend | Supabase (PostgreSQL + Realtime) |
-| Storage | AsyncStorage (local sales) |
 | Styling | React Native StyleSheet (dark theme) |
 
 ---
@@ -33,49 +29,41 @@ A mobile-first iOS app for tracking tobacco shipments between Clanny (Sender) an
 ## Project Structure
 
 ```
-ios-app/
-├── app/
-│   ├── index.tsx              # Role selection (Clanny / Clenny)
-│   ├── (tabs)/
-│   │   ├── _layout.tsx        # Tab navigation (6 tabs)
-│   │   ├── dashboard.tsx      # Overview + Partnership + Activity
-│   │   ├── shipments.tsx      # Shipment list + status cards
-│   │   ├── receive.tsx        # Pending shipments to receive
-│   │   ├── sale.tsx           # Running sales report
-│   │   ├── purchases.tsx      # Funding / purchase log
-│   │   └── history.tsx        # Chronological activity feed
-│   └── new-shipment.tsx       # 4-step new shipment modal
-├── src/
-│   ├── components/            # Avatar, Badge, Icon, Sheet, Toast, etc.
-│   ├── hooks/
-│   │   └── useAppData.ts      # App data provider (Supabase + local)
-│   ├── lib/
-│   │   ├── data.ts            # Business logic, unit ladder, computePartnership
-│   │   ├── supabase.ts        # DB client + CRUD for all tables
-│   │   └── storage.ts         # AsyncStorage wrapper (role)
-│   └── theme.ts               # Colors, spacing, radius, fonts
-├── assets/
-│   ├── icon.png               # App icon (1024×1024)
-│   ├── splash.png             # Splash screen
-│   └── favicon.png            # Web favicon (unused on iOS)
-├── app.json                   # Expo config (iOS only)
-├── package.json
-├── babel.config.js
-├── metro.config.js
-└── tsconfig.json
+app/                    # Expo Router screens (tabs + new-shipment)
+src/
+  components/           # UI components (Avatar, Badge, Sheet, Toast, etc.)
+  hooks/
+    useAppData.ts      # App data provider (Supabase + local state)
+  lib/
+    data.ts            # Business logic, settlement formulas (Excel-aligned)
+    supabase.ts        # DB client + CRUD for all tables
+    storage.ts         # AsyncStorage wrapper (role only)
+    theme.ts           # Colors, spacing, radius, fonts
+  stubs/                # Expo Router stubs
+assets/
+  icon.png              # App icon (1024×1024)
+  splash.png            # Splash screen
+  favicon.png           # Web favicon (unused on iOS)
+supabase/
+  migrations/           # Database migrations
+app.json                # Expo config (iOS only)
+package.json
+babel.config.js
+metro.config.js
+tsconfig.json
 ```
 
 ---
 
-## Unit Ladder (Critical)
+## Unit Ladder (Per-Shipment)
 
 ```
-1 Box  = 6 Cases = 108 Rolls = 540 Cans
-1 Case = 18 Rolls = 90 Cans
-1 Roll = 5 Cans
+Cases/Box  = 6  (editable per shipment)
+Rolls/Case = 18 (editable per shipment)
+Cans/Roll  = 5  (editable per shipment)
+Cans/Case  = Rolls/Case × Cans/Roll
+Cans/Box   = Cases/Box × Cans/Case
 ```
-
-All calculations in `src/lib/data.ts` use these constants.
 
 ---
 
@@ -85,34 +73,23 @@ All calculations in `src/lib/data.ts` use these constants.
 
 - **macOS** + **Xcode** (for iOS simulator / device build)
 - **Node.js** 18+ and **npm**
-- **Expo CLI** (optional; `npx expo` works fine)
 
 ### Install & Run
 
 ```bash
-cd ios-app
+git clone https://github.com/AlgoCraftClen/tobacco-cc.git
+cd tobacco-cc
 npm install
 npx expo start
 ```
 
-Then press `i` to open the iOS simulator, or scan the QR code with the Expo Go app on your physical iPhone.
-
-### Quick Start (Windows batch)
-
-From the repo root:
-
-```bash
-start-app.bat
-```
-
-This runs `npm ci` in `ios-app/` and launches `expo start --clear`.
+Press `i` to open the iOS simulator, or scan the QR code with the Expo Go app on your physical iPhone.
 
 ---
 
 ## Build for Production (EAS)
 
 ```bash
-cd ios-app
 npx eas build --platform ios
 ```
 
@@ -122,10 +99,10 @@ Requires an [Expo Application Services (EAS)](https://expo.dev/eas) account and 
 
 ## Supabase Backend
 
-- **Project**: `njpkqemgpbstrbsaxpbz` ("tobacco-cc")
-- **Tables**: `shipments_v2`, `purchases`, `expenses`, `contributions`
-- **Local data**: running sales entries stored in `AsyncStorage`
-- **RLS**: permissive for anon (private app; anon key embedded)
+- **Project**: `tobacco-cc` (restored from paused state)
+- **Tables**: `shipments_v2`, `purchases`, `expenses`, `contributions`, `sales`
+- **RLS**: Enabled with app-secret header validation
+- **Migration**: `supabase/migrations/20260628_excel_formulas.sql`
 
 ---
 
@@ -133,10 +110,10 @@ Requires an [Expo Application Services (EAS)](https://expo.dev/eas) account and 
 
 | Name | Role | Greeting |
 |------|------|----------|
-| **Clanny** | Sender | "Iakwe!" (Marshallese hello) |
+| **Clanny** | Sender | "Iakwe!" |
 | **Clenny** | Receiver | "Iakwe!" |
 
-Role is chosen on first launch and persisted in `AsyncStorage`. Switch anytime via the header chip.
+Role is chosen on first launch and persisted in AsyncStorage. Switch anytime via the header chip.
 
 ---
 
