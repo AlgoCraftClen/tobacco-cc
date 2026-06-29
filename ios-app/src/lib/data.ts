@@ -1,5 +1,5 @@
-/* Business logic — CC Tobacco OS
-   Unit ladder (SPEC — never alter):
+/* Business logic — CC Tobacco iOS
+   Unit ladder (per-shipment ratios, default):
      1 Box  = 6 Cases = 108 Rolls = 540 Cans
      1 Case = 18 Rolls = 90 Cans
      1 Roll = 5 Cans
@@ -51,6 +51,7 @@ export const EXPENSE_KINDS = {
   SHIPMENT: 'shipment_cost',
   DISTRIBUTION: 'distribution_cost',
   GENERAL: 'general_expense',
+  OPERATIONS: 'operations',
 } as const;
 
 export type ExpenseKind = typeof EXPENSE_KINDS[keyof typeof EXPENSE_KINDS];
@@ -59,23 +60,24 @@ export interface Shipment {
   id: string;
   brand: string;
   boxes: number;
-  cases: number;
-  rolls: number;
-  cans: number;
-  pricePerCan: number;
-  subtotal: number;
-  miscCost: number;
-  miscDesc: string;
-  grandTotal: number;
-  sender: string;
-  receiver: string;
-  status: 'pending' | 'received' | 'disputed';
+  casesPerBox: number;      // default 6
+  rollsPerCase: number;     // default 18
+  cansPerRoll: number;      // default 5
+  costPerCase: number;
+  clennyProductInvest: number;
+  clannyProductInvest: number;
+  targetSalePricePerCan: number;
+  status: 'pending' | 'in_transit' | 'received' | 'disputed';
   notes: string;
   createdAt: string | null;
   receivedAt: string | null;
-  saleTotal: number;
-  salePricePerCan: number;
   soldAt: string | null;
+  // Derived fields (not stored in DB, computed from above):
+  // cases = boxes * casesPerBox
+  // rolls = cases * rollsPerCase
+  // cans = boxes * casesPerBox * rollsPerCase * cansPerRoll
+  // totalProductCost = cases * costPerCase
+  // projectedRevenue = totalCans * targetSalePricePerCan
 }
 
 export interface Purchase {
@@ -92,9 +94,11 @@ export interface Expense {
   id: string;
   partner: string;
   amount: number;
-  category: string;
+  category: string;      // 'product_funding', 'shipment_cost', 'distribution_cost', 'general_expense', 'operations'
   description: string;
   shipmentId: string | null;
+  date: string | null;   // NEW
+  approved: boolean;     // NEW — default false
   createdAt: string | null;
 }
 
@@ -106,13 +110,16 @@ export interface Contribution {
   createdAt: string | null;
 }
 
-export interface SaleEntry {
+export interface Sale {
   id: string;
-  saleNo: number;
-  quantityCases: number;
-  cans: number;
+  shipmentId: string;
+  date: string;
+  casesSold: number;
+  cansPerCase: number;    // copy from shipment at time of sale
+  totalCans: number;      // derived = casesSold * cansPerCase
   pricePerCan: number;
-  revenue: number;
+  revenue: number;        // derived = totalCans * pricePerCan
+  cashCollector: string;  // 'Clenny' or 'Clanny'
   createdAt: string;
 }
 
@@ -142,6 +149,7 @@ export function expenseKind(expense: Expense): ExpenseKind {
   const cat = String((expense && expense.category) || '').toLowerCase();
   if (cat === PRODUCT_FUNDING_CATEGORY.toLowerCase()) return EXPENSE_KINDS.PRODUCT;
   if (cat.indexOf('distribution') === 0) return EXPENSE_KINDS.DISTRIBUTION;
+  if (cat === 'operations') return EXPENSE_KINDS.OPERATIONS;
   if (expense && expense.shipmentId) return EXPENSE_KINDS.SHIPMENT;
   return EXPENSE_KINDS.GENERAL;
 }
@@ -157,6 +165,126 @@ export function displayExpenseCategory(expense: Expense) {
 export const expensesForShipment = (expenses: Expense[], shipmentId: string | null) =>
   (expenses || []).filter(e => shipmentId && e.shipmentId === shipmentId);
 
+// ─── Per-shipment unit derivation (from per-shipment ratios) ───
+export function deriveUnits(shipment: { boxes: number; casesPerBox: number; rollsPerCase: number; cansPerRoll: number }) {
+  const boxes = Number(shipment.boxes) || 0;
+  const cpb = Number(shipment.casesPerBox) || 6;
+  const rpc = Number(shipment.rollsPerCase) || 18;
+  const cpr = Number(shipment.cansPerRoll) || 5;
+  const cases = boxes * cpb;
+  const rolls = cases * rpc;
+  const cansPerCase = rpc * cpr;
+  const cansPerBox = cpb * cansPerCase;
+  const totalCans = boxes * cansPerBox;
+  return { cases, rolls, cansPerCase, cansPerBox, totalCans };
+}
+
+// ─── Per-shipment settlement (EXACT Excel formula translation) ───
+export interface SettlementResult {
+  productCost: number;
+  clennyInvest: number;
+  clannyInvest: number;
+  clennyApprovedOps: number;
+  clannyApprovedOps: number;
+  totalOps: number;
+  totalContributionBasis: number;
+  clennyContributionBasis: number;
+  clannyContributionBasis: number;
+  clennyContributionPct: number;
+  clannyContributionPct: number;
+  projectedRevenue: number;
+  projectedProfit: number;
+  grossSalesToDate: number;
+  currentProfit: number;
+  clennyProjectedProfitShare: number;
+  clannyProjectedProfitShare: number;
+  clennyProjectedPayout: number;
+  clannyProjectedPayout: number;
+  inventorySoldCans: number;
+  inventoryRemainingCans: number;
+  cashCollectedByClenny: number;
+  cashCollectedByClanny: number;
+}
+
+export function computeShipmentSettlement(
+  shipment: Shipment,
+  expenses: Expense[],
+  sales: Sale[],
+): SettlementResult {
+  const units = deriveUnits(shipment);
+  const cases = units.cases;
+  const totalCans = units.totalCans;
+
+  // Inputs from shipment
+  const productCost = cases * num(shipment.costPerCase);
+  const clennyInvest = num(shipment.clennyProductInvest);
+  const clannyInvest = num(shipment.clannyProductInvest);
+  const targetSalePricePerCan = num(shipment.targetSalePricePerCan);
+
+  // Inputs from expenses (Operations Ledger) — only approved ones
+  const shipmentExpenses = expensesForShipment(expenses, shipment.id);
+  const clennyApprovedOps = shipmentExpenses
+    .filter(e => e.partner === 'Clenny' && e.approved && e.category === 'operations')
+    .reduce((sum, e) => sum + num(e.amount), 0);
+  const clannyApprovedOps = shipmentExpenses
+    .filter(e => e.partner === 'Clanny' && e.approved && e.category === 'operations')
+    .reduce((sum, e) => sum + num(e.amount), 0);
+
+  // Inputs from sales (Sales Ledger)
+  const shipmentSales = (sales || []).filter(s => s.shipmentId === shipment.id);
+  const grossSalesToDate = shipmentSales.reduce((sum, s) => sum + num(s.revenue), 0);
+  const cashCollectedByClenny = shipmentSales
+    .filter(s => s.cashCollector === 'Clenny')
+    .reduce((sum, s) => sum + num(s.revenue), 0);
+  const cashCollectedByClanny = shipmentSales
+    .filter(s => s.cashCollector === 'Clanny')
+    .reduce((sum, s) => sum + num(s.revenue), 0);
+  const inventorySoldCans = shipmentSales.reduce((sum, s) => sum + num(s.totalCans), 0);
+
+  // Calculations
+  const totalOps = clennyApprovedOps + clannyApprovedOps;
+  const totalContributionBasis = productCost + totalOps;
+  const clennyContributionBasis = clennyInvest + clennyApprovedOps;
+  const clannyContributionBasis = clannyInvest + clannyApprovedOps;
+  const clennyContributionPct = totalContributionBasis === 0 ? 0 : clennyContributionBasis / totalContributionBasis;
+  const clannyContributionPct = totalContributionBasis === 0 ? 0 : clannyContributionBasis / totalContributionBasis;
+  const projectedRevenue = totalCans * targetSalePricePerCan;
+  const projectedProfit = projectedRevenue - totalContributionBasis;
+  const currentProfit = grossSalesToDate - totalContributionBasis;
+  const clennyProjectedProfitShare = projectedProfit * clennyContributionPct;
+  const clannyProjectedProfitShare = projectedProfit * clannyContributionPct;
+  const clennyProjectedPayout = clennyContributionBasis + clennyProjectedProfitShare;
+  const clannyProjectedPayout = clannyContributionBasis + clannyProjectedProfitShare;
+  const inventoryRemainingCans = Math.max(0, totalCans - inventorySoldCans);
+
+  return {
+    productCost,
+    clennyInvest,
+    clannyInvest,
+    clennyApprovedOps,
+    clannyApprovedOps,
+    totalOps,
+    totalContributionBasis,
+    clennyContributionBasis,
+    clannyContributionBasis,
+    clennyContributionPct,
+    clannyContributionPct,
+    projectedRevenue,
+    projectedProfit,
+    grossSalesToDate,
+    currentProfit,
+    clennyProjectedProfitShare,
+    clannyProjectedProfitShare,
+    clennyProjectedPayout,
+    clannyProjectedPayout,
+    inventorySoldCans,
+    inventoryRemainingCans,
+    cashCollectedByClenny,
+    cashCollectedByClanny,
+  };
+}
+
+// ─── Legacy product funding helper (adapted for new Shipment) ───
 export function productFundingForShipment(shipment: Shipment, expenses: Expense[]) {
   const funding = emptyFunding();
   const rows = expensesForShipment(expenses, shipment && shipment.id).filter(isProductFunding);
@@ -164,16 +292,17 @@ export function productFundingForShipment(shipment: Shipment, expenses: Expense[
     const partner = cleanPartner(row.partner);
     const meta = parseExpenseMeta(row) || {};
     const amount = num(row.amount);
-    const cans = num(meta.cans) || (num(shipment && shipment.pricePerCan) > 0 ? amount / num(shipment.pricePerCan) : 0);
+    const units = deriveUnits(shipment);
+    const cans = num(meta.cans) || (num(shipment && shipment.targetSalePricePerCan) > 0 ? amount / num(shipment.targetSalePricePerCan) : 0);
     funding[partner].amount += amount;
     funding[partner].cans += cans;
     funding[partner].rolls += num(meta.rolls) || (cans / TO_CANS.Roll);
   });
 
-  const fallbackTotal = num(shipment && shipment.subtotal) || num(shipment && shipment.grandTotal);
+  const fallbackTotal = num(shipment && (shipment.boxes * deriveUnits(shipment).cases * num(shipment.costPerCase)));
   if (!rows.length && fallbackTotal > 0) {
     funding[SENDER].amount = fallbackTotal;
-    funding[SENDER].cans = num(shipment && shipment.cans);
+    funding[SENDER].cans = num(deriveUnits(shipment).totalCans);
     funding[SENDER].rolls = funding[SENDER].cans / TO_CANS.Roll;
   }
 
@@ -182,6 +311,7 @@ export function productFundingForShipment(shipment: Shipment, expenses: Expense[
   return { rows, funding, totalAmount, totalCans };
 }
 
+// ─── Legacy shipment finance (adapted for new Shipment) ───
 export function shipmentFinance(shipment: Shipment, expenses: Expense[]) {
   const product = productFundingForShipment(shipment, expenses);
   const related = expensesForShipment(expenses, shipment && shipment.id);
@@ -198,9 +328,10 @@ export function shipmentFinance(shipment: Shipment, expenses: Expense[]) {
     else shipmentCostsPaid[partner] += amount;
   });
 
-  const revenue = num(shipment && shipment.saleTotal);
-  const productTotal = product.totalAmount || num(shipment && shipment.subtotal) || num(shipment && shipment.grandTotal);
-  const fundedCans = product.totalCans || num(shipment && shipment.cans);
+  const units = deriveUnits(shipment);
+  const revenue = num(shipment && (units.totalCans * num(shipment.targetSalePricePerCan)));
+  const productTotal = product.totalAmount || (units.cases * num(shipment.costPerCase));
+  const fundedCans = product.totalCans || units.totalCans;
   const revenueShare = emptyPartners();
   const productProfit = emptyPartners();
   const netGain = emptyPartners();
@@ -238,11 +369,13 @@ export function shipmentFinance(shipment: Shipment, expenses: Expense[]) {
   };
 }
 
+// ─── Global partnership settlement (aggregates per-shipment settlements) ───
 export function computePartnership(
   shipments: Shipment[],
   purchases: Purchase[],
   expenses: Expense[],
   contributions: Contribution[],
+  sales: Sale[],
 ) {
   const contributed = emptyPartners();
   const productFunded = emptyPartners();
@@ -252,6 +385,22 @@ export function computePartnership(
   const revenueShare = emptyPartners();
   const productProfit = emptyPartners();
   const netGain = emptyPartners();
+
+  // New settlement model accumulators
+  let totalProjectedRevenue = 0;
+  let totalProjectedProfit = 0;
+  let totalCurrentProfit = 0;
+  let totalGrossSales = 0;
+  let totalClennyProjectedPayout = 0;
+  let totalClannyProjectedPayout = 0;
+  let totalClennyCashCollected = 0;
+  let totalClannyCashCollected = 0;
+  let totalInventoryRemaining = 0;
+  let totalProductCost = 0;
+  let totalOps = 0;
+  let totalClennyApprovedOps = 0;
+  let totalClannyApprovedOps = 0;
+
   let revenue = 0, productTotal = 0, extraCosts = 0, shipmentCosts = 0, distributionCosts = 0, manualPurchases = 0;
 
   (contributions || []).forEach(c => {
@@ -268,6 +417,7 @@ export function computePartnership(
   });
 
   (shipments || []).forEach(s => {
+    // Legacy finance accumulators
     const f = shipmentFinance(s, expenses);
     revenue += f.revenue;
     productTotal += f.productTotal;
@@ -283,6 +433,22 @@ export function computePartnership(
       productProfit[partner] += f.productProfit[partner];
       netGain[partner] += f.netGain[partner];
     });
+
+    // New settlement model accumulators
+    const settlement = computeShipmentSettlement(s, expenses, sales);
+    totalProjectedRevenue += settlement.projectedRevenue;
+    totalProjectedProfit += settlement.projectedProfit;
+    totalCurrentProfit += settlement.currentProfit;
+    totalGrossSales += settlement.grossSalesToDate;
+    totalClennyProjectedPayout += settlement.clennyProjectedPayout;
+    totalClannyProjectedPayout += settlement.clannyProjectedPayout;
+    totalClennyCashCollected += settlement.cashCollectedByClenny;
+    totalClannyCashCollected += settlement.cashCollectedByClanny;
+    totalInventoryRemaining += settlement.inventoryRemainingCans;
+    totalProductCost += settlement.productCost;
+    totalOps += settlement.totalOps;
+    totalClennyApprovedOps += settlement.clennyApprovedOps;
+    totalClannyApprovedOps += settlement.clannyApprovedOps;
   });
 
   const generalExpenses = (expenses || [])
@@ -300,12 +466,36 @@ export function computePartnership(
   const totalContributions = contributed.Clanny + contributed.Clenny;
   const netProfit = revenue - totalExpenses;
 
+  // Net position per partner (new settlement model)
+  const clennyNetPosition = totalClennyProjectedPayout - totalClennyCashCollected;
+  const clannyNetPosition = totalClannyProjectedPayout - totalClannyCashCollected;
+
   return {
+    // Legacy accumulators
     revenue, productTotal, manualPurchases, extraCosts, shipmentCosts, distributionCosts,
     totalExpenses, totalContributions, netProfit, contributed,
     productFunded, costsPaid, shipmentCostsPaid, distributionCostsPaid,
     revenueShare, productProfit, netGain,
     netPosition: { Clanny: netGain.Clanny, Clenny: netGain.Clenny },
+
+    // New settlement model accumulators
+    totalProjectedRevenue,
+    totalProjectedProfit,
+    totalCurrentProfit,
+    totalGrossSales,
+    totalClennyProjectedPayout,
+    totalClannyProjectedPayout,
+    totalClennyCashCollected,
+    totalClannyCashCollected,
+    totalInventoryRemaining,
+    totalProductCost,
+    totalOps,
+    totalClennyApprovedOps,
+    totalClannyApprovedOps,
+    settlementNetPosition: {
+      Clenny: clennyNetPosition,
+      Clanny: clannyNetPosition,
+    },
   };
 }
 
@@ -373,17 +563,22 @@ export function buildActivity(
 
   (shipments || []).forEach(s => {
     const f = shipmentFinance(s, expenses);
-    ev.push({ kind: 'sent', who: s.sender, act: 'sent a shipment',
+    ev.push({ kind: 'sent', who: SENDER, act: 'sent a shipment',
       obj: `${boxWord(s.boxes)} · ${s.brand}`, amount: f.productTotal, time: s.createdAt!, pip: 'pip-sent', av: 'av-3' });
     if (s.status === 'received' && s.receivedAt)
-      ev.push({ kind: 'received', who: s.receiver, act: 'received', obj: `${s.brand} shipment`,
+      ev.push({ kind: 'received', who: RECEIVER, act: 'received', obj: `${s.brand} shipment`,
         amount: f.productTotal, time: s.receivedAt, pip: 'pip-received', av: 'av-1' });
+    if (s.status === 'in_transit' && s.receivedAt)
+      ev.push({ kind: 'in_transit', who: RECEIVER, act: 'in transit', obj: `${s.brand} shipment`,
+        amount: null, time: s.receivedAt, pip: 'pip-sent', av: 'av-1' });
     if (s.status === 'disputed' && s.receivedAt)
-      ev.push({ kind: 'disputed', who: s.receiver, act: 'reported an issue on', obj: `${s.brand} shipment`,
+      ev.push({ kind: 'disputed', who: RECEIVER, act: 'reported an issue on', obj: `${s.brand} shipment`,
         amount: null, time: s.receivedAt, pip: 'pip-disputed', av: 'av-1' });
-    if ((Number(s.saleTotal) || 0) > 0 && s.soldAt)
-      ev.push({ kind: 'sold', who: s.receiver, act: 'recorded sales for', obj: `${s.brand} shipment`,
-        amount: s.saleTotal, time: s.soldAt, pip: 'pip-received', av: 'av-1' });
+    const units = deriveUnits(s);
+    const saleTotal = units.totalCans * num(s.targetSalePricePerCan);
+    if (saleTotal > 0 && s.soldAt)
+      ev.push({ kind: 'sold', who: RECEIVER, act: 'recorded sales for', obj: `${s.brand} shipment`,
+        amount: saleTotal, time: s.soldAt, pip: 'pip-received', av: 'av-1' });
   });
 
   (purchases || []).forEach(p => {
@@ -401,6 +596,9 @@ export function buildActivity(
         amount: e.amount, time: e.createdAt!, pip: 'pip-purchase', av: avOf(e.partner) });
     } else if (kind === EXPENSE_KINDS.DISTRIBUTION) {
       ev.push({ kind: 'distribution', who: e.partner, act: 'paid distribution cost',
+        obj: `${displayExpenseCategory(e)}${s ? ` · ${s.brand}` : ''}`, amount: e.amount, time: e.createdAt!, pip: 'pip-disputed', av: avOf(e.partner) });
+    } else if (kind === EXPENSE_KINDS.OPERATIONS) {
+      ev.push({ kind: 'operations', who: e.partner, act: 'paid operations cost',
         obj: `${displayExpenseCategory(e)}${s ? ` · ${s.brand}` : ''}`, amount: e.amount, time: e.createdAt!, pip: 'pip-disputed', av: avOf(e.partner) });
     } else {
       ev.push({ kind: 'expense', who: e.partner, act: e.shipmentId ? 'paid shipment cost' : 'logged an expense',
