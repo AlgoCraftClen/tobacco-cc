@@ -19,7 +19,7 @@ export type Role = typeof ROLES[RoleName];
 export const roleOf = (name: string): Role | null =>
   ROLES[name as RoleName] || null;
 
-export const BRANDS = ['Grizzly', 'Cope'] as const;
+export const BRANDS = ['Grizzly', 'Copenhagen'] as const;
 export type Brand = typeof BRANDS[number];
 
 export const UNITS = ['Box', 'Case', 'Roll', 'Can'] as const;
@@ -200,6 +200,8 @@ export interface SettlementResult {
   clannyProjectedProfitShare: number;
   clennyProjectedPayout: number;
   clannyProjectedPayout: number;
+  clennyCurrentBalance: number;
+  clannyCurrentBalance: number;
   inventorySoldCans: number;
   inventoryRemainingCans: number;
   cashCollectedByClenny: number;
@@ -255,6 +257,11 @@ export function computeShipmentSettlement(
   const clannyProjectedProfitShare = projectedProfit * clannyContributionPct;
   const clennyProjectedPayout = clennyContributionBasis + clennyProjectedProfitShare;
   const clannyProjectedPayout = clannyContributionBasis + clannyProjectedProfitShare;
+  // Current balance owed right now (Excel "All Shipments Summary" Balance columns):
+  // contribution basis + share of *actual* profit-to-date, minus cash already collected.
+  // Unlike the projected payout above, this does not assume unsold inventory has been paid for.
+  const clennyCurrentBalance = clennyContributionBasis + currentProfit * clennyContributionPct - cashCollectedByClenny;
+  const clannyCurrentBalance = clannyContributionBasis + currentProfit * clannyContributionPct - cashCollectedByClanny;
   const inventoryRemainingCans = Math.max(0, totalCans - inventorySoldCans);
 
   return {
@@ -277,6 +284,8 @@ export function computeShipmentSettlement(
     clannyProjectedProfitShare,
     clennyProjectedPayout,
     clannyProjectedPayout,
+    clennyCurrentBalance,
+    clannyCurrentBalance,
     inventorySoldCans,
     inventoryRemainingCans,
     cashCollectedByClenny,
@@ -393,6 +402,8 @@ export function computePartnership(
   let totalGrossSales = 0;
   let totalClennyProjectedPayout = 0;
   let totalClannyProjectedPayout = 0;
+  let totalClennyCurrentBalance = 0;
+  let totalClannyCurrentBalance = 0;
   let totalClennyCashCollected = 0;
   let totalClannyCashCollected = 0;
   let totalInventoryRemaining = 0;
@@ -442,6 +453,8 @@ export function computePartnership(
     totalGrossSales += settlement.grossSalesToDate;
     totalClennyProjectedPayout += settlement.clennyProjectedPayout;
     totalClannyProjectedPayout += settlement.clannyProjectedPayout;
+    totalClennyCurrentBalance += settlement.clennyCurrentBalance;
+    totalClannyCurrentBalance += settlement.clannyCurrentBalance;
     totalClennyCashCollected += settlement.cashCollectedByClenny;
     totalClannyCashCollected += settlement.cashCollectedByClanny;
     totalInventoryRemaining += settlement.inventoryRemainingCans;
@@ -466,9 +479,11 @@ export function computePartnership(
   const totalContributions = contributed.Clanny + contributed.Clenny;
   const netProfit = revenue - totalExpenses;
 
-  // Net position per partner (new settlement model)
-  const clennyNetPosition = totalClennyProjectedPayout - totalClennyCashCollected;
-  const clannyNetPosition = totalClannyProjectedPayout - totalClannyCashCollected;
+  // Net position per partner: current balance owed right now, based on actual
+  // sales-to-date (Excel "All Shipments Summary" Balance columns) — NOT the
+  // full projected payout, which assumes all remaining inventory has sold.
+  const clennyNetPosition = totalClennyCurrentBalance;
+  const clannyNetPosition = totalClannyCurrentBalance;
 
   return {
     // Legacy accumulators
@@ -485,6 +500,8 @@ export function computePartnership(
     totalGrossSales,
     totalClennyProjectedPayout,
     totalClannyProjectedPayout,
+    totalClennyCurrentBalance,
+    totalClannyCurrentBalance,
     totalClennyCashCollected,
     totalClannyCashCollected,
     totalInventoryRemaining,
