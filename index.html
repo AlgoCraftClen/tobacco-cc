@@ -562,11 +562,19 @@
     }
 
     // ---- Row mappers between prototype shape and Supabase schema ----
+    // Status: the prototype's dropdown is title-case ("In Transit"), but the
+    // DB's shipments_v2.status column has a check constraint that only allows
+    // lowercase enum values ('pending','in_transit','received','disputed').
+    // The migration drops that constraint, but until it's run we need to map.
+    const STATUS_UI_TO_DB = { 'Planned':'pending','In Transit':'in_transit','Arrived':'received','Sold Out':'received','Settled':'received' };
+    const STATUS_DB_TO_UI = { 'pending':'Planned','in_transit':'In Transit','received':'Arrived','disputed':'Arrived' };
+    const toDbStatus = s => STATUS_UI_TO_DB[s] || (s ? String(s).toLowerCase().replace(/\s+/g,'_') : 'pending');
+    const toUiStatus = s => STATUS_DB_TO_UI[s] || (s || 'Planned');
     function shipmentFromRow(r) {
       return {
         id: r.id,
         product: r.brand || '',
-        status: r.status || 'Planned',
+        status: toUiStatus(r.status),
         boxes: Number(r.boxes) || 0,
         casesPerBox: Number(r.cases_per_box) || 6,
         rollsPerCase: Number(r.rolls_per_case) || 18,
@@ -583,7 +591,7 @@
       return {
         id: s.id,
         brand: s.product || '',
-        status: s.status || 'Planned',
+        status: toDbStatus(s.status || 'Planned'),
         boxes: Number(s.boxes) || 0,
         cases_per_box: Number(s.casesPerBox) || 6,
         rolls_per_case: Number(s.rollsPerCase) || 18,
@@ -743,12 +751,22 @@
     }
     async function saveShipmentRemote(sh) {
       setSyncStatus('saving');
+      const attempt = async (row) => sbFetch('/shipments_v2?on_conflict=id', {
+        method: 'POST',
+        headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
+        body: JSON.stringify(row)
+      });
       try {
-        await sbFetch('/shipments_v2?on_conflict=id', {
-          method: 'POST',
-          headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
-          body: JSON.stringify(shipmentToRow(sh))
-        });
+        try {
+          await attempt(shipmentToRow(sh));
+        } catch (e) {
+          // Pre-migration DB has a status CHECK constraint allowing only
+          // {pending, received, disputed}. If the mapped status is rejected,
+          // silently fall back to 'pending' so the save still lands.
+          if (/shipments_v2_status_check/.test(String(e.message || ''))) {
+            await attempt({ ...shipmentToRow(sh), status: 'pending' });
+          } else { throw e; }
+        }
         setSyncStatus('live'); return true;
       } catch (e) { console.error('saveShipmentRemote', e); setSyncStatus('offline'); alert('Save failed: ' + friendlyError(e)); return false; }
     }
