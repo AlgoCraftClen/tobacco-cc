@@ -202,7 +202,7 @@
           <div class="card-row"><span class="card-label">Ops Entered</span><span class="card-value" id="dashOpsEntered">$0</span></div>
           <div class="card-row"><span class="card-label">Sales Entered</span><span class="card-value" id="dashSalesEntered">$0</span></div>
           <div class="card-row"><span class="card-label">Current P/L</span><span class="card-value" id="dashCurrentPL">$0</span></div>
-          <div class="check-row"><div class="check-dot" id="checkDot1"></div><span id="checkText1">Formulas balanced</span></div>
+          <div class="check-row"><div class="check-dot" id="checkDot1"></div><span id="checkText1">Numbers add up</span></div>
         </div>
       </div>
 
@@ -246,7 +246,7 @@
             <div class="form-group"><label class="form-label">Clenny Invest ($)</label><input class="form-input" type="number" id="sClennyInvest" placeholder="501"></div>
             <div class="form-group"><label class="form-label">Clanny Invest ($)</label><input class="form-input" type="number" id="sClannyInvest" placeholder="6795"></div>
           </div>
-          <div class="check-row"><div class="check-dot" id="checkInvest"></div><span id="checkInvestText">Total = Product Cost</span></div>
+          <div class="check-row"><div class="check-dot" id="checkInvest"></div><span id="checkInvestText">Investments cover product cost</span></div>
         </div>
 
         <div class="btn-row">
@@ -324,7 +324,7 @@
           <div class="card-row"><span class="card-label">Clenny Balance After Sales</span><span class="card-value clenny" id="setClennyBal">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Balance After Sales</span><span class="card-value clanny" id="setClannyBal">$0</span></div>
           <div class="check-row"><div class="check-dot" id="setCheck1"></div><span id="setCheckText1">Payouts match projected revenue</span></div>
-          <div class="check-row"><div class="check-dot" id="setCheck2"></div><span id="setCheckText2">Contribution basis balanced</span></div>
+          <div class="check-row"><div class="check-dot" id="setCheck2"></div><span id="setCheckText2">Contribution shares look right</span></div>
         </div>
       </div>
 
@@ -334,61 +334,41 @@
 
       <div id="screen-rules" class="screen">
         <div class="card">
-          <div class="card-title">Business Rules</div>
+          <div class="card-title">How this works</div>
           <div class="rule-item">
-            <div class="rule-title">First shipment excluded</div>
-            <div class="rule-meaning">The proof-of-concept loss is not carried forward.</div>
-            <div class="rule-note">Starting clean with SHP-002.</div>
+            <div class="rule-title">Each partner puts in their own money</div>
+            <div class="rule-meaning">Clenny and Clanny each put in a share of the product cost. Set both amounts under Shipment Setup.</div>
+            <div class="rule-note">The green check appears when both shares together cover the product cost.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">Clenny product investment</div>
-            <div class="rule-meaning">$501.00 starts as Clenny's investment for the Copenhagen shipment.</div>
-            <div class="rule-note">Editable if cash contribution changes.</div>
+            <div class="rule-title">Each partner logs their own operating costs</div>
+            <div class="rule-meaning">Clanny enters Clanny's costs. Clenny enters Clenny's costs. Nobody enters costs for the other partner.</div>
+            <div class="rule-note">Gas, rental, freight, pickup, mailing — anything paid out of pocket to move product.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">Clanny product investment</div>
-            <div class="rule-meaning">The remainder of the product cost belongs to Clanny.</div>
-            <div class="rule-note">Formula: total product cost minus Clenny investment.</div>
+            <div class="rule-title">Only approved business costs count</div>
+            <div class="rule-meaning">Set “Included in Settlement” to Yes for real business costs, No for anything personal or not-yet-paid.</div>
+            <div class="rule-note">Personal receipts and IOUs stay out of the payout math until they’re real business expenses.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">Own operations entered separately</div>
-            <div class="rule-meaning">Clanny enters Clanny costs; Clenny enters Clenny costs.</div>
-            <div class="rule-note">Gas, rental, freight, pickup, loading, etc.</div>
+            <div class="rule-title">Costs don’t split 50/50 automatically</div>
+            <div class="rule-meaning">Whoever paid for something gets credited for it. Their share of the eventual payout goes up accordingly.</div>
+            <div class="rule-note">Bigger contribution → bigger share of the profit.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">No even split on operations</div>
-            <div class="rule-meaning">Operational costs are not automatically split 50/50.</div>
-            <div class="rule-note">Each person's approved ops increase their contribution basis.</div>
+            <div class="rule-title">Product taken personally is a sale</div>
+            <div class="rule-meaning">If either partner takes cans for themselves, record it under Sales — not Ops.</div>
+            <div class="rule-note">Keeps product taken out of operating costs where it doesn’t belong.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">Approved business ops only</div>
-            <div class="rule-meaning">Personal expenses should not be included.</div>
-            <div class="rule-note">Do not let random lunch receipts become corporate finance.</div>
+            <div class="rule-title">Cash collection is tracked separately from payout</div>
+            <div class="rule-meaning">Every sale records who physically collected the cash. Settlement shows what each partner is owed versus what they’re already holding.</div>
+            <div class="rule-note">One person can collect most of the cash without changing the payout — it just changes who owes whom at the end.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">Product taken personally</div>
-            <div class="rule-meaning">Enter as sale/withdrawal, not as operations.</div>
-            <div class="rule-note">This prevents product taken from hiding inside operations.</div>
-          </div>
-          <div class="rule-item">
-            <div class="rule-title">Final payout method</div>
-            <div class="rule-meaning">Payout = contribution reimbursement + profit share.</div>
-            <div class="rule-note">Profit share is based on total approved contribution basis.</div>
-          </div>
-          <div class="rule-item">
-            <div class="rule-title">Cash collection matters</div>
-            <div class="rule-meaning">Whoever collects customer money is tracked separately.</div>
-            <div class="rule-note">Settlement balances compare payout due versus cash held.</div>
-          </div>
-          <div class="rule-item">
-            <div class="rule-title">Inventory math</div>
-            <div class="rule-meaning">2 boxes = 12 cases = 216 rolls = 1,080 cans.</div>
-            <div class="rule-note">Based on 6 cases/box, 18 rolls/case, 5 cans/roll.</div>
-          </div>
-          <div class="rule-item">
-            <div class="rule-title">Target sale price</div>
-            <div class="rule-meaning">Workbook uses $12/can as projected sales price.</div>
-            <div class="rule-note">Change this if actual selling price changes.</div>
+            <div class="rule-title">Target price is a planning number</div>
+            <div class="rule-meaning">Set the target sale price per can under Shipment Setup. It drives projected revenue and projected profit.</div>
+            <div class="rule-note">Update it any time the actual selling price changes.</div>
           </div>
         </div>
       </div>
@@ -423,7 +403,7 @@
         <div class="modal-title">More</div>
         <button class="btn" onclick="switchTab('setup'); closeModal('moreMenuModal');">Shipment Setup</button>
         <button class="btn secondary" onclick="switchTab('shipments'); closeModal('moreMenuModal');">All Shipments</button>
-        <button class="btn secondary" onclick="switchTab('rules'); closeModal('moreMenuModal');">Business Rules</button>
+        <button class="btn secondary" onclick="switchTab('rules'); closeModal('moreMenuModal');">How This Works</button>
         <button class="btn secondary" onclick="exportData(); closeModal('moreMenuModal');">Export Data</button>
         <button class="btn danger" onclick="clearAllData()">Clear All Data</button>
         <button class="btn secondary" onclick="closeModal('moreMenuModal')">Cancel</button>
@@ -942,7 +922,7 @@
       el('legendClanny').textContent = `Clanny ${fmtPct(st.clannyPct)}`;
       const checkBal = st.checkPayout && st.checkBasis;
       el('checkDot1').className = 'check-dot' + (checkBal ? '' : ' fail');
-      el('checkText1').textContent = checkBal ? 'Formulas balanced' : 'Check imbalance detected';
+      el('checkText1').textContent = checkBal ? 'Numbers add up' : 'Numbers don’t match — recheck';
     }
 
     function renderSetup() {
@@ -983,7 +963,7 @@
       const total = c.totalCost;
       const match = Math.abs((clenny + clanny) - total) < 0.01 && total > 0;
       el('checkInvest').className = 'check-dot' + (match ? '' : ' fail');
-      el('checkInvestText').textContent = match ? 'Total = Product Cost' : `Mismatch: ${fmt(clenny + clanny)} vs ${fmt(total)}`;
+      el('checkInvestText').textContent = match ? 'Investments cover product cost' : `Off by ${fmt(Math.abs((clenny + clanny) - total))} — recheck each partner’s share`;
     }
     ['sBoxes','sCasesPerBox','sRollsPerCase','sCansPerRoll','sCostPerCase','sTargetPrice','sClennyInvest','sClannyInvest'].forEach(id => {
       on(id, 'input', updateSetupCalc);
@@ -1155,7 +1135,7 @@
       el('setCheck1').className = 'check-dot' + (st.checkPayout ? '' : ' fail');
       el('setCheckText1').textContent = st.checkPayout ? 'Payouts match projected revenue' : 'PAYOUT MISMATCH!';
       el('setCheck2').className = 'check-dot' + (st.checkBasis ? '' : ' fail');
-      el('setCheckText2').textContent = st.checkBasis ? 'Contribution basis balanced' : 'BASIS MISMATCH!';
+      el('setCheckText2').textContent = st.checkBasis ? 'Contribution shares look right' : 'Contribution shares are off — recheck';
     }
 
     function renderShipments() {
