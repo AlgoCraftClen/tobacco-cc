@@ -820,11 +820,19 @@
     }
 
     // ---- Poll every 15s so both partners see each other's writes ----
+    // Skips when a form field or modal is focused so we don't clobber
+    // whatever the user is typing right now.
     let pollTimer = null;
+    function isUserBusy() {
+      const a = document.activeElement;
+      if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return true;
+      if (document.querySelector('.modal.active')) return true;
+      return false;
+    }
     function startPolling() {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = setInterval(async () => {
-        if (document.hidden) return;
+        if (document.hidden || isUserBusy()) return;
         const ok = await loadAll();
         if (ok) { updateShipmentSelect(); renderCurrentScreen(); }
       }, 15000);
@@ -1164,7 +1172,7 @@
       startPolling();
       // Refresh right after tab regains focus (faster than waiting for the poll)
       document.addEventListener('visibilitychange', async () => {
-        if (document.hidden) return;
+        if (document.hidden || isUserBusy()) return;
         const ok = await loadAll();
         if (ok) { updateShipmentSelect(); renderCurrentScreen(); }
       });
