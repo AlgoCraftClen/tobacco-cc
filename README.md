@@ -1,122 +1,58 @@
-# CC Tobacco OS
+# CC Tobacco Tracker
 
-An iPhone app for tracking tobacco shipments and managing the Clanny ↔ Clenny partnership.
+Shared shipment + settlement tracker for Clanny (Sender, DC) and Clenny (Receiver). Runs as a static web app; both partners see each other's changes because everything is backed by Supabase.
 
----
+## Live app
 
-## What it does
+Once GitHub Pages is enabled on this repo, the app is at:
 
-- **Shipments**: Create, track, and receive shipments with per-box unit ratios
-- **Operations**: Log expenses with approval workflow (only approved ops count in settlement)
-- **Sales**: Record sales per shipment with cash collector tracking
-- **Settlement**: Per-shipment partnership economics — contribution %, projected payouts, profit/loss
-- **Dashboard**: Overview, shipment selector, activity feed
+**https://algocraftclen.github.io/tobacco-cc/**
 
----
+Open it on either phone (or a laptop). No install, no login. The sync dot in the top-left header shows connection state:
 
-## Tech Stack
+| Dot | Meaning |
+|-----|---------|
+| Green | Connected, changes are being saved live |
+| Blue (pulsing) | Saving right now |
+| Yellow (pulsing) | Connecting |
+| Red | Offline / DB unreachable |
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Expo 54 + React Native 0.81 |
-| Router | expo-router (file-based) |
-| State | React Context + hooks |
-| Backend | Supabase (PostgreSQL + Realtime) |
-| Styling | React Native StyleSheet (dark theme) |
+## One-time database setup
 
----
+The Supabase project needs one migration applied before writes work. If saves fail with "One-time database setup needed," this is why.
 
-## Project Structure
+1. Open the SQL Editor: <https://supabase.com/dashboard/project/njpkqemgpbstrbsaxpbz/sql>
+2. Copy the contents of [`supabase/migrations/20260705_prototype_sync.sql`](supabase/migrations/20260705_prototype_sync.sql)
+3. Paste, click **Run**
 
-```
-app/                    # Expo Router screens (tabs + new-shipment)
-src/
-  components/           # UI components (Avatar, Badge, Sheet, Toast, etc.)
-  hooks/
-    useAppData.ts      # App data provider (Supabase + local state)
-  lib/
-    data.ts            # Business logic, settlement formulas (Excel-aligned)
-    supabase.ts        # DB client + CRUD for all tables
-    storage.ts         # AsyncStorage wrapper (role only)
-    theme.ts           # Colors, spacing, radius, fonts
-  stubs/                # Expo Router stubs
-assets/
-  icon.png              # App icon (1024×1024)
-  splash.png            # Splash screen
-  favicon.png           # Web favicon (unused on iOS)
-supabase/
-  migrations/           # Database migrations
-app.json                # Expo config (iOS only)
-package.json
-babel.config.js
-metro.config.js
-tsconfig.json
-```
+Safe to re-run — every statement is idempotent.
 
----
+## Local development
 
-## Unit Ladder (Per-Shipment)
+The whole app is a single [`index.html`](index.html) — no build step.
 
 ```
-Cases/Box  = 6  (editable per shipment)
-Rolls/Case = 18 (editable per shipment)
-Cans/Roll  = 5  (editable per shipment)
-Cans/Case  = Rolls/Case × Cans/Roll
-Cans/Box   = Cases/Box × Cans/Case
+# From this folder:
+npx serve . -l 3000
+# then open http://localhost:3000
 ```
 
----
+Or just double-click `index.html` (works offline for the read-only prototype view).
 
-## Getting Started
+## Data model
 
-### Prerequisites
+Prototype writes to these Supabase tables:
 
-- **macOS** + **Xcode** (for iOS simulator / device build)
-- **Node.js** 18+ and **npm**
+- `shipments_v2` — one row per shipment (SHP-002, SHP-003, …)
+- `expenses` — Operations Ledger rows (owner, category, amount, included?)
+- `sales` — Sales Ledger rows (date, quantity, price, cash collector)
 
-### Install & Run
+All settlement math is client-side, based on the Excel-parity formulas in the workbook. See [`clenny_clanny_shipment_tracker.xlsx`](clenny_clanny_shipment_tracker.xlsx) for the source of truth.
 
-```bash
-git clone https://github.com/AlgoCraftClen/tobacco-cc.git
-cd tobacco-cc
-npm install
-npx expo start
-```
+## iPhone app
 
-Press `i` to open the iOS simulator, or scan the QR code with the Expo Go app on your physical iPhone.
-
----
-
-## Build for Production (EAS)
-
-```bash
-npx eas build --platform ios
-```
-
-Requires an [Expo Application Services (EAS)](https://expo.dev/eas) account and Apple Developer account.
-
----
-
-## Supabase Backend
-
-- **Project**: `tobacco-cc` (restored from paused state)
-- **Tables**: `shipments_v2`, `purchases`, `expenses`, `contributions`, `sales`
-- **RLS**: Enabled with app-secret header validation
-- **Migration**: `supabase/migrations/20260628_excel_formulas.sql`
-
----
-
-## Roles
-
-| Name | Role | Greeting |
-|------|------|----------|
-| **Clanny** | Sender | "Iakwe!" |
-| **Clenny** | Receiver | "Iakwe!" |
-
-Role is chosen on first launch and persisted in AsyncStorage. Switch anytime via the header chip.
-
----
+An Expo/React Native version lives on the [`expo-archive`](../../tree/expo-archive) branch. It'll be revived when the Apple Developer Program enrollment is sorted; the prototype stays the working app in the meantime.
 
 ## License
 
-© 2026 Clenny Minor · All Rights Reserved
+© 2026 Clenny Minor. All rights reserved.
