@@ -405,8 +405,24 @@
         <button class="btn secondary" onclick="switchTab('shipments'); closeModal('moreMenuModal');">All Shipments</button>
         <button class="btn secondary" onclick="switchTab('rules'); closeModal('moreMenuModal');">How This Works</button>
         <button class="btn secondary" onclick="exportData(); closeModal('moreMenuModal');">Export Data</button>
-        <button class="btn danger" onclick="clearAllData()">Clear All Data</button>
+        <button class="btn danger" onclick="openClearDataModal()">Clear All Data</button>
         <button class="btn secondary" onclick="closeModal('moreMenuModal')">Cancel</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="clearDataModal">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title" style="color:var(--danger)">Clear All Data</div>
+        <p style="font-size:14px; color:var(--text-2); text-align:center; margin:0 0 16px; line-height:1.4;">
+          This permanently deletes <strong style="color:var(--text)">every shipment, operation, and sale</strong> from the shared database — for <strong style="color:var(--text)">both partners</strong>. It cannot be undone.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Type <strong style="color:var(--danger)">DELETE</strong> to confirm</label>
+          <input class="form-input" id="clearDataConfirmInput" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="DELETE" oninput="onClearDataInput()">
+        </div>
+        <button class="btn danger" id="clearDataConfirmBtn" onclick="confirmClearAllData()" disabled style="opacity:0.4">Delete everything</button>
+        <button class="btn secondary" onclick="closeModal('clearDataModal')">Cancel</button>
       </div>
     </div>
 
@@ -814,9 +830,24 @@
       a.click(); URL.revokeObjectURL(url);
     }
 
+    function openClearDataModal() {
+      closeModal('moreMenuModal');
+      el('clearDataConfirmInput').value = '';
+      const btn = el('clearDataConfirmBtn');
+      btn.disabled = true; btn.style.opacity = '0.4';
+      el('clearDataModal').classList.add('active');
+    }
+    function onClearDataInput() {
+      const ready = el('clearDataConfirmInput').value.trim().toUpperCase() === 'DELETE';
+      const btn = el('clearDataConfirmBtn');
+      btn.disabled = !ready;
+      btn.style.opacity = ready ? '1' : '0.4';
+    }
+    async function confirmClearAllData() {
+      closeModal('clearDataModal');
+      await clearAllData();
+    }
     async function clearAllData() {
-      if (!confirm('This deletes ALL shipments, operations and sales from the shared database for BOTH partners. Continue?')) return;
-      if (!confirm('Really wipe everything? This cannot be undone.')) return;
       setSyncStatus('saving');
       try {
         await sbFetch('/expenses?id=neq.00000000-0000-0000-0000-000000000000', { method: 'DELETE' });
