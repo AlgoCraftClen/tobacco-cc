@@ -19,11 +19,12 @@ Open it on either phone (or a laptop). No install, no login. The sync dot in the
 
 ## One-time database setup
 
-The Supabase project needs one migration applied before writes work. If saves fail with "One-time database setup needed," this is why.
+The Supabase project needs the migrations under `supabase/migrations/` applied before writes work. If saves fail with "One-time database setup needed," this is why.
 
 1. Open the SQL Editor: <https://supabase.com/dashboard/project/njpkqemgpbstrbsaxpbz/sql>
-2. Copy the contents of [`supabase/migrations/20260705_prototype_sync.sql`](supabase/migrations/20260705_prototype_sync.sql)
-3. Paste, click **Run**
+2. For each `.sql` file in [`supabase/migrations/`](supabase/migrations/), in filename order, paste its contents and click **Run**. As of now that's:
+   - [`20260705_prototype_sync.sql`](supabase/migrations/20260705_prototype_sync.sql) — Supabase schema for the prototype
+   - [`20260706_shipment_short_seq.sql`](supabase/migrations/20260706_shipment_short_seq.sql) — permanent `SHP #N` numbers per shipment
 
 Safe to re-run — every statement is idempotent.
 

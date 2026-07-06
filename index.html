@@ -26,17 +26,17 @@
     .app-header h1 { margin: 0; font-size: 17px; font-weight: 700; text-align: center; letter-spacing: -0.3px; }
     .app-header .subtitle { text-align: center; font-size: 12px; color: var(--text-2); margin-top: 2px; }
     .header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .header-select { background: var(--surface); color: var(--text); border: 1px solid var(--surface-2); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 600; flex: 1; }
+    .header-select { background: var(--surface); color: var(--text); border: 1px solid var(--surface-2); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
 
-    .content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; padding-bottom: 100px; }
+    .content { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding: 16px; padding-bottom: 100px; }
     .content::-webkit-scrollbar { display: none; }
 
     .card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); }
     .card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; color: var(--text-2); margin-bottom: 12px; letter-spacing: 0.5px; }
-    .card-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .card-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
     .card-row:last-child { border-bottom: none; }
-    .card-label { font-size: 14px; color: var(--text-2); }
-    .card-value { font-size: 15px; font-weight: 600; }
+    .card-label { font-size: 14px; color: var(--text-2); flex-shrink: 0; }
+    .card-value { font-size: 15px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; text-align: right; }
     .card-value.accent { color: var(--accent); }
     .card-value.success { color: var(--success); }
     .card-value.danger { color: var(--danger); }
@@ -500,6 +500,13 @@
     const el = (id) => document.getElementById(id);
     const on = (id, ev, fn) => el(id)?.addEventListener(ev, fn);
     const currentShipment = () => state.shipments.find(s => s.id === state.selectedShipmentId) || state.shipments[0];
+    const shortShipmentId = (id) => {
+      const sh = state.shipments.find(s => s.id === id);
+      if (sh && sh.shortSeq != null) return `SHP #${sh.shortSeq}`;
+      const i = state.shipments.findIndex(s => s.id === id);
+      if (i >= 0) return `SHP #${i + 1}`;
+      return id ? `SHP #${String(id).slice(0, 6)}` : '-';
+    };
 
     function calcShipment(s) {
       const cansPerCase = (s.rollsPerCase || 0) * (s.cansPerRoll || 0);
@@ -553,6 +560,7 @@
     function shipmentFromRow(r) {
       return {
         id: r.id,
+        shortSeq: r.short_seq == null ? null : Number(r.short_seq),
         product: r.brand || '',
         status: toUiStatus(r.status),
         boxes: Number(r.boxes) || 0,
@@ -737,15 +745,22 @@
         body: JSON.stringify(row)
       });
       try {
+        let returned;
         try {
-          await attempt(shipmentToRow(sh));
+          returned = await attempt(shipmentToRow(sh));
         } catch (e) {
           // Pre-migration DB has a status CHECK constraint allowing only
           // {pending, received, disputed}. If the mapped status is rejected,
           // silently fall back to 'pending' so the save still lands.
           if (/shipments_v2_status_check/.test(String(e.message || ''))) {
-            await attempt({ ...shipmentToRow(sh), status: 'pending' });
+            returned = await attempt({ ...shipmentToRow(sh), status: 'pending' });
           } else { throw e; }
+        }
+        // Adopt DB-assigned columns (short_seq default) so newly-created
+        // shipments show their real number immediately, no waiting for poll.
+        const row = Array.isArray(returned) ? returned[0] : null;
+        if (row && row.short_seq != null && sh.shortSeq == null) {
+          sh.shortSeq = Number(row.short_seq);
         }
         setSyncStatus('live'); return true;
       } catch (e) { console.error('saveShipmentRemote', e); setSyncStatus('offline'); alert('Save failed: ' + friendlyError(e)); return false; }
@@ -839,7 +854,7 @@
     function updateShipmentSelect() {
       const sel = el('shipmentSelect');
       sel.innerHTML = '<option value="">Select shipment...</option>' + state.shipments.map(s =>
-        `<option value="${s.id}"${s.id === state.selectedShipmentId ? ' selected' : ''}>${s.id} — ${s.product}</option>`
+        `<option value="${s.id}"${s.id === state.selectedShipmentId ? ' selected' : ''}>${shortShipmentId(s.id)} — ${s.product}</option>`
       ).join('');
     }
     function selectShipment(id) {
@@ -900,7 +915,7 @@
       const sh = currentShipment(); if (!sh) return;
       const c = calcShipment(sh);
       const st = calcSettlement(sh);
-      el('dashShipId').textContent = sh.id || '-';
+      el('dashShipId').textContent = shortShipmentId(sh.id);
       el('dashProduct').textContent = sh.product || '-';
       el('dashStatus').textContent = sh.status || '-';
       el('dashBoxes').textContent = fmtInt(sh.boxes);
@@ -927,7 +942,7 @@
 
     function renderSetup() {
       const sh = currentShipment(); if (!sh) return;
-      el('sShipId').value = sh.id || '';
+      el('sShipId').value = shortShipmentId(sh.id);
       el('sProduct').value = sh.product || '';
       el('sStatus').value = sh.status || 'Planned';
       el('sBoxes').value = sh.boxes || '';
@@ -1151,7 +1166,7 @@
         return `
           <div class="ship-card ${sh.id === state.selectedShipmentId ? 'active' : ''}" onclick="selectShipment('${sh.id}'); switchTab('dashboard');">
             <div class="ship-card-header">
-              <span class="ship-card-title">${sh.id} — ${sh.product || 'Untitled'}</span>
+              <span class="ship-card-title">${shortShipmentId(sh.id)} — ${sh.product || 'Untitled'}</span>
               <span class="list-item-badge ${statusClass}">${sh.status}</span>
             </div>
             <div class="ship-card-meta">${fmtInt(c.totalCans)} cans &bull; Cost ${fmt(c.totalCost)} &bull; Revenue ${fmt(c.projRevenue)}</div>
