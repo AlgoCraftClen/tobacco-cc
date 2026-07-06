@@ -143,11 +143,11 @@
   <div id="app">
     <header class="app-header safe-top">
       <div class="header-row">
-        <div id="syncStatus" class="sync-dot sync-connecting" title="Sync: connecting"></div>
+        <div id="syncStatus" class="sync-dot sync-connecting" role="status" aria-label="Sync: connecting" title="Sync: connecting"></div>
         <select class="header-select" id="shipmentSelect" onchange="selectShipment(this.value)">
           <option value="">Select shipment...</option>
         </select>
-        <button class="btn btn-sm" style="width:auto;flex-shrink:0;" onclick="openShipmentModal()">+</button>
+        <button class="btn btn-sm" style="width:auto;flex-shrink:0;" aria-label="New shipment" onclick="openShipmentModal()">+</button>
       </div>
     </header>
 
@@ -209,7 +209,7 @@
       <div id="screen-setup" class="screen">
         <div class="card">
           <div class="card-title">Shipment Details</div>
-          <div class="form-group"><label class="form-label">Shipment ID</label><input class="form-input" id="sShipId" placeholder="e.g. SHP-002" readonly style="opacity:0.7"></div>
+          <div class="card-row" style="margin-bottom:12px"><span class="card-label">Shipment</span><span class="card-value" id="sShipId">-</span></div>
           <div class="form-group"><label class="form-label">Product</label><input class="form-input" id="sProduct" placeholder="e.g. Copenhagen"></div>
           <div class="form-group"><label class="form-label">Status</label>
             <select class="form-select" id="sStatus">
@@ -222,14 +222,14 @@
         <div class="card">
           <div class="card-title">Inventory Math</div>
           <div class="form-row-3">
-            <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" id="sBoxes" placeholder="0"></div>
-            <div class="form-group"><label class="form-label">Cases/Box</label><input class="form-input" type="number" id="sCasesPerBox" placeholder="6"></div>
-            <div class="form-group"><label class="form-label">Rolls/Case</label><input class="form-input" type="number" id="sRollsPerCase" placeholder="18"></div>
+            <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sBoxes" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Cases/Box</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCasesPerBox" placeholder="6"></div>
+            <div class="form-group"><label class="form-label">Rolls/Case</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sRollsPerCase" placeholder="18"></div>
           </div>
           <div class="form-row-3">
-            <div class="form-group"><label class="form-label">Cans/Roll</label><input class="form-input" type="number" id="sCansPerRoll" placeholder="5"></div>
-            <div class="form-group"><label class="form-label">Cost/Case ($)</label><input class="form-input" type="number" id="sCostPerCase" placeholder="608"></div>
-            <div class="form-group"><label class="form-label">Target Price/Can ($)</label><input class="form-input" type="number" id="sTargetPrice" placeholder="12"></div>
+            <div class="form-group"><label class="form-label">Cans/Roll</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCansPerRoll" placeholder="5"></div>
+            <div class="form-group"><label class="form-label">Cost/Case ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCostPerCase" placeholder="608"></div>
+            <div class="form-group"><label class="form-label">Target Price/Can ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sTargetPrice" placeholder="12"></div>
           </div>
           <div class="card-row" style="margin-top:8px"><span class="card-label">Cans/Case</span><span class="card-value" id="calcCansPerCase">0</span></div>
           <div class="card-row"><span class="card-label">Cans/Box</span><span class="card-value" id="calcCansPerBox">0</span></div>
@@ -243,8 +243,8 @@
         <div class="card">
           <div class="card-title">Partner Investments</div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Clenny Invest ($)</label><input class="form-input" type="number" id="sClennyInvest" placeholder="501"></div>
-            <div class="form-group"><label class="form-label">Clanny Invest ($)</label><input class="form-input" type="number" id="sClannyInvest" placeholder="6795"></div>
+            <div class="form-group"><label class="form-label">Clenny Invest ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sClennyInvest" placeholder="501"></div>
+            <div class="form-group"><label class="form-label">Clanny Invest ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sClannyInvest" placeholder="6795"></div>
           </div>
           <div class="check-row"><div class="check-dot" id="checkInvest"></div><span id="checkInvestText">Investments cover product cost</span></div>
         </div>
@@ -430,7 +430,9 @@
       <div class="modal-sheet">
         <div class="modal-handle"></div>
         <div class="modal-title">New Shipment</div>
-        <div class="form-group"><label class="form-label">Shipment ID</label><input class="form-input" id="newShipId" placeholder="e.g. SHP-003"></div>
+        <p style="font-size:13px; color:var(--text-2); text-align:center; margin:0 0 16px;">
+          The next SHP # is assigned automatically once you save.
+        </p>
         <div class="form-group"><label class="form-label">Product</label><input class="form-input" id="newShipProduct" placeholder="e.g. Copenhagen"></div>
         <button class="btn" onclick="createShipment()">Create Shipment</button>
         <button class="btn secondary" onclick="closeModal('newShipModal')">Cancel</button>
@@ -446,7 +448,7 @@
         </div>
         <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="mOpsDate"></div>
         <div class="form-group"><label class="form-label">Category</label><input class="form-input" id="mOpsCategory" placeholder="e.g. Gas, Rental, Freight"></div>
-        <div class="form-group"><label class="form-label">Amount ($)</label><input class="form-input" type="number" id="mOpsAmount" placeholder="0.00"></div>
+        <div class="form-group"><label class="form-label">Amount ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="mOpsAmount" placeholder="0.00"></div>
         <div class="form-group"><label class="form-label">Included in Settlement?</label>
           <select class="form-select" id="mOpsIncluded"><option value="Yes">Yes</option><option value="No">No</option></select>
         </div>
@@ -464,13 +466,13 @@
         <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="mSalesDate"></div>
         <div class="form-group"><label class="form-label">Customer / Store</label><input class="form-input" id="mSalesCustomer" placeholder="e.g. Joe's Corner Store"></div>
         <div class="form-row-3">
-          <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" id="mSalesBoxes" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Cases</label><input class="form-input" type="number" id="mSalesCases" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Rolls</label><input class="form-input" type="number" id="mSalesRolls" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" id="mSalesBoxes" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Cases</label><input class="form-input" type="number" min="0" inputmode="decimal" id="mSalesCases" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Rolls</label><input class="form-input" type="number" min="0" inputmode="decimal" id="mSalesRolls" placeholder="0"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Loose Cans</label><input class="form-input" type="number" id="mSalesLoose" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Price/Can ($)</label><input class="form-input" type="number" id="mSalesPrice" placeholder="12"></div>
+          <div class="form-group"><label class="form-label">Loose Cans</label><input class="form-input" type="number" min="0" inputmode="decimal" id="mSalesLoose" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Price/Can ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="mSalesPrice" placeholder="12"></div>
         </div>
         <div class="form-group"><label class="form-label">Collected By</label>
           <select class="form-select" id="mSalesCollector"><option>Clenny</option><option>Clanny</option></select>
@@ -507,6 +509,7 @@
       if (!dot) return;
       dot.className = 'sync-dot sync-' + s;
       dot.title = 'Sync: ' + s;
+      dot.setAttribute('aria-label', 'Sync: ' + s);
     }
 
     const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n || 0);
@@ -515,6 +518,9 @@
     const today = () => new Date().toISOString().split('T')[0];
     const el = (id) => document.getElementById(id);
     const on = (id, ev, fn) => el(id)?.addEventListener(ev, fn);
+    const escapeHtml = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const currentShipment = () => state.shipments.find(s => s.id === state.selectedShipmentId) || state.shipments[0];
     const shortShipmentId = (id) => {
       const sh = state.shipments.find(s => s.id === id);
@@ -819,9 +825,8 @@
       } catch (e) { console.error('deleteSaleRemote', e); setSyncStatus('offline'); return false; }
     }
 
-    // ---- Compatibility shim + local UI preference persistence ----
+    // ---- Local UI preference persistence ----
     function saveSelected() { localStorage.setItem('cc-selected', state.selectedShipmentId || ''); }
-    function save() { saveSelected(); }
     function exportData() {
       const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -870,7 +875,7 @@
     function isUserBusy() {
       const a = document.activeElement;
       if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return true;
-      if (document.querySelector('.modal.active')) return true;
+      if (document.querySelector('.modal-overlay.active')) return true;
       return false;
     }
     function startPolling() {
@@ -884,9 +889,17 @@
 
     function updateShipmentSelect() {
       const sel = el('shipmentSelect');
-      sel.innerHTML = '<option value="">Select shipment...</option>' + state.shipments.map(s =>
-        `<option value="${s.id}"${s.id === state.selectedShipmentId ? ' selected' : ''}>${shortShipmentId(s.id)} — ${s.product}</option>`
-      ).join('');
+      sel.textContent = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = ''; placeholder.textContent = 'Select shipment...';
+      sel.appendChild(placeholder);
+      for (const s of state.shipments) {
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = `${shortShipmentId(s.id)} — ${s.product || ''}`;
+        if (s.id === state.selectedShipmentId) o.selected = true;
+        sel.appendChild(o);
+      }
     }
     function selectShipment(id) {
       if (!id) return;
@@ -894,26 +907,32 @@
       saveSelected();
       renderCurrentScreen();
     }
-    function openShipmentModal() { el('newShipId').value = ''; el('newShipProduct').value = ''; el('newShipModal').classList.add('active'); }
+    function openShipmentModal() { el('newShipProduct').value = ''; el('newShipModal').classList.add('active'); }
+    function newShipmentId() {
+      // Prefer crypto.randomUUID (Safari 16.4+, all modern browsers). Fallback
+      // for older UAs: RFC4122 v4 pattern built from crypto.getRandomValues.
+      if (self.crypto && typeof self.crypto.randomUUID === 'function') return self.crypto.randomUUID();
+      const buf = new Uint8Array(16); self.crypto.getRandomValues(buf);
+      buf[6] = (buf[6] & 0x0f) | 0x40; buf[8] = (buf[8] & 0x3f) | 0x80;
+      const h = Array.from(buf, b => b.toString(16).padStart(2, '0'));
+      return `${h.slice(0,4).join('')}-${h.slice(4,6).join('')}-${h.slice(6,8).join('')}-${h.slice(8,10).join('')}-${h.slice(10,16).join('')}`;
+    }
     async function createShipment() {
-      const id = el('newShipId').value.trim();
       const product = el('newShipProduct').value.trim();
-      if (!id) { alert('Enter a Shipment ID'); return; }
-      if (state.shipments.find(s => s.id === id)) { alert('Shipment ID already exists'); return; }
       const newShip = {
-        id, product, status: 'Planned', boxes: 0, casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
+        id: newShipmentId(), product, status: 'Planned', boxes: 0, casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
         costPerCase: 0, targetPrice: 12, clennyInvest: 0, clannyInvest: 0, notes: '', ops: [], sales: []
       };
       const ok = await saveShipmentRemote(newShip);
       if (!ok) return;
       state.shipments.push(newShip);
-      state.selectedShipmentId = id;
+      state.selectedShipmentId = newShip.id;
       saveSelected(); updateShipmentSelect(); closeModal('newShipModal'); renderCurrentScreen();
     }
     async function deleteShipment() {
       const sh = currentShipment();
       if (!sh) return;
-      if (!confirm(`Delete ${sh.id} permanently?`)) return;
+      if (!confirm(`Delete ${shortShipmentId(sh.id)} permanently?`)) return;
       const ok = await deleteShipmentRemote(sh.id);
       if (!ok) return;
       state.shipments = state.shipments.filter(s => s.id !== sh.id);
@@ -968,12 +987,24 @@
       el('legendClanny').textContent = `Clanny ${fmtPct(st.clannyPct)}`;
       const checkBal = st.checkPayout && st.checkBasis;
       el('checkDot1').className = 'check-dot' + (checkBal ? '' : ' fail');
-      el('checkText1').textContent = checkBal ? 'Numbers add up' : 'Numbers don’t match — recheck';
+      el('checkText1').textContent = checkBal ? 'Numbers add up' : describeSettlementMismatch(st);
+    }
+    function describeSettlementMismatch(st) {
+      const parts = [];
+      if (!st.checkBasis) {
+        const d = (st.clennyBasis + st.clannyBasis) - st.totalBasis;
+        parts.push(`basis off by ${fmt(Math.abs(d))}`);
+      }
+      if (!st.checkPayout) {
+        const d = (st.clennyPayout + st.clannyPayout) - st.projRevenue;
+        parts.push(`payouts off by ${fmt(Math.abs(d))}`);
+      }
+      return parts.length ? "Numbers don't match — " + parts.join(', ') : 'Numbers add up';
     }
 
     function renderSetup() {
       const sh = currentShipment(); if (!sh) return;
-      el('sShipId').value = shortShipmentId(sh.id);
+      el('sShipId').textContent = shortShipmentId(sh.id);
       el('sProduct').value = sh.product || '';
       el('sStatus').value = sh.status || 'Planned';
       el('sBoxes').value = sh.boxes || '';
@@ -1016,19 +1047,26 @@
     });
     async function saveSetup() {
       const sh = currentShipment(); if (!sh) return;
-      sh.product = el('sProduct').value;
-      sh.status = el('sStatus').value;
-      sh.boxes = parseFloat(el('sBoxes').value) || 0;
-      sh.casesPerBox = parseFloat(el('sCasesPerBox').value) || 0;
-      sh.rollsPerCase = parseFloat(el('sRollsPerCase').value) || 0;
-      sh.cansPerRoll = parseFloat(el('sCansPerRoll').value) || 0;
-      sh.costPerCase = parseFloat(el('sCostPerCase').value) || 0;
-      sh.targetPrice = parseFloat(el('sTargetPrice').value) || 0;
-      sh.clennyInvest = parseFloat(el('sClennyInvest').value) || 0;
-      sh.clannyInvest = parseFloat(el('sClannyInvest').value) || 0;
-      sh.notes = el('sNotes').value;
-      const ok = await saveShipmentRemote(sh);
+      // Build the candidate off-side. Only merge into the in-memory shipment
+      // AFTER the remote save confirms — otherwise a failed save leaves the
+      // UI computing off values the DB never actually received.
+      const candidate = {
+        ...sh,
+        product: el('sProduct').value,
+        status: el('sStatus').value,
+        boxes: parseFloat(el('sBoxes').value) || 0,
+        casesPerBox: parseFloat(el('sCasesPerBox').value) || 0,
+        rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0,
+        cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0,
+        costPerCase: parseFloat(el('sCostPerCase').value) || 0,
+        targetPrice: parseFloat(el('sTargetPrice').value) || 0,
+        clennyInvest: parseFloat(el('sClennyInvest').value) || 0,
+        clannyInvest: parseFloat(el('sClannyInvest').value) || 0,
+        notes: el('sNotes').value
+      };
+      const ok = await saveShipmentRemote(candidate);
       if (!ok) return;
+      Object.assign(sh, candidate);
       updateShipmentSelect(); alert('Shipment saved!');
     }
 
@@ -1042,11 +1080,11 @@
       container.innerHTML = sh.ops.map((o, i) => `
         <div class="list-item">
           <div class="list-item-header">
-            <span class="list-item-title" style="color:${o.owner==='Clenny'?'var(--clenny)':'var(--clanny)'}">${o.owner}</span>
+            <span class="list-item-title" style="color:${o.owner==='Clenny'?'var(--clenny)':'var(--clanny)'}">${escapeHtml(o.owner)}</span>
             <span class="list-item-amount ${o.owner==='Clenny'?'clenny':'clanny'}">${fmt(o.amount)}</span>
           </div>
-          <div class="list-item-meta">${o.category || 'Uncategorized'} &bull; ${o.date || 'No date'}</div>
-          <div class="list-item-meta">${o.description || ''}</div>
+          <div class="list-item-meta">${escapeHtml(o.category || 'Uncategorized')} &bull; ${escapeHtml(o.date || 'No date')}</div>
+          <div class="list-item-meta">${escapeHtml(o.description || '')}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
             <span class="list-item-badge ${o.included==='Yes'?'badge-included':'badge-excluded'}">${o.included==='Yes'?'Included':'Excluded'}</span>
             <button class="btn btn-sm danger" onclick="deleteOps(${i})">Delete</button>
@@ -1088,13 +1126,13 @@
       container.innerHTML = sh.sales.map((sa, i) => `
         <div class="list-item">
           <div class="list-item-header">
-            <span class="list-item-title">${sa.customer || 'Unknown'}</span>
+            <span class="list-item-title">${escapeHtml(sa.customer || 'Unknown')}</span>
             <span class="list-item-amount success">${fmt(sa.grossSales)}</span>
           </div>
-          <div class="list-item-meta">${sa.date || 'No date'} &bull; ${sa.product || ''} &bull; ${fmtInt(sa.totalCans)} cans @ ${fmt(sa.pricePerCan)}/can</div>
-          <div class="list-item-meta">Collected by ${sa.collectedBy}</div>
+          <div class="list-item-meta">${escapeHtml(sa.date || 'No date')} &bull; ${escapeHtml(sa.product || '')} &bull; ${fmtInt(sa.totalCans)} cans @ ${fmt(sa.pricePerCan)}/can</div>
+          <div class="list-item-meta">Collected by ${escapeHtml(sa.collectedBy)}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-            <span class="list-item-badge ${sa.paymentStatus==='Paid'?'badge-paid':'badge-unpaid'}">${sa.paymentStatus}</span>
+            <span class="list-item-badge ${sa.paymentStatus==='Paid'?'badge-paid':'badge-unpaid'}">${escapeHtml(sa.paymentStatus)}</span>
             <button class="btn btn-sm danger" onclick="deleteSales(${i})">Delete</button>
           </div>
         </div>
@@ -1179,9 +1217,19 @@
       el('setClennyBal').textContent = fmt(st.clennyBal);
       el('setClannyBal').textContent = fmt(st.clannyBal);
       el('setCheck1').className = 'check-dot' + (st.checkPayout ? '' : ' fail');
-      el('setCheckText1').textContent = st.checkPayout ? 'Payouts match projected revenue' : 'PAYOUT MISMATCH!';
+      if (st.checkPayout) {
+        el('setCheckText1').textContent = 'Payouts match projected revenue';
+      } else {
+        const d = (st.clennyPayout + st.clannyPayout) - st.projRevenue;
+        el('setCheckText1').textContent = `Payouts off by ${fmt(Math.abs(d))} vs projected revenue`;
+      }
       el('setCheck2').className = 'check-dot' + (st.checkBasis ? '' : ' fail');
-      el('setCheckText2').textContent = st.checkBasis ? 'Contribution shares look right' : 'Contribution shares are off — recheck';
+      if (st.checkBasis) {
+        el('setCheckText2').textContent = 'Contribution shares look right';
+      } else {
+        const d = (st.clennyBasis + st.clannyBasis) - st.totalBasis;
+        el('setCheckText2').textContent = `Contribution shares off by ${fmt(Math.abs(d))}`;
+      }
     }
 
     function renderShipments() {
@@ -1195,10 +1243,10 @@
           'Sold Out': 'badge-soldout', 'Settled': 'badge-settled'
         }[sh.status] || 'badge-planned';
         return `
-          <div class="ship-card ${sh.id === state.selectedShipmentId ? 'active' : ''}" onclick="selectShipment('${sh.id}'); switchTab('dashboard');">
+          <div class="ship-card ${sh.id === state.selectedShipmentId ? 'active' : ''}" data-ship-id="${escapeHtml(sh.id)}">
             <div class="ship-card-header">
-              <span class="ship-card-title">${shortShipmentId(sh.id)} — ${sh.product || 'Untitled'}</span>
-              <span class="list-item-badge ${statusClass}">${sh.status}</span>
+              <span class="ship-card-title">${escapeHtml(shortShipmentId(sh.id))} — ${escapeHtml(sh.product || 'Untitled')}</span>
+              <span class="list-item-badge ${statusClass}">${escapeHtml(sh.status)}</span>
             </div>
             <div class="ship-card-meta">${fmtInt(c.totalCans)} cans &bull; Cost ${fmt(c.totalCost)} &bull; Revenue ${fmt(c.projRevenue)}</div>
             <div class="ship-card-meta">Sold ${fmtInt(st.soldCans)} &bull; Remaining ${fmtInt(st.remainingCans)} &bull; P/L ${fmt(st.currentPL)}</div>
@@ -1210,6 +1258,12 @@
     (async function init() {
       el('mOpsDate').value = today();
       el('mSalesDate').value = today();
+      el('shipmentsList').addEventListener('click', (e) => {
+        const card = e.target.closest('.ship-card');
+        if (!card || !card.dataset.shipId) return;
+        selectShipment(card.dataset.shipId);
+        switchTab('dashboard');
+      });
       await loadAll();
       updateShipmentSelect();
       renderCurrentScreen();

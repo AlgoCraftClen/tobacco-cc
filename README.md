@@ -25,6 +25,7 @@ The Supabase project needs the migrations under `supabase/migrations/` applied b
 2. For each `.sql` file in [`supabase/migrations/`](supabase/migrations/), in filename order, paste its contents and click **Run**. As of now that's:
    - [`20260705_prototype_sync.sql`](supabase/migrations/20260705_prototype_sync.sql) — Supabase schema for the prototype
    - [`20260706_shipment_short_seq.sql`](supabase/migrations/20260706_shipment_short_seq.sql) — permanent `SHP #N` numbers per shipment
+   - [`20260707_fk_cascade_and_publication_guards.sql`](supabase/migrations/20260707_fk_cascade_and_publication_guards.sql) — FK cascade on shipment delete + idempotent realtime publication adds
 
 Safe to re-run — every statement is idempotent.
 
