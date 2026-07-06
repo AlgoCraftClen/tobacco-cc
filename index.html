@@ -491,13 +491,15 @@
 
   <script>
     // ---- Supabase config ----
+    // The anon key is intentionally public — this is a two-person tracker
+    // with no login, no PII, no money moving through it. Accepted risk:
+    // anyone who finds the URL can read/write the shared tables. If that
+    // ever changes, add Supabase Auth + real RLS policies.
     const SUPABASE_URL = 'https://njpkqemgpbstrbsaxpbz.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qcGtxZW1ncGJzdHJic2F4cGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMjc3NDYsImV4cCI6MjA5NjcwMzc0Nn0.IKEqP0XW7hcVi-p65hUTyS2pApv7gZLt2dlMiwKbuX8';
-    const APP_SECRET = 'CC_TOBACCO_SECRET_2026';
     const SB_HEADERS = {
       'apikey': SUPABASE_KEY,
       'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'x-cc-app-secret': APP_SECRET,
       'Content-Type': 'application/json'
     };
 
