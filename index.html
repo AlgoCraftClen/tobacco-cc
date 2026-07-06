@@ -64,6 +64,9 @@
     .form-input, .form-select { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--surface-2); background: var(--bg); color: var(--text); font-size: 15px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
     .form-input:focus, .form-select:focus { border-color: var(--accent); }
     .form-input::placeholder { color: var(--text-2); opacity: 0.6; }
+    .brand-pick { display: flex; gap: 10px; }
+    .brand-pick-btn { flex: 1; padding: 16px 12px; border-radius: 12px; border: 1px solid var(--surface-2); background: var(--bg); color: var(--text-2); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; -webkit-appearance: none; }
+    .brand-pick-btn.active { border-color: var(--accent); background: rgba(59,130,246,0.12); color: var(--text); }
     textarea.form-input { min-height: 80px; resize: vertical; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -210,7 +213,12 @@
         <div class="card">
           <div class="card-title">Shipment Details</div>
           <div class="card-row" style="margin-bottom:12px"><span class="card-label">Shipment</span><span class="card-value" id="sShipId">-</span></div>
-          <div class="form-group"><label class="form-label">Product</label><input class="form-input" id="sProduct" placeholder="e.g. Copenhagen"></div>
+          <div class="form-group"><label class="form-label">Product</label>
+            <select class="form-select" id="sProduct">
+              <option value="Grizzly">Grizzly</option>
+              <option value="Copenhagen">Copenhagen</option>
+            </select>
+          </div>
           <div class="form-group"><label class="form-label">Status</label>
             <select class="form-select" id="sStatus">
               <option>Planned</option><option>In Transit</option><option>Arrived</option><option>Sold Out</option><option>Settled</option>
@@ -431,10 +439,14 @@
         <div class="modal-handle"></div>
         <div class="modal-title">New Shipment</div>
         <p style="font-size:13px; color:var(--text-2); text-align:center; margin:0 0 16px;">
-          The next SHP # is assigned automatically once you save.
+          The SHP # is assigned automatically. Just pick the product.
         </p>
-        <div class="form-group"><label class="form-label">Product</label><input class="form-input" id="newShipProduct" placeholder="e.g. Copenhagen"></div>
-        <button class="btn" onclick="createShipment()">Create Shipment</button>
+        <div class="form-group">
+          <label class="form-label">Product</label>
+          <div class="brand-pick" id="newShipBrandPick"></div>
+        </div>
+        <div id="newShipPreview" style="text-align:center; font-size:15px; font-weight:700; color:var(--text); margin:4px 0 16px; min-height:20px;"></div>
+        <button class="btn" id="newShipCreateBtn" onclick="createShipment()" disabled style="opacity:0.5;">Create Shipment</button>
         <button class="btn secondary" onclick="closeModal('newShipModal')">Cancel</button>
       </div>
     </div>
@@ -524,6 +536,14 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const currentShipment = () => state.shipments.find(s => s.id === state.selectedShipmentId) || state.shipments[0];
+    const BRANDS = ['Grizzly', 'Copenhagen'];
+    // Best-effort preview of the number the DB will assign next. The real
+    // short_seq is set server-side on insert and syncs back on reload; this
+    // just lets the modal show "SHP #N — Product" before saving.
+    function nextSeqPreview() {
+      const maxSeq = state.shipments.reduce((m, s) => Math.max(m, s.shortSeq || 0), 0);
+      return maxSeq + 1;
+    }
     const shortShipmentId = (id) => {
       const sh = state.shipments.find(s => s.id === id);
       if (sh && sh.shortSeq != null) return `SHP #${sh.shortSeq}`;
@@ -909,7 +929,35 @@
       saveSelected();
       renderCurrentScreen();
     }
-    function openShipmentModal() { el('newShipProduct').value = ''; el('newShipModal').classList.add('active'); }
+    let newShipBrand = null;
+    function selectNewShipBrand(brand) {
+      newShipBrand = brand;
+      const pick = el('newShipBrandPick');
+      [...pick.children].forEach(b => b.classList.toggle('active', b.dataset.brand === brand));
+      el('newShipPreview').textContent = `SHP #${nextSeqPreview()} — ${brand}`;
+      const btn = el('newShipCreateBtn');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+    function openShipmentModal() {
+      newShipBrand = null;
+      const pick = el('newShipBrandPick');
+      pick.innerHTML = '';
+      BRANDS.forEach(brand => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'brand-pick-btn';
+        b.dataset.brand = brand;
+        b.textContent = brand;
+        b.addEventListener('click', () => selectNewShipBrand(brand));
+        pick.appendChild(b);
+      });
+      el('newShipPreview').textContent = `SHP #${nextSeqPreview()} — pick a product`;
+      const btn = el('newShipCreateBtn');
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      el('newShipModal').classList.add('active');
+    }
     function newShipmentId() {
       // Prefer crypto.randomUUID (Safari 16.4+, all modern browsers). Fallback
       // for older UAs: RFC4122 v4 pattern built from crypto.getRandomValues.
@@ -920,9 +968,9 @@
       return `${h.slice(0,4).join('')}-${h.slice(4,6).join('')}-${h.slice(6,8).join('')}-${h.slice(8,10).join('')}-${h.slice(10,16).join('')}`;
     }
     async function createShipment() {
-      const product = el('newShipProduct').value.trim();
+      if (!newShipBrand) { alert('Pick a product first.'); return; }
       const newShip = {
-        id: newShipmentId(), product, status: 'Planned', boxes: 0, casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
+        id: newShipmentId(), product: newShipBrand, status: 'Planned', boxes: 0, casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
         costPerCase: 0, targetPrice: 12, clennyInvest: 0, clannyInvest: 0, notes: '', ops: [], sales: []
       };
       const ok = await saveShipmentRemote(newShip);
