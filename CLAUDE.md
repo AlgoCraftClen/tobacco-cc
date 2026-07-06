@@ -24,7 +24,8 @@ Single-file HTML app (`index.html`, ~1250 lines) — no build step. Loads Supaba
 - **No login, no auth, no user accounts.** The user's explicit stance (2026-07-06): "This is just a tracking app. No real money or assets. I want to keep it as simple as possible for the users. I don't want any login capabilities or constraints."
 - **Consequence: the Supabase anon key is public and RLS is not used for meaningful protection.** Anyone who finds the GitHub Pages URL can read/write the shared tables. Accepted risk because there's no money, PII, or assets in the app.
 - **APP_SECRET removed.** It was client-visible, so it was theater. Do not re-add "secret headers" as a security measure — they're not.
-- **Shipment IDs are UUIDs client-generated at create time.** Display labels are `SHP #<short_seq>` from the DB-assigned sequence. Never expose the UUID in the UI or ask the user to type one.
+- **Shipment IDs are UUIDs client-generated at create time.** Display labels are `SHP #<short_seq>`, where the **client** assigns `short_seq` = (highest existing + 1) at create time and writes it explicitly. The DB column still has a `nextval` default + UNIQUE constraint as a backstop, but the app no longer relies on the DB counter (it drifts when rows are deleted and can't be reset with the anon key). Concurrent-create collisions are caught and retried with a fresh max. Never expose the UUID in the UI or ask the user to type one.
+- **Product is a fixed choice: Grizzly or Copenhagen.** No free-text product entry anywhere (create modal = two buttons, setup = dropdown). Adding a brand = edit the `BRANDS` array in `index.html`.
 - **Single-file HTML, no build step.** Do not introduce npm/webpack/bundlers. Every change is a direct edit to `index.html`.
 - **Mobile-first, iOS Safari.** The two partners use this on their phones. Design and test accordingly.
 

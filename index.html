@@ -620,7 +620,7 @@
       };
     }
     function shipmentToRow(s) {
-      return {
+      const row = {
         id: s.id,
         brand: s.product || '',
         status: toDbStatus(s.status || 'Planned'),
@@ -634,6 +634,11 @@
         clanny_product_invest: Number(s.clannyInvest) || 0,
         notes: s.notes || ''
       };
+      // The app assigns the SHP # itself (highest existing + 1) rather than
+      // relying on the DB's auto-counter, which can drift when rows are
+      // deleted. Write it explicitly whenever we have it.
+      if (s.shortSeq != null) row.short_seq = Number(s.shortSeq);
+      return row;
     }
     function opFromRow(r) {
       return {
@@ -796,8 +801,17 @@
           // Pre-migration DB has a status CHECK constraint allowing only
           // {pending, received, disputed}. If the mapped status is rejected,
           // silently fall back to 'pending' so the save still lands.
-          if (/shipments_v2_status_check/.test(String(e.message || ''))) {
+          const msg = String(e.message || '');
+          if (/shipments_v2_status_check/.test(msg)) {
             returned = await attempt({ ...shipmentToRow(sh), status: 'pending' });
+          } else if (/short_seq/.test(msg) && sh.shortSeq != null) {
+            // Both partners created a shipment at nearly the same moment and
+            // landed on the same SHP #. Grab the current highest from the DB
+            // and take the next one.
+            const rows = await sbFetch('/shipments_v2?select=short_seq&order=short_seq.desc&limit=1');
+            const maxSeq = (rows && rows[0] && rows[0].short_seq) || 0;
+            sh.shortSeq = Number(maxSeq) + 1;
+            returned = await attempt(shipmentToRow(sh));
           } else { throw e; }
         }
         // Adopt DB-assigned columns (short_seq default) so newly-created
@@ -970,7 +984,7 @@
     async function createShipment() {
       if (!newShipBrand) { alert('Pick a product first.'); return; }
       const newShip = {
-        id: newShipmentId(), product: newShipBrand, status: 'Planned', boxes: 0, casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
+        id: newShipmentId(), shortSeq: nextSeqPreview(), product: newShipBrand, status: 'Planned', boxes: 0, casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
         costPerCase: 0, targetPrice: 12, clennyInvest: 0, clannyInvest: 0, notes: '', ops: [], sales: []
       };
       const ok = await saveShipmentRemote(newShip);
