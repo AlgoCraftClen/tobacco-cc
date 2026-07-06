@@ -23,6 +23,7 @@ The Supabase project needs the migrations under `supabase/migrations/` applied b
 
 1. Open the SQL Editor: <https://supabase.com/dashboard/project/njpkqemgpbstrbsaxpbz/sql>
 2. For each `.sql` file in [`supabase/migrations/`](supabase/migrations/), in filename order, paste its contents and click **Run**. As of now that's:
+   - [`20260628_excel_formulas.sql`](supabase/migrations/20260628_excel_formulas.sql) — base `shipments_v2` schema and Excel-aligned columns
    - [`20260705_prototype_sync.sql`](supabase/migrations/20260705_prototype_sync.sql) — Supabase schema for the prototype
    - [`20260706_shipment_short_seq.sql`](supabase/migrations/20260706_shipment_short_seq.sql) — permanent `SHP #N` numbers per shipment
    - [`20260707_fk_cascade_and_publication_guards.sql`](supabase/migrations/20260707_fk_cascade_and_publication_guards.sql) — FK cascade on shipment delete + idempotent realtime publication adds
