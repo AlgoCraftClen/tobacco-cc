@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CoolRest Supply | Cooling Sleep Setups for Hot Sleepers</title>
+  <meta name="description" content="Cooling sleep essentials for hot sleepers: breathable pillow covers, lightweight blankets, blackout masks, and white-noise accessories.">
+  <style>
+    :root {
+      --ink: #17212b;
+      --muted: #5d6975;
+      --line: #dbe3e8;
+      --paper: #f7f9f8;
+      --white: #ffffff;
+      --cool: #78b7c5;
+      --deep: #24515c;
+      --mint: #cce5d4;
+      --sun: #f2c766;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.5;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: rgba(247, 249, 248, 0.93);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+
+    .nav {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--deep), var(--cool));
+      position: relative;
+    }
+
+    .mark::after {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      right: 5px;
+      top: 5px;
+      background: var(--mint);
+    }
+
+    .navlinks {
+      display: flex;
+      gap: 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--deep);
+      color: var(--white);
+      padding: 12px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+    }
+
+    .button.secondary {
+      background: var(--white);
+      color: var(--deep);
+      border: 1px solid var(--line);
+    }
+
+    .hero {
+      min-height: calc(100vh - 68px);
+      display: grid;
+      align-items: center;
+      padding: 72px 0 48px;
+      background:
+        linear-gradient(90deg, rgba(247,249,248,0.98) 0%, rgba(247,249,248,0.88) 44%, rgba(247,249,248,0.18) 72%),
+        url("https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1800&q=80") center right / cover;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 560px) 1fr;
+      gap: 48px;
+      align-items: end;
+    }
+
+    .eyebrow {
+      color: var(--deep);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      margin: 0 0 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(42px, 7vw, 82px);
+      line-height: 0.96;
+      letter-spacing: 0;
+      max-width: 620px;
+    }
+
+    .hero p {
+      margin: 24px 0 0;
+      max-width: 520px;
+      color: #33414c;
+      font-size: 18px;
+    }
+
+    .hero-actions {
+      margin-top: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .trust-strip {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      max-width: 580px;
+    }
+
+    .trust-item {
+      min-height: 78px;
+      border: 1px solid rgba(36, 81, 92, 0.18);
+      background: rgba(255,255,255,0.72);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .trust-item strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .trust-item span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    section {
+      padding: 72px 0;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      max-width: 440px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .product {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 390px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .product-visual {
+      aspect-ratio: 1 / 0.78;
+      background-size: cover;
+      background-position: center;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .pillow {
+      background-image: url("https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=900&q=80");
+    }
+
+    .blanket {
+      background-image: url("https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=900&q=80");
+    }
+
+    .mask {
+      background-image: url("https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=900&q=80");
+    }
+
+    .noise {
+      background-image: url("https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=900&q=80");
+    }
+
+    .product-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .product h3 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.15;
+    }
+
+    .product p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .price-row {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .price {
+      font-weight: 800;
+      color: var(--deep);
+    }
+
+    .small-button {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-weight: 700;
+      color: var(--deep);
+      cursor: pointer;
+    }
+
+    .offer-band {
+      background: var(--deep);
+      color: var(--white);
+    }
+
+    .offer-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 42px;
+      align-items: center;
+    }
+
+    .bundle-box {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      padding: 22px;
+    }
+
+    .bundle-box ul {
+      margin: 18px 0 0;
+      padding-left: 20px;
+    }
+
+    .bundle-box li {
+      margin: 10px 0;
+    }
+
+    .offer-band p {
+      color: rgba(255,255,255,0.78);
+      max-width: 520px;
+    }
+
+    .offer-band .button {
+      background: var(--sun);
+      color: #2f2a1c;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .step {
+      border-top: 3px solid var(--cool);
+      background: var(--white);
+      padding: 18px;
+      border-radius: 8px;
+      min-height: 170px;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--deep);
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .faq {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    details {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    details p {
+      color: var(--muted);
+      margin-bottom: 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 28px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        min-height: auto;
+        background:
+          linear-gradient(180deg, rgba(247,249,248,0.96) 0%, rgba(247,249,248,0.88) 58%, rgba(247,249,248,0.58) 100%),
+          url("https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=1200&q=80") center / cover;
+      }
+
+      .hero-grid,
+      .offer-layout,
+      .faq {
+        grid-template-columns: 1fr;
+      }
+
+      .product-grid,
+      .steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .section-head {
+        display: block;
+      }
+
+      .section-head p {
+        margin-top: 12px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .shell {
+        padding: 0 16px;
+      }
+
+      .navlinks {
+        display: none;
+      }
+
+      .hero {
+        padding: 54px 0 34px;
+      }
+
+      .trust-strip,
+      .product-grid,
+      .steps {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-actions {
+        display: grid;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      section {
+        padding: 54px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell nav">
+      <a class="brand" href="#">
+        <span class="mark" aria-hidden="true"></span>
+        <span>CoolRest Supply</span>
+      </a>
+      <nav class="navlinks" aria-label="Primary navigation">
+        <a href="#products">Products</a>
+        <a href="#kit">Reset Kit</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <a class="button" href="#kit">Build a Kit</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="shell hero-grid">
+        <div>
+          <p class="eyebrow">Cooling sleep setups for hot sleepers</p>
+          <h1>Make your bed feel cooler tonight.</h1>
+          <p>CoolRest Supply builds simple sleep kits for people who wake up warm, flip pillows, and need a lighter bedroom setup without replacing the mattress.</p>
+          <div class="hero-actions">
+            <a class="button" href="#kit">Shop the Reset Kit</a>
+            <a class="button secondary" href="#products">See Products</a>
+          </div>
+          <div class="trust-strip" aria-label="Store highlights">
+            <div class="trust-item">
+              <strong>Hot sleeper first</strong>
+              <span>Products chosen around warmth, light, and noise.</span>
+            </div>
+            <div class="trust-item">
+              <strong>No medical claims</strong>
+              <span>Comfort-focused upgrades, not sleep treatment promises.</span>
+            </div>
+            <div class="trust-item">
+              <strong>Bundle value</strong>
+              <span>One setup beats random bedroom gadgets.</span>
+            </div>
+          </div>
+        </div>
+        <div aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section id="products">
+      <div class="shell">
+        <div class="section-head">
+          <h2>The cooling sleep stack.</h2>
+          <p>Start with the surfaces and conditions that touch the sleep experience: pillow feel, blanket weight, light, and background noise.</p>
+        </div>
+        <div class="product-grid">
+          <article class="product">
+            <div class="product-visual pillow" role="img" aria-label="Cooling pillow on a clean bed"></div>
+            <div class="product-body">
+              <h3>Cooling Pillow Cover Pair</h3>
+              <p>Cool-touch pillow surface with a washable cover format for warm nights.</p>
+              <div class="price-row">
+                <span class="price">$29</span>
+                <button class="small-button" type="button">Add link</button>
+              </div>
+            </div>
+          </article>
+          <article class="product">
+            <div class="product-visual blanket" role="img" aria-label="Lightweight bedding in a bright bedroom"></div>
+            <div class="product-body">
+              <h3>Light Cooling Blanket</h3>
+              <p>A lighter layer for people who want blanket comfort without heavy warmth.</p>
+              <div class="price-row">
+                <span class="price">$69</span>
+                <button class="small-button" type="button">Add link</button>
+              </div>
+            </div>
+          </article>
+          <article class="product">
+            <div class="product-visual mask" role="img" aria-label="Soft sleep mask on neutral bedding"></div>
+            <div class="product-body">
+              <h3>Blackout Sleep Mask</h3>
+              <p>Contoured light blocking for bedrooms, travel, and inconsistent schedules.</p>
+              <div class="price-row">
+                <span class="price">$17</span>
+                <button class="small-button" type="button">Add link</button>
+              </div>
+            </div>
+          </article>
+          <article class="product">
+            <div class="product-visual noise" role="img" aria-label="Minimal bedside sleep setup"></div>
+            <div class="product-body">
+              <h3>White Noise Mini</h3>
+              <p>A compact room-noise masker for apartments, travel, and shared spaces.</p>
+              <div class="price-row">
+                <span class="price">$39</span>
+                <button class="small-button" type="button">Add link</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="kit" class="offer-band">
+      <div class="shell offer-layout">
+        <div>
+          <p class="eyebrow">Lead bundle</p>
+          <h2>Hot Sleeper Reset Kit</h2>
+          <p>The first offer should sell a complete setup, not a single commodity product. This bundle gives the customer a clear bedroom reset and gives the business stronger average order value.</p>
+          <a class="button" href="mailto:hello@example.com?subject=Hot%20Sleeper%20Reset%20Kit">Request launch link</a>
+        </div>
+        <div class="bundle-box">
+          <strong>Starter kit target: $89</strong>
+          <ul>
+            <li>Cooling pillow cover pair</li>
+            <li>Lightweight cooling blanket or throw</li>
+            <li>Contoured blackout mask</li>
+            <li>Optional white-noise mini upsell</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="shell">
+        <div class="section-head">
+          <h2>How the store sells.</h2>
+          <p>Simple buying logic: fix the warm surface, reduce heavy bedding, block light, mask noise.</p>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <strong>1. Start with the pillow</strong>
+            <p>The pillow is the easiest hot-sleeper pain to understand and demonstrate.</p>
+          </div>
+          <div class="step">
+            <strong>2. Swap the blanket layer</strong>
+            <p>Move the customer from heavy bedding to a lighter cooling layer.</p>
+          </div>
+          <div class="step">
+            <strong>3. Finish the room</strong>
+            <p>Mask and white noise create a full setup without pretending to treat sleep disorders.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="shell">
+        <div class="section-head">
+          <h2>FAQ</h2>
+          <p>Replace these answers with final supplier-specific details before launch.</p>
+        </div>
+        <div class="faq">
+          <details>
+            <summary>Does this treat insomnia or night sweats?</summary>
+            <p>No. These are comfort products designed for a cooler-feeling sleep setup. They are not medical products and are not intended to diagnose, treat, cure, or prevent any condition.</p>
+          </details>
+          <details>
+            <summary>When will my order arrive?</summary>
+            <p>Final delivery estimates will be added after supplier approval. The launch target is tracked shipping with clear customer updates.</p>
+          </details>
+          <details>
+            <summary>Can I wash the products?</summary>
+            <p>Care instructions depend on the final supplier. Washable covers and easy-care products are preferred for launch.</p>
+          </details>
+          <details>
+            <summary>Why a kit instead of one product?</summary>
+            <p>Hot sleep usually comes from a setup: warm pillow, heavy layer, bright room, or noise. The kit solves the bedroom environment more completely.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-row">
+      <span>CoolRest Supply. Cooling sleep comfort products.</span>
+      <span>Contact: hello@example.com</span>
+    </div>
+  </footer>
+</body>
+</html>
