@@ -205,6 +205,7 @@
           <div class="card-row"><span class="card-label">Ops Entered</span><span class="card-value" id="dashOpsEntered">$0</span></div>
           <div class="card-row"><span class="card-label">Sales Entered</span><span class="card-value" id="dashSalesEntered">$0</span></div>
           <div class="card-row"><span class="card-label">Current P/L</span><span class="card-value" id="dashCurrentPL">$0</span></div>
+          <div class="card-row"><span class="card-label">Cash On Hand (COH)</span><span class="card-value success" id="dashCashOnHand">$0</span></div>
           <div class="check-row"><div class="check-dot" id="checkDot1"></div><span id="checkText1">Numbers add up</span></div>
         </div>
       </div>
@@ -303,6 +304,7 @@
           <div class="card-row"><span class="card-label">Projected Revenue</span><span class="card-value success" id="setProjRevenue">$0</span></div>
           <div class="card-row"><span class="card-label">Projected Profit After Ops</span><span class="card-value success" id="setProjProfit">$0</span></div>
           <div class="card-row"><span class="card-label">Current P/L Based On Sales</span><span class="card-value" id="setCurrentPL">$0</span></div>
+          <div class="card-row"><span class="card-label">Cash On Hand (COH)</span><span class="card-value success" id="setCashOnHand">$0</span></div>
         </div>
 
         <div class="card">
@@ -322,6 +324,8 @@
           <div class="card-title">Cash &amp; Inventory</div>
           <div class="card-row"><span class="card-label">Cash Collected by Clenny</span><span class="card-value clenny" id="setCashClenny">$0</span></div>
           <div class="card-row"><span class="card-label">Cash Collected by Clanny</span><span class="card-value clanny" id="setCashClanny">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny COH After Ops</span><span class="card-value clenny" id="setClennyCOH">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Cash Held</span><span class="card-value clanny" id="setClannyCOH">$0</span></div>
           <div class="card-row"><span class="card-label">Inventory Sold (cans)</span><span class="card-value" id="setSoldCans">0</span></div>
           <div class="card-row"><span class="card-label">Inventory Remaining</span><span class="card-value" id="setRemainingCans">0</span></div>
           <div class="card-row"><span class="card-label">Remaining Value @ Target</span><span class="card-value" id="setRemainingValue">$0</span></div>
@@ -580,8 +584,16 @@
       const clannyProfitShare = projProfit * clannyPct;
       const clennyPayout = clennyBasis + clennyProfitShare;
       const clannyPayout = clannyBasis + clannyProfitShare;
+      const paidSales = sh.sales.filter(sa => (sa.paymentStatus || 'Paid') === 'Paid');
+      const paidGrossSales = paidSales.reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
+      const paidCashClenny = paidSales.filter(sa => sa.collectedBy === 'Clenny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
+      const paidCashClanny = paidSales.filter(sa => sa.collectedBy === 'Clanny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
       const cashClenny = sh.sales.filter(sa => sa.collectedBy === 'Clenny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
       const cashClanny = sh.sales.filter(sa => sa.collectedBy === 'Clanny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
+      // Clenny ops come from sales cash; Clanny ops are paid personally and stay in settlement basis.
+      const clennyCashOnHand = paidCashClenny - clennyOps;
+      const clannyCashOnHand = paidCashClanny;
+      const cashOnHand = paidGrossSales - clennyOps;
       const soldCans = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.totalCans) || 0), 0);
       const remainingCans = c.totalCans - soldCans;
       const remainingValue = remainingCans * (sh.targetPrice || 0);
@@ -589,7 +601,7 @@
       const clannyBal = clannyPayout - cashClanny;
       const checkPayout = Math.abs((clennyPayout + clannyPayout) - c.projRevenue) < 0.01;
       const checkBasis = Math.abs((clennyBasis + clannyBasis) - totalBasis) < 0.01;
-      return { clennyOps, clannyOps, totalOps, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, projProfit, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, cashClenny, cashClanny, soldCans, remainingCans, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, ...c };
+      return { clennyOps, clannyOps, totalOps, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, paidGrossSales, projProfit, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, cashClenny, cashClanny, paidCashClenny, paidCashClanny, clennyCashOnHand, clannyCashOnHand, cashOnHand, soldCans, remainingCans, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, ...c };
     }
 
     // ---- Row mappers between prototype shape and Supabase schema ----
@@ -1043,6 +1055,8 @@
       el('dashOpsEntered').textContent = fmt(st.totalOps);
       el('dashSalesEntered').textContent = fmt(st.grossSales);
       el('dashCurrentPL').textContent = fmt(st.currentPL);
+      el('dashCashOnHand').textContent = fmt(st.cashOnHand);
+      el('dashCashOnHand').className = 'card-value ' + (st.cashOnHand < 0 ? 'danger' : 'success');
       el('dashClennyPayout').textContent = fmt(st.clennyPayout);
       el('dashClannyPayout').textContent = fmt(st.clannyPayout);
       el('barClenny').style.width = fmtPct(st.clennyPct);
@@ -1268,6 +1282,8 @@
       el('setProjRevenue').textContent = fmt(st.projRevenue);
       el('setProjProfit').textContent = fmt(st.projProfit);
       el('setCurrentPL').textContent = fmt(st.currentPL);
+      el('setCashOnHand').textContent = fmt(st.cashOnHand);
+      el('setCashOnHand').className = 'card-value ' + (st.cashOnHand < 0 ? 'danger' : 'success');
       el('setClennyProfitShare').textContent = fmt(st.clennyProfitShare);
       el('setClannyProfitShare').textContent = fmt(st.clannyProfitShare);
       el('setClennyPayout').textContent = fmt(st.clennyPayout);
@@ -1275,6 +1291,10 @@
       el('setTotalPayout').textContent = fmt(st.clennyPayout + st.clannyPayout);
       el('setCashClenny').textContent = fmt(st.cashClenny);
       el('setCashClanny').textContent = fmt(st.cashClanny);
+      el('setClennyCOH').textContent = fmt(st.clennyCashOnHand);
+      el('setClennyCOH').className = 'card-value ' + (st.clennyCashOnHand < 0 ? 'danger' : 'clenny');
+      el('setClannyCOH').textContent = fmt(st.clannyCashOnHand);
+      el('setClannyCOH').className = 'card-value ' + (st.clannyCashOnHand < 0 ? 'danger' : 'clanny');
       el('setSoldCans').textContent = fmtInt(st.soldCans);
       el('setRemainingCans').textContent = fmtInt(st.remainingCans);
       el('setRemainingValue').textContent = fmt(st.remainingValue);
