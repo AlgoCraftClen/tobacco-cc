@@ -64,7 +64,7 @@
     .form-input, .form-select { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--surface-2); background: var(--bg); color: var(--text); font-size: 15px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
     .form-input:focus, .form-select:focus { border-color: var(--accent); }
     .form-input::placeholder { color: var(--text-2); opacity: 0.6; }
-    .brand-pick { display: flex; gap: 10px; }
+    .brand-pick { display: flex; flex-wrap: wrap; gap: 10px; }
     .brand-pick-btn { flex: 1; padding: 16px 12px; border-radius: 12px; border: 1px solid var(--surface-2); background: var(--bg); color: var(--text-2); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; -webkit-appearance: none; }
     .brand-pick-btn.active { border-color: var(--accent); background: rgba(59,130,246,0.12); color: var(--text); }
     textarea.form-input { min-height: 80px; resize: vertical; }
@@ -214,11 +214,12 @@
         <div class="card">
           <div class="card-title">Shipment Details</div>
           <div class="card-row" style="margin-bottom:12px"><span class="card-label">Shipment</span><span class="card-value" id="sShipId">-</span></div>
-          <div class="form-group"><label class="form-label">Product</label>
-            <select class="form-select" id="sProduct">
-              <option value="Grizzly">Grizzly</option>
-              <option value="Copenhagen">Copenhagen</option>
-            </select>
+          <input type="hidden" id="sProduct">
+          <div class="form-group"><label class="form-label">Product Mix</label>
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0"><label class="form-label">Grizzly Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sGrizzlyBoxes" placeholder="0"></div>
+              <div class="form-group" style="margin-bottom:0"><label class="form-label">Copenhagen Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCopenhagenBoxes" placeholder="0"></div>
+            </div>
           </div>
           <div class="form-group"><label class="form-label">Status</label>
             <select class="form-select" id="sStatus">
@@ -231,7 +232,7 @@
         <div class="card">
           <div class="card-title">Inventory Math</div>
           <div class="form-row-3">
-            <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sBoxes" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Total Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sBoxes" placeholder="0" readonly></div>
             <div class="form-group"><label class="form-label">Cases/Box</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCasesPerBox" placeholder="6"></div>
             <div class="form-group"><label class="form-label">Rolls/Case</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sRollsPerCase" placeholder="18"></div>
           </div>
@@ -450,7 +451,7 @@
         <div class="modal-handle"></div>
         <div class="modal-title">New Shipment</div>
         <p style="font-size:13px; color:var(--text-2); text-align:center; margin:0 0 16px;">
-          The SHP # is assigned automatically. Just pick the product.
+          The SHP # is assigned automatically. Pick one product or both.
         </p>
         <div class="form-group">
           <label class="form-label">Product</label>
@@ -554,6 +555,71 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const currentShipment = () => state.shipments.find(s => s.id === state.selectedShipmentId) || state.shipments[0];
     const BRANDS = ['Grizzly', 'Copenhagen'];
+    const NEW_SHIP_PRODUCT_CHOICES = [...BRANDS, 'Both'];
+    const PRODUCT_MIX_MARKER = 'CC_PRODUCT_MIX:';
+
+    function positiveNumber(value) {
+      const n = parseFloat(value);
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    }
+    function normalizeProductMix(mix) {
+      const out = {};
+      BRANDS.forEach(brand => {
+        const boxes = positiveNumber(mix && mix[brand]);
+        if (boxes > 0) out[brand] = boxes;
+      });
+      return out;
+    }
+    function productMixTotalBoxes(mix) {
+      return Object.values(normalizeProductMix(mix)).reduce((sum, boxes) => sum + boxes, 0);
+    }
+    function productMixLabel(mix, fallback = '') {
+      const clean = normalizeProductMix(mix);
+      const brands = BRANDS.filter(brand => clean[brand] > 0);
+      if (brands.length) return brands.join(' + ');
+      return fallback || '';
+    }
+    function productMixSummary(mix) {
+      const clean = normalizeProductMix(mix);
+      return BRANDS.filter(brand => clean[brand] > 0)
+        .map(brand => `${fmtInt(clean[brand])} ${brand}`)
+        .join(' + ');
+    }
+    function productMixMarkerRegex() {
+      return new RegExp(`\\n?<!--${PRODUCT_MIX_MARKER}([A-Za-z0-9+/=]+)-->`, 'g');
+    }
+    function decodeProductMix(notes) {
+      const match = productMixMarkerRegex().exec(String(notes || ''));
+      if (!match) return {};
+      try { return normalizeProductMix(JSON.parse(atob(match[1]))); }
+      catch (_) { return {}; }
+    }
+    function stripProductMix(notes) {
+      return String(notes || '').replace(productMixMarkerRegex(), '').trim();
+    }
+    function notesWithProductMix(notes, mix) {
+      const cleanNotes = stripProductMix(notes);
+      const cleanMix = normalizeProductMix(mix);
+      if (productMixTotalBoxes(cleanMix) <= 0) return cleanNotes;
+      const marker = `<!--${PRODUCT_MIX_MARKER}${btoa(JSON.stringify(cleanMix))}-->`;
+      return cleanNotes ? `${cleanNotes}\n${marker}` : marker;
+    }
+    function getProductMix(sh) {
+      const fromProp = normalizeProductMix(sh && sh.productMix);
+      if (productMixTotalBoxes(fromProp) > 0) return fromProp;
+      const fromNotes = decodeProductMix(sh && sh.notes);
+      if (productMixTotalBoxes(fromNotes) > 0) return fromNotes;
+      if (sh && BRANDS.includes(sh.product) && positiveNumber(sh.boxes) > 0) return { [sh.product]: positiveNumber(sh.boxes) };
+      return {};
+    }
+    function displayProduct(sh) {
+      return productMixLabel(getProductMix(sh), sh && sh.product || '');
+    }
+    function defaultMixForProductChoice(choice) {
+      if (choice === 'Both') return { Grizzly: 1, Copenhagen: 1 };
+      if (BRANDS.includes(choice)) return {};
+      return {};
+    }
     // Best-effort preview of the number the DB will assign next. The real
     // short_seq is set server-side on insert and syncs back on reload; this
     // just lets the modal show "SHP #N — Product" before saving.
@@ -572,12 +638,13 @@
     function calcShipment(s) {
       const cansPerCase = (s.rollsPerCase || 0) * (s.cansPerRoll || 0);
       const cansPerBox = (s.casesPerBox || 0) * cansPerCase;
-      const casesOrdered = (s.boxes || 0) * (s.casesPerBox || 0);
+      const boxes = productMixTotalBoxes(getProductMix(s)) || (s.boxes || 0);
+      const casesOrdered = boxes * (s.casesPerBox || 0);
       const rollsOrdered = casesOrdered * (s.rollsPerCase || 0);
-      const totalCans = (s.boxes || 0) * cansPerBox;
+      const totalCans = boxes * cansPerBox;
       const totalCost = casesOrdered * (s.costPerCase || 0);
       const projRevenue = totalCans * (s.targetPrice || 0);
-      return { cansPerCase, cansPerBox, casesOrdered, rollsOrdered, totalCans, totalCost, projRevenue };
+      return { boxes, cansPerCase, cansPerBox, casesOrdered, rollsOrdered, totalCans, totalCost, projRevenue };
     }
 
     function calcSettlement(sh) {
@@ -636,10 +703,12 @@
     const toDbStatus = s => STATUS_UI_TO_DB[s] || (s ? String(s).toLowerCase().replace(/\s+/g,'_') : 'pending');
     const toUiStatus = s => STATUS_DB_TO_UI[s] || (s || 'Planned');
     function shipmentFromRow(r) {
+      const productMix = decodeProductMix(r.notes);
       return {
         id: r.id,
         shortSeq: r.short_seq == null ? null : Number(r.short_seq),
-        product: r.brand || '',
+        product: productMixLabel(productMix, r.brand || ''),
+        productMix,
         status: toUiStatus(r.status),
         boxes: Number(r.boxes) || 0,
         casesPerBox: Number(r.cases_per_box) || 6,
@@ -649,16 +718,17 @@
         targetPrice: Number(r.target_sale_price_per_can) || 0,
         clennyInvest: Number(r.clenny_product_invest) || 0,
         clannyInvest: Number(r.clanny_product_invest) || 0,
-        notes: r.notes || '',
+        notes: stripProductMix(r.notes),
         ops: [], sales: []
       };
     }
     function shipmentToRow(s) {
+      const productMix = getProductMix(s);
       const row = {
         id: s.id,
-        brand: s.product || '',
+        brand: productMixLabel(productMix, s.product || ''),
         status: toDbStatus(s.status || 'Planned'),
-        boxes: Number(s.boxes) || 0,
+        boxes: productMixTotalBoxes(productMix) || Number(s.boxes) || 0,
         cases_per_box: Number(s.casesPerBox) || 6,
         rolls_per_case: Number(s.rollsPerCase) || 18,
         cans_per_roll: Number(s.cansPerRoll) || 5,
@@ -666,7 +736,7 @@
         target_sale_price_per_can: Number(s.targetPrice) || 0,
         clenny_product_invest: Number(s.clennyInvest) || 0,
         clanny_product_invest: Number(s.clannyInvest) || 0,
-        notes: s.notes || ''
+        notes: notesWithProductMix(s.notes, productMix)
       };
       // The app assigns the SHP # itself (highest existing + 1) rather than
       // relying on the DB's auto-counter, which can drift when rows are
@@ -968,7 +1038,7 @@
       for (const s of state.shipments) {
         const o = document.createElement('option');
         o.value = s.id;
-        o.textContent = `${shortShipmentId(s.id)} — ${s.product || ''}`;
+        o.textContent = `${shortShipmentId(s.id)} — ${displayProduct(s) || ''}`;
         if (s.id === state.selectedShipmentId) o.selected = true;
         sel.appendChild(o);
       }
@@ -984,7 +1054,9 @@
       newShipBrand = brand;
       const pick = el('newShipBrandPick');
       [...pick.children].forEach(b => b.classList.toggle('active', b.dataset.brand === brand));
-      el('newShipPreview').textContent = `SHP #${nextSeqPreview()} — ${brand}`;
+      const mix = defaultMixForProductChoice(brand);
+      const summary = productMixSummary(mix);
+      el('newShipPreview').textContent = `SHP #${nextSeqPreview()} — ${summary || brand}`;
       const btn = el('newShipCreateBtn');
       btn.disabled = false;
       btn.style.opacity = '1';
@@ -993,7 +1065,7 @@
       newShipBrand = null;
       const pick = el('newShipBrandPick');
       pick.innerHTML = '';
-      BRANDS.forEach(brand => {
+      NEW_SHIP_PRODUCT_CHOICES.forEach(brand => {
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'brand-pick-btn';
@@ -1019,8 +1091,10 @@
     }
     async function createShipment() {
       if (!newShipBrand) { alert('Pick a product first.'); return; }
+      const productMix = defaultMixForProductChoice(newShipBrand);
+      const product = productMixLabel(productMix, newShipBrand);
       const newShip = {
-        id: newShipmentId(), shortSeq: nextSeqPreview(), product: newShipBrand, status: 'Planned', boxes: 0, casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
+        id: newShipmentId(), shortSeq: nextSeqPreview(), product, productMix, status: 'Planned', boxes: productMixTotalBoxes(productMix), casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
         costPerCase: 0, targetPrice: 12, clennyInvest: 0, clannyInvest: 0, notes: '', ops: [], sales: []
       };
       const ok = await saveShipmentRemote(newShip);
@@ -1066,9 +1140,9 @@
       const c = calcShipment(sh);
       const st = calcSettlement(sh);
       el('dashShipId').textContent = shortShipmentId(sh.id);
-      el('dashProduct').textContent = sh.product || '-';
+      el('dashProduct').textContent = displayProduct(sh) || '-';
       el('dashStatus').textContent = sh.status || '-';
-      el('dashBoxes').textContent = fmtInt(sh.boxes);
+      el('dashBoxes').textContent = fmtInt(c.boxes);
       el('dashCases').textContent = fmtInt(c.casesOrdered);
       el('dashRolls').textContent = fmtInt(c.rollsOrdered);
       el('dashTotalCans').textContent = fmtInt(c.totalCans);
@@ -1106,10 +1180,13 @@
 
     function renderSetup() {
       const sh = currentShipment(); if (!sh) return;
+      const mix = getProductMix(sh);
       el('sShipId').textContent = shortShipmentId(sh.id);
-      el('sProduct').value = sh.product || '';
+      el('sProduct').value = displayProduct(sh);
+      el('sGrizzlyBoxes').value = mix.Grizzly || '';
+      el('sCopenhagenBoxes').value = mix.Copenhagen || '';
       el('sStatus').value = sh.status || 'Planned';
-      el('sBoxes').value = sh.boxes || '';
+      el('sBoxes').value = productMixTotalBoxes(mix) || sh.boxes || '';
       el('sCasesPerBox').value = sh.casesPerBox || '';
       el('sRollsPerCase').value = sh.rollsPerCase || '';
       el('sCansPerRoll').value = sh.cansPerRoll || '';
@@ -1121,8 +1198,13 @@
       updateSetupCalc();
     }
     function updateSetupCalc() {
+      const productMix = normalizeProductMix({
+        Grizzly: el('sGrizzlyBoxes').value,
+        Copenhagen: el('sCopenhagenBoxes').value
+      });
       const s = {
-        boxes: parseFloat(el('sBoxes').value) || 0,
+        productMix,
+        boxes: productMixTotalBoxes(productMix),
         casesPerBox: parseFloat(el('sCasesPerBox').value) || 0,
         rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0,
         cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0,
@@ -1130,6 +1212,8 @@
         targetPrice: parseFloat(el('sTargetPrice').value) || 0,
       };
       const c = calcShipment(s);
+      el('sProduct').value = productMixLabel(productMix, el('sProduct').value);
+      el('sBoxes').value = c.boxes || '';
       el('calcCansPerCase').textContent = fmtInt(c.cansPerCase);
       el('calcCansPerBox').textContent = fmtInt(c.cansPerBox);
       el('calcCasesOrdered').textContent = fmtInt(c.casesOrdered);
@@ -1144,7 +1228,7 @@
       el('checkInvest').className = 'check-dot' + (match ? '' : ' fail');
       el('checkInvestText').textContent = match ? 'Investments cover product cost' : `Off by ${fmt(Math.abs((clenny + clanny) - total))} — recheck each partner’s share`;
     }
-    ['sBoxes','sCasesPerBox','sRollsPerCase','sCansPerRoll','sCostPerCase','sTargetPrice','sClennyInvest','sClannyInvest'].forEach(id => {
+    ['sGrizzlyBoxes','sCopenhagenBoxes','sCasesPerBox','sRollsPerCase','sCansPerRoll','sCostPerCase','sTargetPrice','sClennyInvest','sClannyInvest'].forEach(id => {
       on(id, 'input', updateSetupCalc);
     });
     async function saveSetup() {
@@ -1152,11 +1236,16 @@
       // Build the candidate off-side. Only merge into the in-memory shipment
       // AFTER the remote save confirms — otherwise a failed save leaves the
       // UI computing off values the DB never actually received.
+      const productMix = normalizeProductMix({
+        Grizzly: el('sGrizzlyBoxes').value,
+        Copenhagen: el('sCopenhagenBoxes').value
+      });
       const candidate = {
         ...sh,
-        product: el('sProduct').value,
+        product: productMixLabel(productMix, el('sProduct').value),
+        productMix,
         status: el('sStatus').value,
-        boxes: parseFloat(el('sBoxes').value) || 0,
+        boxes: productMixTotalBoxes(productMix),
         casesPerBox: parseFloat(el('sCasesPerBox').value) || 0,
         rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0,
         cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0,
@@ -1278,11 +1367,11 @@
       const gross = totalCans * price;
       if (totalCans <= 0) { alert('Please enter at least some quantity'); return; }
       const sale = {
-        date: el('mSalesDate').value, product: sh.product, customer: el('mSalesCustomer').value,
+        date: el('mSalesDate').value, product: displayProduct(sh), customer: el('mSalesCustomer').value,
         boxes, cases, rolls, looseCans: loose, totalCans, pricePerCan: price, grossSales: gross,
         collectedBy: el('mSalesCollector').value, paymentStatus: el('mSalesStatus').value, notes: el('mSalesNotes').value
       };
-      const id = await saveSaleRemote(sale, sh.id, sh.product);
+      const id = await saveSaleRemote(sale, sh.id, displayProduct(sh));
       if (!id) return;
       sale.id = id;
       sh.sales.push(sale);
@@ -1363,7 +1452,7 @@
         return `
           <div class="ship-card ${sh.id === state.selectedShipmentId ? 'active' : ''}" data-ship-id="${escapeHtml(sh.id)}">
             <div class="ship-card-header">
-              <span class="ship-card-title">${escapeHtml(shortShipmentId(sh.id))} — ${escapeHtml(sh.product || 'Untitled')}</span>
+              <span class="ship-card-title">${escapeHtml(shortShipmentId(sh.id))} — ${escapeHtml(displayProduct(sh) || 'Untitled')}</span>
               <span class="list-item-badge ${statusClass}">${escapeHtml(sh.status)}</span>
             </div>
             <div class="ship-card-meta">${fmtInt(c.totalCans)} cans &bull; Cost ${fmt(c.totalCost)} &bull; Revenue ${fmt(c.projRevenue)}</div>
