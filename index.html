@@ -635,9 +635,6 @@
       return [cleanNotes, ...markers].filter(Boolean).join('\n');
     }
     function getProductMix(sh) {
-      const product = sh && sh.product || '';
-      const mixedShipment = product.includes('Grizzly') && product.includes('Copenhagen');
-      if (mixedShipment && !hasStoredProductCosts(sh && sh.notes) && !(sh && sh.productCosts)) return {};
       const fromProp = normalizeProductMix(sh && sh.productMix);
       if (productMixTotalBoxes(fromProp) > 0) return fromProp;
       const fromNotes = decodeProductMix(sh && sh.notes);
@@ -659,7 +656,7 @@
       return productMixLabel(getProductMix(sh), sh && sh.product || '');
     }
     function defaultMixForProductChoice(choice) {
-      if (choice === 'Both') return {};
+      if (choice === 'Both') return { Grizzly: 1, Copenhagen: 1 };
       if (BRANDS.includes(choice)) return {};
       return {};
     }
