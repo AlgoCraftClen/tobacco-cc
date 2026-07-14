@@ -236,13 +236,16 @@
             <div class="form-group"><label class="form-label">Cases/Box</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCasesPerBox" placeholder="6"></div>
             <div class="form-group"><label class="form-label">Rolls/Case</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sRollsPerCase" placeholder="18"></div>
           </div>
-          <div class="form-row-3">
+          <div class="form-row">
             <div class="form-group"><label class="form-label">Cans/Roll</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCansPerRoll" placeholder="5"></div>
-            <div class="form-group"><label class="form-label">Target Price/Can ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sTargetPrice" placeholder="12"></div>
           </div>
           <div class="form-row">
             <div class="form-group"><label class="form-label">Grizzly Cost/Case ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sGrizzlyCostPerCase" placeholder="497"></div>
             <div class="form-group"><label class="form-label">Copenhagen Cost/Case ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCopenhagenCostPerCase" placeholder="608"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Grizzly Target/Can ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sGrizzlyTargetPrice" placeholder="11"></div>
+            <div class="form-group"><label class="form-label">Copenhagen Target/Can ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCopenhagenTargetPrice" placeholder="12"></div>
           </div>
           <div class="card-row" style="margin-top:8px"><span class="card-label">Cans/Case</span><span class="card-value" id="calcCansPerCase">0</span></div>
           <div class="card-row"><span class="card-label">Cans/Box</span><span class="card-value" id="calcCansPerBox">0</span></div>
@@ -560,8 +563,10 @@
     const BRANDS = ['Grizzly', 'Copenhagen'];
     const NEW_SHIP_PRODUCT_CHOICES = [...BRANDS, 'Both'];
     const DEFAULT_PRODUCT_COSTS = { Grizzly: 497, Copenhagen: 608 };
+    const DEFAULT_TARGET_PRICES = { Grizzly: 11, Copenhagen: 12 };
     const PRODUCT_MIX_MARKER = 'CC_PRODUCT_MIX:';
     const PRODUCT_COSTS_MARKER = 'CC_PRODUCT_COSTS:';
+    const TARGET_PRICES_MARKER = 'CC_TARGET_PRICES:';
 
     function positiveNumber(value) {
       const n = parseFloat(value);
@@ -600,6 +605,9 @@
     function productCostsMarkerRegex() {
       return new RegExp(`\\n?<!--${PRODUCT_COSTS_MARKER}([A-Za-z0-9+/=]+)-->`, 'g');
     }
+    function targetPricesMarkerRegex() {
+      return new RegExp(`\\n?<!--${TARGET_PRICES_MARKER}([A-Za-z0-9+/=]+)-->`, 'g');
+    }
     function decodeProductMix(notes) {
       const match = productMixMarkerRegex().exec(String(notes || ''));
       if (!match) return {};
@@ -613,25 +621,43 @@
       });
       return out;
     }
+    function normalizeTargetPrices(prices) {
+      const out = {};
+      BRANDS.forEach(brand => {
+        out[brand] = nonNegativeNumber(prices && prices[brand], DEFAULT_TARGET_PRICES[brand]);
+      });
+      return out;
+    }
     function decodeProductCosts(notes) {
       const match = productCostsMarkerRegex().exec(String(notes || ''));
       if (!match) return {};
       try { return normalizeProductCosts(JSON.parse(atob(match[1]))); }
       catch (_) { return {}; }
     }
+    function decodeTargetPrices(notes) {
+      const match = targetPricesMarkerRegex().exec(String(notes || ''));
+      if (!match) return {};
+      try { return normalizeTargetPrices(JSON.parse(atob(match[1]))); }
+      catch (_) { return {}; }
+    }
     function hasStoredProductCosts(notes) {
       return productCostsMarkerRegex().test(String(notes || ''));
     }
-    function stripProductMix(notes) {
-      return String(notes || '').replace(productMixMarkerRegex(), '').replace(productCostsMarkerRegex(), '').trim();
+    function hasStoredTargetPrices(notes) {
+      return targetPricesMarkerRegex().test(String(notes || ''));
     }
-    function notesWithHiddenShipmentData(notes, mix, costs) {
+    function stripProductMix(notes) {
+      return String(notes || '').replace(productMixMarkerRegex(), '').replace(productCostsMarkerRegex(), '').replace(targetPricesMarkerRegex(), '').trim();
+    }
+    function notesWithHiddenShipmentData(notes, mix, costs, prices) {
       const cleanNotes = stripProductMix(notes);
       const cleanMix = normalizeProductMix(mix);
       const cleanCosts = normalizeProductCosts(costs);
+      const cleanPrices = normalizeTargetPrices(prices);
       const markers = [];
       if (productMixTotalBoxes(cleanMix) > 0) markers.push(`<!--${PRODUCT_MIX_MARKER}${btoa(JSON.stringify(cleanMix))}-->`);
       markers.push(`<!--${PRODUCT_COSTS_MARKER}${btoa(JSON.stringify(cleanCosts))}-->`);
+      markers.push(`<!--${TARGET_PRICES_MARKER}${btoa(JSON.stringify(cleanPrices))}-->`);
       return [cleanNotes, ...markers].filter(Boolean).join('\n');
     }
     function getProductMix(sh) {
@@ -651,6 +677,71 @@
         costs[sh.product] = positiveNumber(sh.costPerCase);
       }
       return costs;
+    }
+    function getTargetPrices(sh) {
+      if (sh && sh.targetPrices) return normalizeTargetPrices(sh.targetPrices);
+      const fromNotes = decodeTargetPrices(sh && sh.notes);
+      if (Object.keys(fromNotes).length) return fromNotes;
+      const prices = normalizeTargetPrices({});
+      if (sh && BRANDS.includes(sh.product) && positiveNumber(sh.targetPrice) > 0) {
+        prices[sh.product] = positiveNumber(sh.targetPrice);
+      }
+      return prices;
+    }
+    function weightedTargetPrice(mix, prices, fallback = 0) {
+      const cleanMix = normalizeProductMix(mix);
+      const cleanPrices = normalizeTargetPrices(prices);
+      let boxes = 0;
+      let total = 0;
+      BRANDS.forEach(brand => {
+        const brandBoxes = positiveNumber(cleanMix[brand]);
+        boxes += brandBoxes;
+        total += brandBoxes * (cleanPrices[brand] || 0);
+      });
+      return boxes > 0 ? total / boxes : fallback;
+    }
+    function previousShipmentFor(sh) {
+      if (!sh) return null;
+      const seq = Number(sh.shortSeq) || 0;
+      if (seq > 0) {
+        return state.shipments
+          .filter(s => s.id !== sh.id && (Number(s.shortSeq) || 0) < seq)
+          .sort((a, b) => (Number(b.shortSeq) || 0) - (Number(a.shortSeq) || 0))[0] || null;
+      }
+      const i = state.shipments.findIndex(s => s.id === sh.id);
+      return i > 0 ? state.shipments[i - 1] : null;
+    }
+    function previousClennyPayout(sh) {
+      const prev = previousShipmentFor(sh);
+      if (!prev) return 0;
+      return Math.max(0, calcSettlement(prev).clennyPayout || 0);
+    }
+    function shouldAutoBalanceInvestments(sh) {
+      if (!sh) return false;
+      const clenny = parseFloat(sh.clennyInvest) || 0;
+      const clanny = parseFloat(sh.clannyInvest) || 0;
+      const rollover = previousClennyPayout(sh);
+      return (clenny === 0 && clanny === 0) || (rollover > 0 && Math.abs(clenny - rollover) < 0.01);
+    }
+    function shouldAutoBalanceInvestmentInputs(sh, totalCost) {
+      if (!sh) return false;
+      const clenny = parseFloat(el('sClennyInvest').value) || 0;
+      const clanny = parseFloat(el('sClannyInvest').value) || 0;
+      const rollover = Math.min(previousClennyPayout(sh), totalCost || 0);
+      return (clenny === 0 && clanny === 0) || (rollover > 0 && Math.abs(clenny - rollover) < 0.01);
+    }
+    function balancedInvestmentsFor(sh, totalCost) {
+      const clenny = Math.min(previousClennyPayout(sh), totalCost || 0);
+      return { clenny, clanny: Math.max(0, (totalCost || 0) - clenny) };
+    }
+    function applyAutoBalancedInvestments() {
+      state.shipments.forEach(sh => {
+        const c = calcShipment(sh);
+        if (c.totalCost <= 0 || previousClennyPayout(sh) <= 0 || !shouldAutoBalanceInvestments(sh)) return;
+        const investments = balancedInvestmentsFor(sh, c.totalCost);
+        sh.clennyInvest = investments.clenny;
+        sh.clannyInvest = investments.clanny;
+      });
     }
     function displayProduct(sh) {
       return productMixLabel(getProductMix(sh), sh && sh.product || '');
@@ -684,6 +775,7 @@
       const cansPerBox = (s.casesPerBox || 0) * cansPerCase;
       const mix = getProductMix(s);
       const costs = getProductCosts(s);
+      const prices = getTargetPrices(s);
       const boxes = productMixTotalBoxes(mix) || (BRANDS.includes(s.product) ? (s.boxes || 0) : 0);
       const casesOrdered = boxes * (s.casesPerBox || 0);
       const rollsOrdered = casesOrdered * (s.rollsPerCase || 0);
@@ -692,8 +784,12 @@
         const brandBoxes = positiveNumber(mix[brand]) || (s.product === brand ? boxes : 0);
         return sum + brandBoxes * (s.casesPerBox || 0) * (costs[brand] || 0);
       }, 0);
-      const projRevenue = totalCans * (s.targetPrice || 0);
-      return { boxes, cansPerCase, cansPerBox, casesOrdered, rollsOrdered, totalCans, totalCost, projRevenue };
+      const projRevenue = BRANDS.reduce((sum, brand) => {
+        const brandBoxes = positiveNumber(mix[brand]) || (s.product === brand ? boxes : 0);
+        return sum + brandBoxes * cansPerBox * (prices[brand] || 0);
+      }, 0);
+      const avgTargetPrice = totalCans > 0 ? projRevenue / totalCans : 0;
+      return { boxes, cansPerCase, cansPerBox, casesOrdered, rollsOrdered, totalCans, totalCost, projRevenue, avgTargetPrice };
     }
 
     function calcSettlement(sh) {
@@ -732,7 +828,7 @@
       const cashOnHand = paidGrossSales - clennyOps - totalWd;
       const soldCans = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.totalCans) || 0), 0);
       const remainingCans = c.totalCans - soldCans;
-      const remainingValue = remainingCans * (sh.targetPrice || 0);
+      const remainingValue = remainingCans * (c.avgTargetPrice || 0);
       // A withdrawal is payout taken early: the partner is owed less AND holds
       // less business cash, so the who-owes-whom balance is unchanged by it.
       const clennyBal = clennyPayout - (cashClenny - clennyWd);
@@ -754,9 +850,13 @@
     function shipmentFromRow(r) {
       const productMix = decodeProductMix(r.notes);
       const storedProductCosts = decodeProductCosts(r.notes);
+      const storedTargetPrices = decodeTargetPrices(r.notes);
       const hasCostMarker = hasStoredProductCosts(r.notes);
+      const hasPriceMarker = hasStoredTargetPrices(r.notes);
       const productCosts = hasCostMarker ? storedProductCosts :
         (BRANDS.includes(r.brand) ? { ...DEFAULT_PRODUCT_COSTS, [r.brand]: Number(r.cost_per_case) || DEFAULT_PRODUCT_COSTS[r.brand] } : null);
+      const targetPrices = hasPriceMarker ? storedTargetPrices :
+        (BRANDS.includes(r.brand) ? { ...DEFAULT_TARGET_PRICES, [r.brand]: Number(r.target_sale_price_per_can) || DEFAULT_TARGET_PRICES[r.brand] } : null);
       return {
         id: r.id,
         shortSeq: r.short_seq == null ? null : Number(r.short_seq),
@@ -770,6 +870,7 @@
         costPerCase: Number(r.cost_per_case) || 0,
         productCosts,
         targetPrice: Number(r.target_sale_price_per_can) || 0,
+        targetPrices,
         clennyInvest: Number(r.clenny_product_invest) || 0,
         clannyInvest: Number(r.clanny_product_invest) || 0,
         notes: stripProductMix(r.notes),
@@ -779,9 +880,12 @@
     function shipmentToRow(s) {
       const productMix = getProductMix(s);
       const productCosts = getProductCosts(s);
+      const targetPrices = getTargetPrices(s);
       const activeBrands = BRANDS.filter(brand => positiveNumber(productMix[brand]) > 0);
       const legacyCostPerCase = activeBrands.length === 1 ? productCosts[activeBrands[0]] :
         (BRANDS.includes(s.product) ? productCosts[s.product] : Number(s.costPerCase) || 0);
+      const legacyTargetPrice = activeBrands.length === 1 ? targetPrices[activeBrands[0]] :
+        weightedTargetPrice(productMix, targetPrices, Number(s.targetPrice) || 0);
       const row = {
         id: s.id,
         brand: productMixLabel(productMix, s.product || ''),
@@ -791,10 +895,10 @@
         rolls_per_case: Number(s.rollsPerCase) || 18,
         cans_per_roll: Number(s.cansPerRoll) || 5,
         cost_per_case: legacyCostPerCase,
-        target_sale_price_per_can: Number(s.targetPrice) || 0,
+        target_sale_price_per_can: legacyTargetPrice,
         clenny_product_invest: Number(s.clennyInvest) || 0,
         clanny_product_invest: Number(s.clannyInvest) || 0,
-        notes: notesWithHiddenShipmentData(s.notes, productMix, productCosts)
+        notes: notesWithHiddenShipmentData(s.notes, productMix, productCosts, targetPrices)
       };
       // The app assigns the SHP # itself (highest existing + 1) rather than
       // relying on the DB's auto-counter, which can drift when rows are
@@ -930,6 +1034,7 @@
         opRows.forEach(r => { const sh = byId[r.shipment_id]; if (sh) sh.ops.push(opFromRow(r)); });
         saleRows.forEach(r => { const sh = byId[r.shipment_id]; if (sh) sh.sales.push(saleFromRow(r)); });
         state.shipments = shipments;
+        applyAutoBalancedInvestments();
         const savedSel = localStorage.getItem('cc-selected');
         if (savedSel && byId[savedSel]) state.selectedShipmentId = savedSel;
         else state.selectedShipmentId = shipments[0] ? shipments[0].id : '';
@@ -1152,10 +1257,15 @@
       const productMix = defaultMixForProductChoice(newShipBrand);
       const product = productLabelForChoice(newShipBrand, productMix);
       const productCosts = normalizeProductCosts({});
+      const targetPrices = normalizeTargetPrices({});
       const newShip = {
         id: newShipmentId(), shortSeq: nextSeqPreview(), product, productMix, status: 'Planned', boxes: productMixTotalBoxes(productMix), casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
-        costPerCase: 0, productCosts, targetPrice: 12, clennyInvest: 0, clannyInvest: 0, notes: '', ops: [], sales: []
+        costPerCase: 0, productCosts, targetPrice: weightedTargetPrice(productMix, targetPrices, 12), targetPrices, clennyInvest: 0, clannyInvest: 0, notes: '', ops: [], sales: []
       };
+      const c = calcShipment(newShip);
+      const investments = balancedInvestmentsFor(newShip, c.totalCost);
+      newShip.clennyInvest = investments.clenny;
+      newShip.clannyInvest = investments.clanny;
       const ok = await saveShipmentRemote(newShip);
       if (!ok) return;
       state.shipments.push(newShip);
@@ -1241,6 +1351,7 @@
       const sh = currentShipment(); if (!sh) return;
       const mix = getProductMix(sh);
       const costs = getProductCosts(sh);
+      const prices = getTargetPrices(sh);
       el('sShipId').textContent = shortShipmentId(sh.id);
       el('sProduct').value = displayProduct(sh);
       el('sGrizzlyBoxes').value = mix.Grizzly || '';
@@ -1252,13 +1363,14 @@
       el('sCansPerRoll').value = sh.cansPerRoll || '';
       el('sGrizzlyCostPerCase').value = costs.Grizzly || '';
       el('sCopenhagenCostPerCase').value = costs.Copenhagen || '';
-      el('sTargetPrice').value = sh.targetPrice || '';
+      el('sGrizzlyTargetPrice').value = prices.Grizzly || '';
+      el('sCopenhagenTargetPrice').value = prices.Copenhagen || '';
       el('sClennyInvest').value = sh.clennyInvest || '';
       el('sClannyInvest').value = sh.clannyInvest || '';
       el('sNotes').value = sh.notes || '';
       updateSetupCalc();
     }
-    function updateSetupCalc() {
+    function updateSetupCalc(autoBalance = true) {
       const productMix = normalizeProductMix({
         Grizzly: el('sGrizzlyBoxes').value,
         Copenhagen: el('sCopenhagenBoxes').value
@@ -1267,6 +1379,10 @@
         Grizzly: el('sGrizzlyCostPerCase').value,
         Copenhagen: el('sCopenhagenCostPerCase').value
       });
+      const targetPrices = normalizeTargetPrices({
+        Grizzly: el('sGrizzlyTargetPrice').value,
+        Copenhagen: el('sCopenhagenTargetPrice').value
+      });
       const s = {
         productMix,
         boxes: productMixTotalBoxes(productMix),
@@ -1274,7 +1390,7 @@
         rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0,
         cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0,
         productCosts,
-        targetPrice: parseFloat(el('sTargetPrice').value) || 0,
+        targetPrices,
       };
       const c = calcShipment(s);
       el('sProduct').value = productMixLabel(productMix, el('sProduct').value);
@@ -1286,6 +1402,12 @@
       el('calcTotalCans').textContent = fmtInt(c.totalCans);
       el('calcTotalCost').textContent = fmt(c.totalCost);
       el('calcProjRevenue').textContent = fmt(c.projRevenue);
+      const sh = currentShipment();
+      if (autoBalance && shouldAutoBalanceInvestmentInputs(sh, c.totalCost)) {
+        const investments = balancedInvestmentsFor(sh, c.totalCost);
+        el('sClennyInvest').value = investments.clenny ? investments.clenny.toFixed(2) : '';
+        el('sClannyInvest').value = investments.clanny ? investments.clanny.toFixed(2) : '';
+      }
       const clenny = parseFloat(el('sClennyInvest').value) || 0;
       const clanny = parseFloat(el('sClannyInvest').value) || 0;
       const total = c.totalCost;
@@ -1294,8 +1416,11 @@
       el('checkInvestText').textContent = total <= 0 ? 'Enter product mix to calculate investment check' :
         (match ? 'Investments cover product cost' : `Off by ${fmt(Math.abs((clenny + clanny) - total))} — recheck each partner’s share`);
     }
-    ['sGrizzlyBoxes','sCopenhagenBoxes','sCasesPerBox','sRollsPerCase','sCansPerRoll','sGrizzlyCostPerCase','sCopenhagenCostPerCase','sTargetPrice','sClennyInvest','sClannyInvest'].forEach(id => {
+    ['sGrizzlyBoxes','sCopenhagenBoxes','sCasesPerBox','sRollsPerCase','sCansPerRoll','sGrizzlyCostPerCase','sCopenhagenCostPerCase','sGrizzlyTargetPrice','sCopenhagenTargetPrice'].forEach(id => {
       on(id, 'input', updateSetupCalc);
+    });
+    ['sClennyInvest','sClannyInvest'].forEach(id => {
+      on(id, 'input', () => updateSetupCalc(false));
     });
     async function saveSetup() {
       const sh = currentShipment(); if (!sh) return;
@@ -1310,6 +1435,10 @@
         Grizzly: el('sGrizzlyCostPerCase').value,
         Copenhagen: el('sCopenhagenCostPerCase').value
       });
+      const targetPrices = normalizeTargetPrices({
+        Grizzly: el('sGrizzlyTargetPrice').value,
+        Copenhagen: el('sCopenhagenTargetPrice').value
+      });
       const activeBrands = BRANDS.filter(brand => positiveNumber(productMix[brand]) > 0);
       const candidate = {
         ...sh,
@@ -1322,7 +1451,8 @@
         cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0,
         costPerCase: activeBrands.length === 1 ? productCosts[activeBrands[0]] : 0,
         productCosts,
-        targetPrice: parseFloat(el('sTargetPrice').value) || 0,
+        targetPrice: activeBrands.length === 1 ? targetPrices[activeBrands[0]] : weightedTargetPrice(productMix, targetPrices, 0),
+        targetPrices,
         clennyInvest: parseFloat(el('sClennyInvest').value) || 0,
         clannyInvest: parseFloat(el('sClannyInvest').value) || 0,
         notes: el('sNotes').value
@@ -1411,7 +1541,8 @@
     }
     function openSalesModal() {
       const sh = currentShipment(); if (!sh) return;
-      el('mSalesDate').value = today(); el('mSalesCustomer').value = ''; el('mSalesBoxes').value = ''; el('mSalesCases').value = ''; el('mSalesRolls').value = ''; el('mSalesLoose').value = ''; el('mSalesPrice').value = sh.targetPrice || 12; el('mSalesCollector').value = 'Clenny'; el('mSalesStatus').value = 'Paid'; el('mSalesNotes').value = ''; updateSalesCalc(); el('salesModal').classList.add('active');
+      const c = calcShipment(sh);
+      el('mSalesDate').value = today(); el('mSalesCustomer').value = ''; el('mSalesBoxes').value = ''; el('mSalesCases').value = ''; el('mSalesRolls').value = ''; el('mSalesLoose').value = ''; el('mSalesPrice').value = c.avgTargetPrice || sh.targetPrice || 12; el('mSalesCollector').value = 'Clenny'; el('mSalesStatus').value = 'Paid'; el('mSalesNotes').value = ''; updateSalesCalc(); el('salesModal').classList.add('active');
     }
     function updateSalesCalc() {
       const sh = currentShipment(); if (!sh) return;
