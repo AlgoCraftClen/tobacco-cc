@@ -833,12 +833,12 @@
       const lines = getShipmentLines(s);
       const inventoryByBrand = {};
       const targetValueByBrand = {};
-      let boxes = 0, casesOrdered = 0, rollsOrdered = 0, totalCans = 0, totalCost = 0, projRevenue = 0;
+      let explicitBoxes = 0, casesOrdered = 0, rollsOrdered = 0, totalCans = 0, totalCost = 0, projRevenue = 0;
       lines.forEach(line => {
         const lineCases = line.boxes * (s.casesPerBox || 0) + line.cases + line.rolls / Math.max(1, s.rollsPerCase || 0) + line.looseCans / Math.max(1, cansPerCase);
         const lineRolls = line.boxes * (s.casesPerBox || 0) * (s.rollsPerCase || 0) + line.cases * (s.rollsPerCase || 0) + line.rolls + line.looseCans / Math.max(1, s.cansPerRoll || 0);
         const lineCans = line.boxes * cansPerBox + line.cases * cansPerCase + line.rolls * (s.cansPerRoll || 0) + line.looseCans;
-        boxes += line.boxes;
+        explicitBoxes += line.boxes;
         casesOrdered += lineCases;
         rollsOrdered += lineRolls;
         totalCans += lineCans;
@@ -847,6 +847,11 @@
         inventoryByBrand[line.brand] = (inventoryByBrand[line.brand] || 0) + lineCans;
         targetValueByBrand[line.brand] = (targetValueByBrand[line.brand] || 0) + lineCans * line.targetPrice;
       });
+      // Total Boxes represents the complete shipment in box equivalents, not
+      // only quantities typed into the individual Boxes fields. This lets
+      // cases, rolls, and loose cans across mixed product lines combine into
+      // the correct shipment-wide box total.
+      const boxes = cansPerBox > 0 ? totalCans / cansPerBox : explicitBoxes;
       const avgTargetPrice = totalCans > 0 ? projRevenue / totalCans : 0;
       const targetPriceByBrand = Object.fromEntries(Object.entries(inventoryByBrand).map(([brand, cans]) => [brand, cans > 0 ? (targetValueByBrand[brand] || 0) / cans : 0]));
       return { boxes, cansPerCase, cansPerBox, casesOrdered, rollsOrdered, totalCans, totalCost, projRevenue, avgTargetPrice, inventoryByBrand, targetPriceByBrand, lines };
@@ -1528,7 +1533,7 @@
       const s = { shipmentLines, casesPerBox: parseFloat(el('sCasesPerBox').value) || 0, rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0, cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0 };
       const c = calcShipment(s);
       el('sProduct').value = shipmentLinesLabel(shipmentLines, el('sProduct').value);
-      el('sBoxes').value = c.boxes || '';
+      el('sBoxes').value = c.boxes ? Number(c.boxes.toFixed(4)) : '';
       el('calcCansPerCase').textContent = fmtInt(c.cansPerCase);
       el('calcCansPerBox').textContent = fmtInt(c.cansPerBox);
       el('calcCasesOrdered').textContent = fmtInt(c.casesOrdered);
