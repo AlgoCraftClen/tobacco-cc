@@ -220,7 +220,8 @@
           <div class="card-row"><span class="card-label">Ops Entered</span><span class="card-value" id="dashOpsEntered">$0</span></div>
           <div class="card-row"><span class="card-label">Sales Entered</span><span class="card-value" id="dashSalesEntered">$0</span></div>
           <div class="card-row"><span class="card-label">Current Realized P/L</span><span class="card-value" id="dashCurrentPL">$0</span></div>
-          <div class="card-row"><span class="card-label">Cash On Hand (COH)</span><span class="card-value success" id="dashCashOnHand">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Cash on Hand Before Transfer</span><span class="card-value success" id="dashCashOnHand">$0</span></div>
+          <div class="card-row"><span class="card-label">Net Company Reinvestment Capital</span><span class="card-value accent" id="dashNetCompanyCash">$0</span></div>
           <div class="check-row"><div class="check-dot" id="checkDot1"></div><span id="checkText1">Numbers add up</span></div>
         </div>
       </div>
@@ -319,7 +320,7 @@
           <div class="card-row"><span class="card-label">Projected Profit After Ops</span><span class="card-value success" id="setProjProfit">$0</span></div>
           <div class="card-row"><span class="card-label">Cost of Inventory Sold</span><span class="card-value" id="setCostSold">$0</span></div>
           <div class="card-row"><span class="card-label">Current Realized P/L</span><span class="card-value" id="setCurrentPL">$0</span></div>
-          <div class="card-row"><span class="card-label">Cash On Hand (COH)</span><span class="card-value success" id="setCashOnHand">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Cash on Hand Before Transfer</span><span class="card-value success" id="setCashOnHand">$0</span></div>
         </div>
 
         <div class="card">
@@ -341,9 +342,9 @@
           <div class="card-title">Cash &amp; Inventory</div>
           <div class="card-row"><span class="card-label">Cash Collected by Clenny</span><span class="card-value clenny" id="setCashClenny">$0</span></div>
           <div class="card-row"><span class="card-label">Cash Collected by Clanny</span><span class="card-value clanny" id="setCashClanny">$0</span></div>
-          <div class="card-row"><span class="card-label">Clenny Net Shared-Fund Cash Position</span><span class="card-value clenny" id="setClennyCOH">$0</span></div>
-          <div class="card-row"><span class="card-label">Clanny Net Shared-Fund Cash Position</span><span class="card-value clanny" id="setClannyCOH">$0</span></div>
-          <div class="card-row"><span class="card-label">Combined Business Cash After All Costs</span><span class="card-value success" id="setActualReinvest">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Cash on Hand Before Transfer</span><span class="card-value clenny" id="setClennyCOH">$0</span></div>
+          <div class="card-row"><span class="card-label">Shared Funds Already Spent by Clanny</span><span class="card-value clanny" id="setClannySharedSpent">$0</span></div>
+          <div class="card-row"><span class="card-label">Net Company Reinvestment Capital Today</span><span class="card-value success" id="setActualReinvest">$0</span></div>
           <div class="card-row"><span class="card-label">Inventory Sold (cans)</span><span class="card-value" id="setSoldCans">0</span></div>
           <div class="card-row"><span class="card-label">Inventory Remaining</span><span class="card-value" id="setRemainingCans">0</span></div>
           <div id="setRemainingByProduct"></div>
@@ -353,8 +354,10 @@
         <div class="card">
           <div class="card-title">Reinvestment Transfer</div>
           <div class="card-row"><span class="card-label">Actual Cash Clenny Sends to Clanny</span><span class="card-value accent" id="setTransferToClanny">$0</span></div>
+          <div class="card-row"><span class="card-label">Shared Funds Already Spent by Clanny</span><span class="card-value" id="setTransferClannySpent">$0</span></div>
+          <div class="card-row"><span class="card-label">Net Company Reinvestment Capital Today</span><span class="card-value success" id="setTransferNetToday">$0</span></div>
           <div class="card-row"><span class="card-label">Projected Gross Transfer When Sold Out</span><span class="card-value" id="setProjectedTransfer">$0</span></div>
-          <div class="card-row"><span class="card-label">Net Projected Reinvestment After All Costs</span><span class="card-value" id="setNetProjectedReinvest">$0</span></div>
+          <div class="card-row"><span class="card-label">Net Projected Company Reinvestment</span><span class="card-value" id="setNetProjectedReinvest">$0</span></div>
           <div class="card-row"><span class="card-label">Clenny Ownership Within Projected Transfer</span><span class="card-value clenny" id="setClennyBal">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Ownership Within Projected Transfer</span><span class="card-value clanny" id="setClannyBal">$0</span></div>
           <div class="check-row"><div class="check-dot" id="setCheck1"></div><span id="setCheckText1">Settlement accounts for all revenue</span></div>
@@ -392,9 +395,9 @@
             <div class="rule-note">Funding source changes reimbursement and cash, not the profit percentage. The rule is identical for both partners.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">Personal withdrawals come out of your payout</div>
-            <div class="rule-meaning">Taking cash from the pot for personal use? Log it in Ops as a Personal Withdrawal. Cash On Hand drops by that amount, and the same amount is deducted from the withdrawing partner's payout.</div>
-            <div class="rule-note">A withdrawal is an early payout — it never counts as a contribution and never raises your share.</div>
+            <div class="rule-title">Personal withdrawals come out of your reinvestment ownership</div>
+            <div class="rule-meaning">Taking cash from the pot for personal use? Log it in Ops as a Personal Withdrawal. That partner's physical cash position and rolled-forward reinvestment ownership both drop by the same amount.</div>
+            <div class="rule-note">A withdrawal is capital taken early for personal use—it never counts as a contribution and never raises your share.</div>
           </div>
           <div class="rule-item">
             <div class="rule-title">Product taken personally is a sale</div>
@@ -403,8 +406,8 @@
           </div>
           <div class="rule-item">
             <div class="rule-title">Cash collection is tracked separately from ownership</div>
-            <div class="rule-meaning">Every sale records who physically collected the cash. Clenny sends the available cash to Clanny for reinvestment, while each partner's ownership remains visible inside the combined transfer.</div>
-            <div class="rule-note">Who physically holds the bank balance does not change who owns each share of the reinvestment capital.</div>
+            <div class="rule-meaning">Every sale records who physically collected the cash. Clenny Cash on Hand shows what is physically with Clenny before transfer; Net Company Reinvestment subtracts shared costs already spent by either partner.</div>
+            <div class="rule-note">The gross transfer can be larger than net company capital when Clanny has already spent shared funds. Physical custody never changes either partner's ownership.</div>
           </div>
           <div class="rule-item">
             <div class="rule-title">Target price is a planning number</div>
@@ -505,7 +508,7 @@
           <div class="rule-note">Shared business funds include sales and reinvestment money. They reduce business cash and profit but are never reimbursed again.</div>
         </div>
         <div class="form-group" id="mOpsWithdrawalNote" style="display:none;">
-          <div class="rule-note">A withdrawal takes cash out of the pot for personal use. It lowers Cash On Hand and comes straight out of this partner's payout. It does not count as a contribution.</div>
+          <div class="rule-note">A withdrawal takes shared cash out for personal use. It lowers that partner's physical cash position and rolled-forward reinvestment ownership. It does not count as a contribution.</div>
         </div>
         <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" id="mOpsDesc" placeholder="Details..."></textarea></div>
         <div class="form-group"><label class="form-label">Receipt Link</label><input class="form-input" id="mOpsReceipt" placeholder="URL or note"></div>
@@ -1453,8 +1456,10 @@
       el('dashOpsEntered').textContent = fmt(st.totalOps);
       el('dashSalesEntered').textContent = fmt(st.grossSales);
       el('dashCurrentPL').textContent = fmt(st.currentPL);
-      el('dashCashOnHand').textContent = fmt(st.cashOnHand);
-      el('dashCashOnHand').className = 'card-value ' + (st.cashOnHand < 0 ? 'danger' : 'success');
+      el('dashCashOnHand').textContent = fmt(st.clennyCashOnHand);
+      el('dashCashOnHand').className = 'card-value ' + (st.clennyCashOnHand < 0 ? 'danger' : 'success');
+      el('dashNetCompanyCash').textContent = fmt(st.actualReinvestmentCash);
+      el('dashNetCompanyCash').className = 'card-value ' + (st.actualReinvestmentCash < 0 ? 'danger' : 'accent');
       el('dashClennyPayout').textContent = fmt(st.clennyPayout);
       el('dashClannyPayout').textContent = fmt(st.clannyPayout);
       el('barClenny').style.width = fmtPct(st.clennyPct);
@@ -1826,8 +1831,8 @@
       el('setProjProfit').textContent = fmt(st.projProfit);
       el('setCostSold').textContent = fmt(st.soldProductCost);
       el('setCurrentPL').textContent = fmt(st.currentPL);
-      el('setCashOnHand').textContent = fmt(st.cashOnHand);
-      el('setCashOnHand').className = 'card-value ' + (st.cashOnHand < 0 ? 'danger' : 'success');
+      el('setCashOnHand').textContent = fmt(st.clennyCashOnHand);
+      el('setCashOnHand').className = 'card-value ' + (st.clennyCashOnHand < 0 ? 'danger' : 'success');
       el('setClennyProfitShare').textContent = fmt(st.clennyProfitShare);
       el('setClannyProfitShare').textContent = fmt(st.clannyProfitShare);
       el('setClennyWd').textContent = st.clennyWd ? '-' + fmt(st.clennyWd) : fmt(0);
@@ -1839,8 +1844,7 @@
       el('setCashClanny').textContent = fmt(st.cashClanny);
       el('setClennyCOH').textContent = fmt(st.clennyCashOnHand);
       el('setClennyCOH').className = 'card-value ' + (st.clennyCashOnHand < 0 ? 'danger' : 'clenny');
-      el('setClannyCOH').textContent = fmt(st.clannyCashOnHand);
-      el('setClannyCOH').className = 'card-value ' + (st.clannyCashOnHand < 0 ? 'danger' : 'clanny');
+      el('setClannySharedSpent').textContent = fmt(st.clannySharedOps);
       el('setActualReinvest').textContent = fmt(st.actualReinvestmentCash);
       el('setActualReinvest').className = 'card-value ' + (st.actualReinvestmentCash < 0 ? 'danger' : 'success');
       el('setSoldCans').textContent = fmtInt(st.soldCans);
@@ -1850,6 +1854,9 @@
       el('setClennyBal').textContent = fmt(st.clennyBal);
       el('setClannyBal').textContent = fmt(st.clannyBal);
       el('setTransferToClanny').textContent = fmt(st.transferToClanny);
+      el('setTransferClannySpent').textContent = fmt(st.clannySharedOps);
+      el('setTransferNetToday').textContent = fmt(st.actualReinvestmentCash);
+      el('setTransferNetToday').className = 'card-value ' + (st.actualReinvestmentCash < 0 ? 'danger' : 'success');
       el('setProjectedTransfer').textContent = fmt(st.projectedTransferToClanny);
       el('setNetProjectedReinvest').textContent = fmt(st.projectedReinvestment);
       el('setCheck1').className = 'check-dot' + (st.checkPayout ? '' : ' fail');
