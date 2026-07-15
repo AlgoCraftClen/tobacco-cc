@@ -635,6 +635,7 @@
           cases: nonNegativeNumber(line && line.cases),
           rolls: nonNegativeNumber(line && line.rolls),
           looseCans: nonNegativeNumber(line && line.looseCans),
+          quantityMode: line && line.quantityMode === 'equivalent' ? 'equivalent' : 'additive',
           costPerCase: nonNegativeNumber(line && line.costPerCase, DEFAULT_PRODUCT_COSTS[brand]),
           targetPrice: nonNegativeNumber(line && line.targetPrice, DEFAULT_TARGET_PRICES[brand])
         };
@@ -835,9 +836,10 @@
       const targetValueByBrand = {};
       let explicitBoxes = 0, casesOrdered = 0, rollsOrdered = 0, totalCans = 0, totalCost = 0, projRevenue = 0;
       lines.forEach(line => {
-        const lineCases = line.boxes * (s.casesPerBox || 0) + line.cases + line.rolls / Math.max(1, s.rollsPerCase || 0) + line.looseCans / Math.max(1, cansPerCase);
-        const lineRolls = line.boxes * (s.casesPerBox || 0) * (s.rollsPerCase || 0) + line.cases * (s.rollsPerCase || 0) + line.rolls + line.looseCans / Math.max(1, s.cansPerRoll || 0);
-        const lineCans = line.boxes * cansPerBox + line.cases * cansPerCase + line.rolls * (s.cansPerRoll || 0) + line.looseCans;
+        const equivalentCans = line.quantityMode === 'equivalent' ? line.looseCans : null;
+        const lineCans = equivalentCans === null ? line.boxes * cansPerBox + line.cases * cansPerCase + line.rolls * (s.cansPerRoll || 0) + line.looseCans : equivalentCans;
+        const lineCases = lineCans / Math.max(1, cansPerCase);
+        const lineRolls = lineCans / Math.max(1, s.cansPerRoll || 0);
         explicitBoxes += line.boxes;
         casesOrdered += lineCases;
         rollsOrdered += lineRolls;
@@ -1454,6 +1456,24 @@
     }
 
     let setupLinesDraft = [];
+    function displayQuantity(value) {
+      return value > 0 ? String(Number(value.toFixed(4))) : '';
+    }
+    function synchronizedShipmentLine(line, casesPerBox, rollsPerCase, cansPerRoll) {
+      const cansPerCase = rollsPerCase * cansPerRoll;
+      const cansPerBox = casesPerBox * cansPerCase;
+      const totalCans = line.quantityMode === 'equivalent'
+        ? line.looseCans
+        : line.boxes * cansPerBox + line.cases * cansPerCase + line.rolls * cansPerRoll + line.looseCans;
+      return {
+        ...line,
+        boxes: cansPerBox > 0 ? totalCans / cansPerBox : 0,
+        cases: cansPerCase > 0 ? totalCans / cansPerCase : 0,
+        rolls: cansPerRoll > 0 ? totalCans / cansPerRoll : 0,
+        looseCans: totalCans,
+        quantityMode: 'equivalent'
+      };
+    }
     function readShipmentLinesForm() {
       return [...el('shipmentLines').querySelectorAll('.product-line')].map((row, index) => ({
         id: row.dataset.lineId || `line-${index + 1}`,
@@ -1462,23 +1482,27 @@
         cases: row.querySelector('[data-field="cases"]').value,
         rolls: row.querySelector('[data-field="rolls"]').value,
         looseCans: row.querySelector('[data-field="looseCans"]').value,
+        quantityMode: row.dataset.quantityMode || 'additive',
         costPerCase: row.querySelector('[data-field="costPerCase"]').value,
         targetPrice: row.querySelector('[data-field="targetPrice"]').value
       }));
     }
     function renderShipmentLines() {
       const sh = currentShipment();
-      const cansPerCase = (parseFloat(el('sRollsPerCase').value) || sh?.rollsPerCase || 0) * (parseFloat(el('sCansPerRoll').value) || sh?.cansPerRoll || 0);
+      const rollsPerCase = parseFloat(el('sRollsPerCase').value) || sh?.rollsPerCase || 0;
+      const cansPerRoll = parseFloat(el('sCansPerRoll').value) || sh?.cansPerRoll || 0;
+      const cansPerCase = rollsPerCase * cansPerRoll;
       const casesPerBox = parseFloat(el('sCasesPerBox').value) || sh?.casesPerBox || 0;
+      setupLinesDraft = normalizeShipmentLines(setupLinesDraft).map(line => synchronizedShipmentLine(line, casesPerBox, rollsPerCase, cansPerRoll));
       el('shipmentLines').innerHTML = setupLinesDraft.map((line, index) => {
-        const cans = line.boxes * casesPerBox * cansPerCase + line.cases * cansPerCase + line.rolls * (parseFloat(el('sCansPerRoll').value) || sh?.cansPerRoll || 0) + line.looseCans;
-        return `<div class="product-line" data-line-id="${escapeHtml(line.id)}">
+        const cans = line.looseCans;
+        return `<div class="product-line" data-line-id="${escapeHtml(line.id)}" data-quantity-mode="equivalent">
           <div class="product-line-head"><select class="form-select" data-field="brand">${BRANDS.map(brand => `<option${brand === line.brand ? ' selected' : ''}>${brand}</option>`).join('')}</select><button class="product-line-remove" type="button" aria-label="Remove product line" onclick="removeShipmentLine(${index})">&times;</button></div>
           <div class="product-line-qty">
-            <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="boxes" value="${line.boxes || ''}" placeholder="0"></div>
-            <div class="form-group"><label class="form-label">Cases</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="cases" value="${line.cases || ''}" placeholder="0"></div>
-            <div class="form-group"><label class="form-label">Rolls</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="rolls" value="${line.rolls || ''}" placeholder="0"></div>
-            <div class="form-group"><label class="form-label">Loose</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="looseCans" value="${line.looseCans || ''}" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="boxes" value="${displayQuantity(line.boxes)}" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Cases</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="cases" value="${displayQuantity(line.cases)}" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Rolls</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="rolls" value="${displayQuantity(line.rolls)}" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Cans</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="looseCans" value="${displayQuantity(line.looseCans)}" placeholder="0"></div>
           </div>
           <div class="product-line-pricing">
             <div class="form-group"><label class="form-label">Cost/Case ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="costPerCase" value="${line.costPerCase || ''}"></div>
@@ -1487,7 +1511,23 @@
           <div class="product-line-total"><span>Line inventory</span><strong>${fmtInt(cans)} cans</strong></div>
         </div>`;
       }).join('');
-      el('shipmentLines').oninput = () => updateSetupCalc();
+      el('shipmentLines').oninput = event => {
+        const field = event.target.dataset.field;
+        if (['boxes', 'cases', 'rolls', 'looseCans'].includes(field)) {
+          const row = event.target.closest('.product-line');
+          const value = nonNegativeNumber(event.target.value);
+          const totalCans = field === 'boxes' ? value * casesPerBox * cansPerCase
+            : field === 'cases' ? value * cansPerCase
+            : field === 'rolls' ? value * cansPerRoll
+            : value;
+          row.dataset.quantityMode = 'equivalent';
+          row.querySelector('[data-field="boxes"]').value = displayQuantity(casesPerBox * cansPerCase > 0 ? totalCans / (casesPerBox * cansPerCase) : 0);
+          row.querySelector('[data-field="cases"]').value = displayQuantity(cansPerCase > 0 ? totalCans / cansPerCase : 0);
+          row.querySelector('[data-field="rolls"]').value = displayQuantity(cansPerRoll > 0 ? totalCans / cansPerRoll : 0);
+          row.querySelector('[data-field="looseCans"]').value = displayQuantity(totalCans);
+        }
+        updateSetupCalc();
+      };
       el('shipmentLines').onchange = event => {
         if (event.target.dataset.field === 'brand') {
           const row = event.target.closest('.product-line');
