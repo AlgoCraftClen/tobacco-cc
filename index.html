@@ -67,6 +67,19 @@
     .brand-pick { display: flex; flex-wrap: wrap; gap: 10px; }
     .brand-pick-btn { flex: 1; padding: 16px 12px; border-radius: 12px; border: 1px solid var(--surface-2); background: var(--bg); color: var(--text-2); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; -webkit-appearance: none; }
     .brand-pick-btn.active { border-color: var(--accent); background: rgba(59,130,246,0.12); color: var(--text); }
+    .load-sheet { display: grid; gap: 12px; }
+    .product-line { background: var(--bg); border: 1px solid var(--surface-2); border-radius: 14px; padding: 14px; }
+    .product-line-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .product-line-head .form-select { flex: 1; }
+    .product-line-remove { width: 40px; height: 40px; border: 1px solid rgba(239,68,68,.35); border-radius: 10px; background: rgba(239,68,68,.1); color: var(--danger); font-size: 20px; cursor: pointer; }
+    .product-line-qty { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .product-line-qty .form-group { margin-bottom: 10px; }
+    .product-line-qty .form-label { font-size: 10px; letter-spacing: .25px; }
+    .product-line-qty .form-input { padding: 10px 8px; text-align: center; }
+    .product-line-pricing { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .product-line-total { display: flex; justify-content: space-between; color: var(--text-2); font-size: 12px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.05); }
+    .product-line-total strong { color: var(--accent); }
+    .add-product-line { border: 1px dashed var(--accent); background: rgba(59,130,246,.08); color: var(--accent); }
     textarea.form-input { min-height: 80px; resize: vertical; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -183,6 +196,7 @@
           <div class="card-row"><span class="card-label">Boxes</span><span class="card-value" id="dashBoxes">0</span></div>
           <div class="card-row"><span class="card-label">Cases</span><span class="card-value" id="dashCases">0</span></div>
           <div class="card-row"><span class="card-label">Rolls</span><span class="card-value" id="dashRolls">0</span></div>
+          <div id="dashInventoryByProduct"></div>
         </div>
 
         <div class="card">
@@ -215,11 +229,9 @@
           <div class="card-title">Shipment Details</div>
           <div class="card-row" style="margin-bottom:12px"><span class="card-label">Shipment</span><span class="card-value" id="sShipId">-</span></div>
           <input type="hidden" id="sProduct">
-          <div class="form-group"><label class="form-label">Product Mix</label>
-            <div class="form-row">
-              <div class="form-group" style="margin-bottom:0"><label class="form-label">Grizzly Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sGrizzlyBoxes" placeholder="0"></div>
-              <div class="form-group" style="margin-bottom:0"><label class="form-label">Copenhagen Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCopenhagenBoxes" placeholder="0"></div>
-            </div>
+          <div class="form-group"><label class="form-label">Load Sheet</label>
+            <div class="load-sheet" id="shipmentLines"></div>
+            <button class="btn secondary add-product-line" type="button" onclick="addShipmentLine()">+ Add Product Line</button>
           </div>
           <div class="form-group"><label class="form-label">Status</label>
             <select class="form-select" id="sStatus">
@@ -238,14 +250,6 @@
           </div>
           <div class="form-row">
             <div class="form-group"><label class="form-label">Cans/Roll</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCansPerRoll" placeholder="5"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Grizzly Cost/Case ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sGrizzlyCostPerCase" placeholder="497"></div>
-            <div class="form-group"><label class="form-label">Copenhagen Cost/Case ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCopenhagenCostPerCase" placeholder="608"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Grizzly Target/Can ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sGrizzlyTargetPrice" placeholder="11"></div>
-            <div class="form-group"><label class="form-label">Copenhagen Target/Can ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="sCopenhagenTargetPrice" placeholder="12"></div>
           </div>
           <div class="card-row" style="margin-top:8px"><span class="card-label">Cans/Case</span><span class="card-value" id="calcCansPerCase">0</span></div>
           <div class="card-row"><span class="card-label">Cans/Box</span><span class="card-value" id="calcCansPerBox">0</span></div>
@@ -337,6 +341,7 @@
           <div class="card-row"><span class="card-label">Clanny Cash Held</span><span class="card-value clanny" id="setClannyCOH">$0</span></div>
           <div class="card-row"><span class="card-label">Inventory Sold (cans)</span><span class="card-value" id="setSoldCans">0</span></div>
           <div class="card-row"><span class="card-label">Inventory Remaining</span><span class="card-value" id="setRemainingCans">0</span></div>
+          <div id="setRemainingByProduct"></div>
           <div class="card-row"><span class="card-label">Remaining Value @ Target</span><span class="card-value" id="setRemainingValue">$0</span></div>
         </div>
 
@@ -501,6 +506,7 @@
         <div class="modal-title">Add Sale</div>
         <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="mSalesDate"></div>
         <div class="form-group"><label class="form-label">Customer / Store</label><input class="form-input" id="mSalesCustomer" placeholder="e.g. Joe's Corner Store"></div>
+        <div class="form-group"><label class="form-label">Product</label><select class="form-select" id="mSalesProduct"></select></div>
         <div class="form-row-3">
           <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" id="mSalesBoxes" placeholder="0"></div>
           <div class="form-group"><label class="form-label">Cases</label><input class="form-input" type="number" min="0" inputmode="decimal" id="mSalesCases" placeholder="0"></div>
@@ -567,6 +573,7 @@
     const PRODUCT_MIX_MARKER = 'CC_PRODUCT_MIX:';
     const PRODUCT_COSTS_MARKER = 'CC_PRODUCT_COSTS:';
     const TARGET_PRICES_MARKER = 'CC_TARGET_PRICES:';
+    const SHIPMENT_LINES_MARKER = 'CC_SHIPMENT_LINES:';
 
     function positiveNumber(value) {
       const n = parseFloat(value);
@@ -608,6 +615,30 @@
     function targetPricesMarkerRegex() {
       return new RegExp(`\\n?<!--${TARGET_PRICES_MARKER}([A-Za-z0-9+/=]+)-->`, 'g');
     }
+    function shipmentLinesMarkerRegex() {
+      return new RegExp(`\\n?<!--${SHIPMENT_LINES_MARKER}([A-Za-z0-9+/=]+)-->`, 'g');
+    }
+    function normalizeShipmentLines(lines) {
+      return (Array.isArray(lines) ? lines : []).map((line, index) => {
+        const brand = BRANDS.includes(line && line.brand) ? line.brand : BRANDS[index % BRANDS.length];
+        return {
+          id: String(line && line.id || `line-${index + 1}`),
+          brand,
+          boxes: nonNegativeNumber(line && line.boxes),
+          cases: nonNegativeNumber(line && line.cases),
+          rolls: nonNegativeNumber(line && line.rolls),
+          looseCans: nonNegativeNumber(line && line.looseCans),
+          costPerCase: nonNegativeNumber(line && line.costPerCase, DEFAULT_PRODUCT_COSTS[brand]),
+          targetPrice: nonNegativeNumber(line && line.targetPrice, DEFAULT_TARGET_PRICES[brand])
+        };
+      });
+    }
+    function decodeShipmentLines(notes) {
+      const match = shipmentLinesMarkerRegex().exec(String(notes || ''));
+      if (!match) return [];
+      try { return normalizeShipmentLines(JSON.parse(atob(match[1]))); }
+      catch (_) { return []; }
+    }
     function decodeProductMix(notes) {
       const match = productMixMarkerRegex().exec(String(notes || ''));
       if (!match) return {};
@@ -647,9 +678,9 @@
       return targetPricesMarkerRegex().test(String(notes || ''));
     }
     function stripProductMix(notes) {
-      return String(notes || '').replace(productMixMarkerRegex(), '').replace(productCostsMarkerRegex(), '').replace(targetPricesMarkerRegex(), '').trim();
+      return String(notes || '').replace(productMixMarkerRegex(), '').replace(productCostsMarkerRegex(), '').replace(targetPricesMarkerRegex(), '').replace(shipmentLinesMarkerRegex(), '').trim();
     }
-    function notesWithHiddenShipmentData(notes, mix, costs, prices) {
+    function notesWithHiddenShipmentData(notes, mix, costs, prices, lines) {
       const cleanNotes = stripProductMix(notes);
       const cleanMix = normalizeProductMix(mix);
       const cleanCosts = normalizeProductCosts(costs);
@@ -658,7 +689,26 @@
       if (productMixTotalBoxes(cleanMix) > 0) markers.push(`<!--${PRODUCT_MIX_MARKER}${btoa(JSON.stringify(cleanMix))}-->`);
       markers.push(`<!--${PRODUCT_COSTS_MARKER}${btoa(JSON.stringify(cleanCosts))}-->`);
       markers.push(`<!--${TARGET_PRICES_MARKER}${btoa(JSON.stringify(cleanPrices))}-->`);
+      const cleanLines = normalizeShipmentLines(lines);
+      if (cleanLines.length) markers.push(`<!--${SHIPMENT_LINES_MARKER}${btoa(JSON.stringify(cleanLines))}-->`);
       return [cleanNotes, ...markers].filter(Boolean).join('\n');
+    }
+    function getShipmentLines(sh) {
+      const direct = normalizeShipmentLines(sh && sh.shipmentLines);
+      if (direct.length) return direct;
+      const stored = decodeShipmentLines(sh && sh.notes);
+      if (stored.length) return stored;
+      const mix = getProductMix(sh);
+      const costs = getProductCosts(sh);
+      const prices = getTargetPrices(sh);
+      return BRANDS.filter(brand => positiveNumber(mix[brand]) > 0).map((brand, index) => ({
+        id: `legacy-${index + 1}`, brand, boxes: positiveNumber(mix[brand]), cases: 0, rolls: 0, looseCans: 0,
+        costPerCase: costs[brand], targetPrice: prices[brand]
+      }));
+    }
+    function shipmentLinesLabel(lines, fallback = '') {
+      const brands = [...new Set(normalizeShipmentLines(lines).filter(line => line.boxes || line.cases || line.rolls || line.looseCans).map(line => line.brand))];
+      return brands.length ? brands.join(' + ') : fallback;
     }
     function getProductMix(sh) {
       const fromProp = normalizeProductMix(sh && sh.productMix);
@@ -744,7 +794,7 @@
       });
     }
     function displayProduct(sh) {
-      return productMixLabel(getProductMix(sh), sh && sh.product || '');
+      return shipmentLinesLabel(getShipmentLines(sh), sh && sh.product || '');
     }
     function defaultMixForProductChoice(choice) {
       if (choice === 'Both') return { Grizzly: 1, Copenhagen: 1 };
@@ -773,23 +823,26 @@
     function calcShipment(s) {
       const cansPerCase = (s.rollsPerCase || 0) * (s.cansPerRoll || 0);
       const cansPerBox = (s.casesPerBox || 0) * cansPerCase;
-      const mix = getProductMix(s);
-      const costs = getProductCosts(s);
-      const prices = getTargetPrices(s);
-      const boxes = productMixTotalBoxes(mix) || (BRANDS.includes(s.product) ? (s.boxes || 0) : 0);
-      const casesOrdered = boxes * (s.casesPerBox || 0);
-      const rollsOrdered = casesOrdered * (s.rollsPerCase || 0);
-      const totalCans = boxes * cansPerBox;
-      const totalCost = BRANDS.reduce((sum, brand) => {
-        const brandBoxes = positiveNumber(mix[brand]) || (s.product === brand ? boxes : 0);
-        return sum + brandBoxes * (s.casesPerBox || 0) * (costs[brand] || 0);
-      }, 0);
-      const projRevenue = BRANDS.reduce((sum, brand) => {
-        const brandBoxes = positiveNumber(mix[brand]) || (s.product === brand ? boxes : 0);
-        return sum + brandBoxes * cansPerBox * (prices[brand] || 0);
-      }, 0);
+      const lines = getShipmentLines(s);
+      const inventoryByBrand = {};
+      const targetValueByBrand = {};
+      let boxes = 0, casesOrdered = 0, rollsOrdered = 0, totalCans = 0, totalCost = 0, projRevenue = 0;
+      lines.forEach(line => {
+        const lineCases = line.boxes * (s.casesPerBox || 0) + line.cases + line.rolls / Math.max(1, s.rollsPerCase || 0) + line.looseCans / Math.max(1, cansPerCase);
+        const lineRolls = line.boxes * (s.casesPerBox || 0) * (s.rollsPerCase || 0) + line.cases * (s.rollsPerCase || 0) + line.rolls + line.looseCans / Math.max(1, s.cansPerRoll || 0);
+        const lineCans = line.boxes * cansPerBox + line.cases * cansPerCase + line.rolls * (s.cansPerRoll || 0) + line.looseCans;
+        boxes += line.boxes;
+        casesOrdered += lineCases;
+        rollsOrdered += lineRolls;
+        totalCans += lineCans;
+        totalCost += lineCases * line.costPerCase;
+        projRevenue += lineCans * line.targetPrice;
+        inventoryByBrand[line.brand] = (inventoryByBrand[line.brand] || 0) + lineCans;
+        targetValueByBrand[line.brand] = (targetValueByBrand[line.brand] || 0) + lineCans * line.targetPrice;
+      });
       const avgTargetPrice = totalCans > 0 ? projRevenue / totalCans : 0;
-      return { boxes, cansPerCase, cansPerBox, casesOrdered, rollsOrdered, totalCans, totalCost, projRevenue, avgTargetPrice };
+      const targetPriceByBrand = Object.fromEntries(Object.entries(inventoryByBrand).map(([brand, cans]) => [brand, cans > 0 ? (targetValueByBrand[brand] || 0) / cans : 0]));
+      return { boxes, cansPerCase, cansPerBox, casesOrdered, rollsOrdered, totalCans, totalCost, projRevenue, avgTargetPrice, inventoryByBrand, targetPriceByBrand, lines };
     }
 
     function calcSettlement(sh) {
@@ -827,15 +880,21 @@
       const clannyCashOnHand = paidCashClanny - clannyWd;
       const cashOnHand = paidGrossSales - clennyOps - totalWd;
       const soldCans = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.totalCans) || 0), 0);
-      const remainingCans = c.totalCans - soldCans;
-      const remainingValue = remainingCans * (c.avgTargetPrice || 0);
+      const remainingByBrand = { ...c.inventoryByBrand };
+      sh.sales.forEach(sa => {
+        const brands = Object.keys(c.inventoryByBrand);
+        const brand = BRANDS.includes(sa.product) ? sa.product : (brands.length === 1 ? brands[0] : '');
+        if (brand) remainingByBrand[brand] = (remainingByBrand[brand] || 0) - (parseFloat(sa.totalCans) || 0);
+      });
+      const remainingCans = Object.values(remainingByBrand).reduce((sum, cans) => sum + cans, 0);
+      const remainingValue = Object.entries(remainingByBrand).reduce((sum, [brand, cans]) => sum + cans * (c.targetPriceByBrand[brand] || c.avgTargetPrice || 0), 0);
       // A withdrawal is payout taken early: the partner is owed less AND holds
       // less business cash, so the who-owes-whom balance is unchanged by it.
       const clennyBal = clennyPayout - (cashClenny - clennyWd);
       const clannyBal = clannyPayout - (cashClanny - clannyWd);
       const checkPayout = Math.abs((clennyPayout + clannyPayout + totalWd) - c.projRevenue) < 0.01;
       const checkBasis = Math.abs((clennyBasis + clannyBasis) - totalBasis) < 0.01;
-      return { clennyOps, clannyOps, totalOps, clennyWd, clannyWd, totalWd, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, paidGrossSales, projProfit, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, cashClenny, cashClanny, paidCashClenny, paidCashClanny, clennyCashOnHand, clannyCashOnHand, cashOnHand, soldCans, remainingCans, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, ...c };
+      return { clennyOps, clannyOps, totalOps, clennyWd, clannyWd, totalWd, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, paidGrossSales, projProfit, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, cashClenny, cashClanny, paidCashClenny, paidCashClanny, clennyCashOnHand, clannyCashOnHand, cashOnHand, soldCans, remainingCans, remainingByBrand, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, ...c };
     }
 
     // ---- Row mappers between prototype shape and Supabase schema ----
@@ -848,6 +907,7 @@
     const toDbStatus = s => STATUS_UI_TO_DB[s] || (s ? String(s).toLowerCase().replace(/\s+/g,'_') : 'pending');
     const toUiStatus = s => STATUS_DB_TO_UI[s] || (s || 'Planned');
     function shipmentFromRow(r) {
+      const shipmentLines = decodeShipmentLines(r.notes);
       const productMix = decodeProductMix(r.notes);
       const storedProductCosts = decodeProductCosts(r.notes);
       const storedTargetPrices = decodeTargetPrices(r.notes);
@@ -860,8 +920,9 @@
       return {
         id: r.id,
         shortSeq: r.short_seq == null ? null : Number(r.short_seq),
-        product: productMixLabel(productMix, r.brand || ''),
+        product: shipmentLinesLabel(shipmentLines, productMixLabel(productMix, r.brand || '')),
         productMix,
+        shipmentLines,
         status: toUiStatus(r.status),
         boxes: Number(r.boxes) || 0,
         casesPerBox: Number(r.cases_per_box) || 6,
@@ -878,19 +939,23 @@
       };
     }
     function shipmentToRow(s) {
-      const productMix = getProductMix(s);
+      const shipmentLines = getShipmentLines(s);
+      const productMix = {};
+      shipmentLines.forEach(line => { if (line.boxes > 0) productMix[line.brand] = (productMix[line.brand] || 0) + line.boxes; });
       const productCosts = getProductCosts(s);
       const targetPrices = getTargetPrices(s);
-      const activeBrands = BRANDS.filter(brand => positiveNumber(productMix[brand]) > 0);
+      shipmentLines.forEach(line => { productCosts[line.brand] = line.costPerCase; targetPrices[line.brand] = line.targetPrice; });
+      const activeBrands = [...new Set(shipmentLines.map(line => line.brand))];
+      const calc = calcShipment({ ...s, shipmentLines });
       const legacyCostPerCase = activeBrands.length === 1 ? productCosts[activeBrands[0]] :
         (BRANDS.includes(s.product) ? productCosts[s.product] : Number(s.costPerCase) || 0);
       const legacyTargetPrice = activeBrands.length === 1 ? targetPrices[activeBrands[0]] :
         weightedTargetPrice(productMix, targetPrices, Number(s.targetPrice) || 0);
       const row = {
         id: s.id,
-        brand: productMixLabel(productMix, s.product || ''),
+        brand: shipmentLinesLabel(shipmentLines, s.product || ''),
         status: toDbStatus(s.status || 'Planned'),
-        boxes: productMixTotalBoxes(productMix) || Number(s.boxes) || 0,
+        boxes: calc.boxes,
         cases_per_box: Number(s.casesPerBox) || 6,
         rolls_per_case: Number(s.rollsPerCase) || 18,
         cans_per_roll: Number(s.cansPerRoll) || 5,
@@ -898,7 +963,7 @@
         target_sale_price_per_can: legacyTargetPrice,
         clenny_product_invest: Number(s.clennyInvest) || 0,
         clanny_product_invest: Number(s.clannyInvest) || 0,
-        notes: notesWithHiddenShipmentData(s.notes, productMix, productCosts, targetPrices)
+        notes: notesWithHiddenShipmentData(s.notes, productMix, productCosts, targetPrices, shipmentLines)
       };
       // The app assigns the SHP # itself (highest existing + 1) rather than
       // relying on the DB's auto-counter, which can drift when rows are
@@ -1258,8 +1323,10 @@
       const product = productLabelForChoice(newShipBrand, productMix);
       const productCosts = normalizeProductCosts({});
       const targetPrices = normalizeTargetPrices({});
+      const initialBrands = newShipBrand === 'Both' ? BRANDS : [newShipBrand];
+      const shipmentLines = initialBrands.map((brand, index) => ({ id: `line-${index + 1}`, brand, boxes: 0, cases: 0, rolls: 0, looseCans: 0, costPerCase: productCosts[brand], targetPrice: targetPrices[brand] }));
       const newShip = {
-        id: newShipmentId(), shortSeq: nextSeqPreview(), product, productMix, status: 'Planned', boxes: productMixTotalBoxes(productMix), casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
+        id: newShipmentId(), shortSeq: nextSeqPreview(), product, productMix, shipmentLines, status: 'Planned', boxes: 0, casesPerBox: 6, rollsPerCase: 18, cansPerRoll: 5,
         costPerCase: 0, productCosts, targetPrice: weightedTargetPrice(productMix, targetPrices, 12), targetPrices, clennyInvest: 0, clannyInvest: 0, notes: '', ops: [], sales: []
       };
       const c = calcShipment(newShip);
@@ -1314,6 +1381,7 @@
       el('dashBoxes').textContent = fmtInt(c.boxes);
       el('dashCases').textContent = fmtInt(c.casesOrdered);
       el('dashRolls').textContent = fmtInt(c.rollsOrdered);
+      el('dashInventoryByProduct').innerHTML = Object.entries(c.inventoryByBrand).map(([brand, cans]) => `<div class="card-row"><span class="card-label">${escapeHtml(brand)} Inventory</span><span class="card-value">${fmtInt(cans)} cans</span></div>`).join('');
       el('dashTotalCans').textContent = fmtInt(c.totalCans);
       el('dashProjRevenue').textContent = fmt(c.projRevenue);
       el('dashProjProfit').textContent = fmt(st.projProfit);
@@ -1347,53 +1415,86 @@
       return parts.length ? "Numbers don't match — " + parts.join(', ') : 'Numbers add up';
     }
 
+    let setupLinesDraft = [];
+    function readShipmentLinesForm() {
+      return [...el('shipmentLines').querySelectorAll('.product-line')].map((row, index) => ({
+        id: row.dataset.lineId || `line-${index + 1}`,
+        brand: row.querySelector('[data-field="brand"]').value,
+        boxes: row.querySelector('[data-field="boxes"]').value,
+        cases: row.querySelector('[data-field="cases"]').value,
+        rolls: row.querySelector('[data-field="rolls"]').value,
+        looseCans: row.querySelector('[data-field="looseCans"]').value,
+        costPerCase: row.querySelector('[data-field="costPerCase"]').value,
+        targetPrice: row.querySelector('[data-field="targetPrice"]').value
+      }));
+    }
+    function renderShipmentLines() {
+      const sh = currentShipment();
+      const cansPerCase = (parseFloat(el('sRollsPerCase').value) || sh?.rollsPerCase || 0) * (parseFloat(el('sCansPerRoll').value) || sh?.cansPerRoll || 0);
+      const casesPerBox = parseFloat(el('sCasesPerBox').value) || sh?.casesPerBox || 0;
+      el('shipmentLines').innerHTML = setupLinesDraft.map((line, index) => {
+        const cans = line.boxes * casesPerBox * cansPerCase + line.cases * cansPerCase + line.rolls * (parseFloat(el('sCansPerRoll').value) || sh?.cansPerRoll || 0) + line.looseCans;
+        return `<div class="product-line" data-line-id="${escapeHtml(line.id)}">
+          <div class="product-line-head"><select class="form-select" data-field="brand">${BRANDS.map(brand => `<option${brand === line.brand ? ' selected' : ''}>${brand}</option>`).join('')}</select><button class="product-line-remove" type="button" aria-label="Remove product line" onclick="removeShipmentLine(${index})">&times;</button></div>
+          <div class="product-line-qty">
+            <div class="form-group"><label class="form-label">Boxes</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="boxes" value="${line.boxes || ''}" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Cases</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="cases" value="${line.cases || ''}" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Rolls</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="rolls" value="${line.rolls || ''}" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Loose</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="looseCans" value="${line.looseCans || ''}" placeholder="0"></div>
+          </div>
+          <div class="product-line-pricing">
+            <div class="form-group"><label class="form-label">Cost/Case ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="costPerCase" value="${line.costPerCase || ''}"></div>
+            <div class="form-group"><label class="form-label">Target/Can ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" data-field="targetPrice" value="${line.targetPrice || ''}"></div>
+          </div>
+          <div class="product-line-total"><span>Line inventory</span><strong>${fmtInt(cans)} cans</strong></div>
+        </div>`;
+      }).join('');
+      el('shipmentLines').oninput = () => updateSetupCalc();
+      el('shipmentLines').onchange = event => {
+        if (event.target.dataset.field === 'brand') {
+          const row = event.target.closest('.product-line');
+          row.querySelector('[data-field="costPerCase"]').value = DEFAULT_PRODUCT_COSTS[event.target.value];
+          row.querySelector('[data-field="targetPrice"]').value = DEFAULT_TARGET_PRICES[event.target.value];
+        }
+        updateSetupCalc();
+      };
+    }
+    function addShipmentLine() {
+      setupLinesDraft = normalizeShipmentLines(readShipmentLinesForm());
+      const lastBrand = setupLinesDraft[setupLinesDraft.length - 1]?.brand;
+      const brand = lastBrand === BRANDS[0] ? BRANDS[1] : BRANDS[0];
+      setupLinesDraft.push({ id: `line-${Date.now()}`, brand, boxes: 0, cases: 0, rolls: 0, looseCans: 0, costPerCase: DEFAULT_PRODUCT_COSTS[brand], targetPrice: DEFAULT_TARGET_PRICES[brand] });
+      renderShipmentLines(); updateSetupCalc();
+    }
+    function removeShipmentLine(index) {
+      setupLinesDraft = normalizeShipmentLines(readShipmentLinesForm());
+      setupLinesDraft.splice(index, 1);
+      if (!setupLinesDraft.length) {
+        const brand = BRANDS[0];
+        setupLinesDraft.push({ id: `line-${Date.now()}`, brand, boxes: 0, cases: 0, rolls: 0, looseCans: 0, costPerCase: DEFAULT_PRODUCT_COSTS[brand], targetPrice: DEFAULT_TARGET_PRICES[brand] });
+      }
+      renderShipmentLines(); updateSetupCalc();
+    }
     function renderSetup() {
       const sh = currentShipment(); if (!sh) return;
-      const mix = getProductMix(sh);
-      const costs = getProductCosts(sh);
-      const prices = getTargetPrices(sh);
+      setupLinesDraft = getShipmentLines(sh);
+      if (!setupLinesDraft.length) setupLinesDraft = normalizeShipmentLines([{ id: 'line-1', brand: BRANDS[0] }]);
       el('sShipId').textContent = shortShipmentId(sh.id);
       el('sProduct').value = displayProduct(sh);
-      el('sGrizzlyBoxes').value = mix.Grizzly || '';
-      el('sCopenhagenBoxes').value = mix.Copenhagen || '';
       el('sStatus').value = sh.status || 'Planned';
-      el('sBoxes').value = productMixTotalBoxes(mix) || sh.boxes || '';
       el('sCasesPerBox').value = sh.casesPerBox || '';
       el('sRollsPerCase').value = sh.rollsPerCase || '';
       el('sCansPerRoll').value = sh.cansPerRoll || '';
-      el('sGrizzlyCostPerCase').value = costs.Grizzly || '';
-      el('sCopenhagenCostPerCase').value = costs.Copenhagen || '';
-      el('sGrizzlyTargetPrice').value = prices.Grizzly || '';
-      el('sCopenhagenTargetPrice').value = prices.Copenhagen || '';
       el('sClennyInvest').value = sh.clennyInvest || '';
       el('sClannyInvest').value = sh.clannyInvest || '';
       el('sNotes').value = sh.notes || '';
-      updateSetupCalc();
+      renderShipmentLines(); updateSetupCalc();
     }
     function updateSetupCalc(autoBalance = true) {
-      const productMix = normalizeProductMix({
-        Grizzly: el('sGrizzlyBoxes').value,
-        Copenhagen: el('sCopenhagenBoxes').value
-      });
-      const productCosts = normalizeProductCosts({
-        Grizzly: el('sGrizzlyCostPerCase').value,
-        Copenhagen: el('sCopenhagenCostPerCase').value
-      });
-      const targetPrices = normalizeTargetPrices({
-        Grizzly: el('sGrizzlyTargetPrice').value,
-        Copenhagen: el('sCopenhagenTargetPrice').value
-      });
-      const s = {
-        productMix,
-        boxes: productMixTotalBoxes(productMix),
-        casesPerBox: parseFloat(el('sCasesPerBox').value) || 0,
-        rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0,
-        cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0,
-        productCosts,
-        targetPrices,
-      };
+      const shipmentLines = normalizeShipmentLines(readShipmentLinesForm());
+      const s = { shipmentLines, casesPerBox: parseFloat(el('sCasesPerBox').value) || 0, rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0, cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0 };
       const c = calcShipment(s);
-      el('sProduct').value = productMixLabel(productMix, el('sProduct').value);
+      el('sProduct').value = shipmentLinesLabel(shipmentLines, el('sProduct').value);
       el('sBoxes').value = c.boxes || '';
       el('calcCansPerCase').textContent = fmtInt(c.cansPerCase);
       el('calcCansPerBox').textContent = fmtInt(c.cansPerBox);
@@ -1402,6 +1503,12 @@
       el('calcTotalCans').textContent = fmtInt(c.totalCans);
       el('calcTotalCost').textContent = fmt(c.totalCost);
       el('calcProjRevenue').textContent = fmt(c.projRevenue);
+      document.querySelectorAll('.product-line').forEach((row, index) => {
+        const line = c.lines[index], strong = row.querySelector('.product-line-total strong');
+        if (!line || !strong) return;
+        const lineCans = line.boxes * c.cansPerBox + line.cases * c.cansPerCase + line.rolls * s.cansPerRoll + line.looseCans;
+        strong.textContent = `${fmtInt(lineCans)} cans`;
+      });
       const sh = currentShipment();
       if (autoBalance && shouldAutoBalanceInvestmentInputs(sh, c.totalCost)) {
         const investments = balancedInvestmentsFor(sh, c.totalCost);
@@ -1410,15 +1517,11 @@
       }
       const clenny = parseFloat(el('sClennyInvest').value) || 0;
       const clanny = parseFloat(el('sClannyInvest').value) || 0;
-      const total = c.totalCost;
-      const match = Math.abs((clenny + clanny) - total) < 0.01 && total > 0;
+      const match = Math.abs((clenny + clanny) - c.totalCost) < 0.01 && c.totalCost > 0;
       el('checkInvest').className = 'check-dot' + (match ? '' : ' fail');
-      el('checkInvestText').textContent = total <= 0 ? 'Enter product mix to calculate investment check' :
-        (match ? 'Investments cover product cost' : `Off by ${fmt(Math.abs((clenny + clanny) - total))} — recheck each partner’s share`);
+      el('checkInvestText').textContent = c.totalCost <= 0 ? 'Enter shipment quantities to calculate investment check' : (match ? 'Investments cover product cost' : `Off by ${fmt(Math.abs((clenny + clanny) - c.totalCost))} — recheck each partner’s share`);
     }
-    ['sGrizzlyBoxes','sCopenhagenBoxes','sCasesPerBox','sRollsPerCase','sCansPerRoll','sGrizzlyCostPerCase','sCopenhagenCostPerCase','sGrizzlyTargetPrice','sCopenhagenTargetPrice'].forEach(id => {
-      on(id, 'input', updateSetupCalc);
-    });
+    ['sCasesPerBox','sRollsPerCase','sCansPerRoll'].forEach(id => on(id, 'input', () => { setupLinesDraft = normalizeShipmentLines(readShipmentLinesForm()); renderShipmentLines(); updateSetupCalc(); }));
     ['sClennyInvest','sClannyInvest'].forEach(id => {
       on(id, 'input', () => updateSetupCalc(false));
     });
@@ -1427,31 +1530,24 @@
       // Build the candidate off-side. Only merge into the in-memory shipment
       // AFTER the remote save confirms — otherwise a failed save leaves the
       // UI computing off values the DB never actually received.
-      const productMix = normalizeProductMix({
-        Grizzly: el('sGrizzlyBoxes').value,
-        Copenhagen: el('sCopenhagenBoxes').value
-      });
-      const productCosts = normalizeProductCosts({
-        Grizzly: el('sGrizzlyCostPerCase').value,
-        Copenhagen: el('sCopenhagenCostPerCase').value
-      });
-      const targetPrices = normalizeTargetPrices({
-        Grizzly: el('sGrizzlyTargetPrice').value,
-        Copenhagen: el('sCopenhagenTargetPrice').value
-      });
-      const activeBrands = BRANDS.filter(brand => positiveNumber(productMix[brand]) > 0);
+      const shipmentLines = normalizeShipmentLines(readShipmentLinesForm());
+      const productMix = {}, productCosts = normalizeProductCosts({}), targetPrices = normalizeTargetPrices({});
+      shipmentLines.forEach(line => { if (line.boxes > 0) productMix[line.brand] = (productMix[line.brand] || 0) + line.boxes; productCosts[line.brand] = line.costPerCase; targetPrices[line.brand] = line.targetPrice; });
+      const preview = calcShipment({ shipmentLines, casesPerBox: parseFloat(el('sCasesPerBox').value) || 0, rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0, cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0 });
+      if (preview.totalCans <= 0) { alert('Add at least one box, case, roll, or loose can.'); return; }
       const candidate = {
         ...sh,
-        product: productMixLabel(productMix, el('sProduct').value),
+        product: shipmentLinesLabel(shipmentLines, el('sProduct').value),
         productMix,
+        shipmentLines,
         status: el('sStatus').value,
-        boxes: productMixTotalBoxes(productMix),
+        boxes: preview.boxes,
         casesPerBox: parseFloat(el('sCasesPerBox').value) || 0,
         rollsPerCase: parseFloat(el('sRollsPerCase').value) || 0,
         cansPerRoll: parseFloat(el('sCansPerRoll').value) || 0,
-        costPerCase: activeBrands.length === 1 ? productCosts[activeBrands[0]] : 0,
+        costPerCase: shipmentLines.length === 1 ? shipmentLines[0].costPerCase : 0,
         productCosts,
-        targetPrice: activeBrands.length === 1 ? targetPrices[activeBrands[0]] : weightedTargetPrice(productMix, targetPrices, 0),
+        targetPrice: preview.avgTargetPrice,
         targetPrices,
         clennyInvest: parseFloat(el('sClennyInvest').value) || 0,
         clannyInvest: parseFloat(el('sClannyInvest').value) || 0,
@@ -1543,7 +1639,12 @@
     function openSalesModal() {
       const sh = currentShipment(); if (!sh) return;
       const c = calcShipment(sh);
-      el('mSalesDate').value = today(); el('mSalesCustomer').value = ''; el('mSalesBoxes').value = ''; el('mSalesCases').value = ''; el('mSalesRolls').value = ''; el('mSalesLoose').value = ''; el('mSalesPrice').value = c.avgTargetPrice || sh.targetPrice || 12; el('mSalesCollector').value = 'Clenny'; el('mSalesStatus').value = 'Paid'; el('mSalesNotes').value = ''; updateSalesCalc(); el('salesModal').classList.add('active');
+      const brands = [...new Set(c.lines.map(line => line.brand))];
+      el('mSalesProduct').innerHTML = brands.map(brand => `<option>${brand}</option>`).join('');
+      el('mSalesDate').value = today(); el('mSalesCustomer').value = ''; el('mSalesBoxes').value = ''; el('mSalesCases').value = ''; el('mSalesRolls').value = ''; el('mSalesLoose').value = ''; el('mSalesCollector').value = 'Clenny'; el('mSalesStatus').value = 'Paid'; el('mSalesNotes').value = '';
+      const firstLine = c.lines.find(line => line.brand === el('mSalesProduct').value);
+      el('mSalesPrice').value = firstLine?.targetPrice || c.avgTargetPrice || sh.targetPrice || 12;
+      updateSalesCalc(); el('salesModal').classList.add('active');
     }
     function updateSalesCalc() {
       const sh = currentShipment(); if (!sh) return;
@@ -1559,6 +1660,11 @@
       el('mSalesGross').textContent = fmt(gross);
     }
     ['mSalesBoxes','mSalesCases','mSalesRolls','mSalesLoose','mSalesPrice'].forEach(id => { on(id, 'input', updateSalesCalc); });
+    on('mSalesProduct', 'change', () => {
+      const line = calcShipment(currentShipment()).lines.find(item => item.brand === el('mSalesProduct').value);
+      if (line) el('mSalesPrice').value = line.targetPrice;
+      updateSalesCalc();
+    });
     async function saveSales() {
       const sh = currentShipment(); if (!sh) return;
       const boxes = parseFloat(el('mSalesBoxes').value) || 0;
@@ -1571,11 +1677,11 @@
       const gross = totalCans * price;
       if (totalCans <= 0) { alert('Please enter at least some quantity'); return; }
       const sale = {
-        date: el('mSalesDate').value, product: displayProduct(sh), customer: el('mSalesCustomer').value,
+        date: el('mSalesDate').value, product: el('mSalesProduct').value, customer: el('mSalesCustomer').value,
         boxes, cases, rolls, looseCans: loose, totalCans, pricePerCan: price, grossSales: gross,
         collectedBy: el('mSalesCollector').value, paymentStatus: el('mSalesStatus').value, notes: el('mSalesNotes').value
       };
-      const id = await saveSaleRemote(sale, sh.id, displayProduct(sh));
+      const id = await saveSaleRemote(sale, sh.id, sale.product);
       if (!id) return;
       sale.id = id;
       sh.sales.push(sale);
@@ -1624,6 +1730,7 @@
       el('setClannyCOH').className = 'card-value ' + (st.clannyCashOnHand < 0 ? 'danger' : 'clanny');
       el('setSoldCans').textContent = fmtInt(st.soldCans);
       el('setRemainingCans').textContent = fmtInt(st.remainingCans);
+      el('setRemainingByProduct').innerHTML = Object.entries(st.remainingByBrand).map(([brand, cans]) => `<div class="card-row"><span class="card-label">${escapeHtml(brand)} Remaining</span><span class="card-value">${fmtInt(cans)} cans</span></div>`).join('');
       el('setRemainingValue').textContent = fmt(st.remainingValue);
       el('setClennyBal').textContent = fmt(st.clennyBal);
       el('setClannyBal').textContent = fmt(st.clannyBal);

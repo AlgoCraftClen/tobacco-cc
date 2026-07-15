@@ -51,6 +51,8 @@ Prototype writes to these Supabase tables:
 - `expenses` — Operations Ledger rows (owner, category, amount, included?)
 - `sales` — Sales Ledger rows (date, quantity, price, cash collector)
 
+Each shipment has a flexible load sheet: add as many Grizzly or Copenhagen lines as needed and enter full boxes, cases, rolls, or loose cans. Product lines are persisted inside the shipment notes metadata, so this feature does not require an additional Supabase migration and older single-product shipments remain compatible.
+
 All settlement math is client-side, based on the Excel-parity formulas in the workbook. See [`clenny_clanny_shipment_tracker.xlsx`](clenny_clanny_shipment_tracker.xlsx) for the source of truth.
 
 ## iPhone app
