@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="CC Tobacco Tracker">
   <meta name="theme-color" content="#0f172a">
@@ -297,16 +298,18 @@
           <div class="card-title">Approved Operations</div>
           <div class="card-row"><span class="card-label">Clenny Approved Ops</span><span class="card-value clenny" id="setClennyOps">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Approved Ops</span><span class="card-value clanny" id="setClannyOps">$0</span></div>
+          <div class="card-row"><span class="card-label">Personally Paid — Reimburse</span><span class="card-value" id="setPersonalOps">$0</span></div>
+          <div class="card-row"><span class="card-label">Paid From Sales</span><span class="card-value" id="setSalesOps">$0</span></div>
           <div class="card-row"><span class="card-label">Total Operations</span><span class="card-value" id="setTotalOps">$0</span></div>
         </div>
 
         <div class="card">
-          <div class="card-title">Contribution &amp; Payout</div>
-          <div class="card-row"><span class="card-label">Total Contribution Basis</span><span class="card-value" id="setTotalBasis">$0</span></div>
-          <div class="card-row"><span class="card-label">Clenny Basis</span><span class="card-value clenny" id="setClennyBasis">$0</span></div>
-          <div class="card-row"><span class="card-label">Clanny Basis</span><span class="card-value clanny" id="setClannyBasis">$0</span></div>
-          <div class="card-row"><span class="card-label">Clenny Contribution %</span><span class="card-value clenny" id="setClennyPct">0%</span></div>
-          <div class="card-row"><span class="card-label">Clanny Contribution %</span><span class="card-value clanny" id="setClannyPct">0%</span></div>
+          <div class="card-title">Product Investment &amp; Profit Split</div>
+          <div class="card-row"><span class="card-label">Total Product Investment</span><span class="card-value" id="setTotalBasis">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Product Investment</span><span class="card-value clenny" id="setClennyBasis">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Product Investment</span><span class="card-value clanny" id="setClannyBasis">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Profit %</span><span class="card-value clenny" id="setClennyPct">0%</span></div>
+          <div class="card-row"><span class="card-label">Clanny Profit %</span><span class="card-value clanny" id="setClannyPct">0%</span></div>
         </div>
 
         <div class="card">
@@ -337,8 +340,8 @@
           <div class="card-title">Cash &amp; Inventory</div>
           <div class="card-row"><span class="card-label">Cash Collected by Clenny</span><span class="card-value clenny" id="setCashClenny">$0</span></div>
           <div class="card-row"><span class="card-label">Cash Collected by Clanny</span><span class="card-value clanny" id="setCashClanny">$0</span></div>
-          <div class="card-row"><span class="card-label">Clenny COH After Ops</span><span class="card-value clenny" id="setClennyCOH">$0</span></div>
-          <div class="card-row"><span class="card-label">Clanny Cash Held</span><span class="card-value clanny" id="setClannyCOH">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Cash After Sales-Funded Ops</span><span class="card-value clenny" id="setClennyCOH">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Cash After Sales-Funded Ops</span><span class="card-value clanny" id="setClannyCOH">$0</span></div>
           <div class="card-row"><span class="card-label">Inventory Sold (cans)</span><span class="card-value" id="setSoldCans">0</span></div>
           <div class="card-row"><span class="card-label">Inventory Remaining</span><span class="card-value" id="setRemainingCans">0</span></div>
           <div id="setRemainingByProduct"></div>
@@ -349,8 +352,8 @@
           <div class="card-title">Balances</div>
           <div class="card-row"><span class="card-label">Clenny Balance After Sales</span><span class="card-value clenny" id="setClennyBal">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Balance After Sales</span><span class="card-value clanny" id="setClannyBal">$0</span></div>
-          <div class="check-row"><div class="check-dot" id="setCheck1"></div><span id="setCheckText1">Payouts match projected revenue</span></div>
-          <div class="check-row"><div class="check-dot" id="setCheck2"></div><span id="setCheckText2">Contribution shares look right</span></div>
+          <div class="check-row"><div class="check-dot" id="setCheck1"></div><span id="setCheckText1">Settlement accounts for all revenue</span></div>
+          <div class="check-row"><div class="check-dot" id="setCheck2"></div><span id="setCheckText2">Product investments cover product cost</span></div>
         </div>
       </div>
 
@@ -367,19 +370,19 @@
             <div class="rule-note">The green check appears when both shares together cover the product cost.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">Each partner logs their own operating costs</div>
-            <div class="rule-meaning">Clanny enters Clanny's costs. Clenny enters Clenny's costs. Nobody enters costs for the other partner.</div>
-            <div class="rule-note">Gas, rental, freight, pickup, mailing — anything paid out of pocket to move product.</div>
+            <div class="rule-title">Product investment sets the profit split</div>
+            <div class="rule-meaning">Clenny contributes a smaller amount and Clanny contributes the larger amount. Clanny uses the combined product money to purchase and send the shipment.</div>
+            <div class="rule-note">Operating costs never buy a larger share of the profit.</div>
           </div>
           <div class="rule-item">
             <div class="rule-title">Only approved business costs count</div>
             <div class="rule-meaning">Set “Included in Settlement” to Yes for real business costs, No for anything personal or not-yet-paid.</div>
-            <div class="rule-note">Personal receipts and IOUs stay out of the payout math until they’re real business expenses.</div>
+            <div class="rule-note">Every approved operation reduces shipment profit.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">Costs don’t split 50/50 automatically</div>
-            <div class="rule-meaning">Whoever paid for something gets credited for it. Their share of the eventual payout goes up accordingly.</div>
-            <div class="rule-note">Bigger contribution → bigger share of the profit.</div>
+            <div class="rule-title">Record where operation money came from</div>
+            <div class="rule-meaning">Personal money is reimbursed to the partner who paid it. Sales money has already left the cash pot and is not reimbursed again.</div>
+            <div class="rule-note">Funding source changes reimbursement and cash, not the profit percentage.</div>
           </div>
           <div class="rule-item">
             <div class="rule-title">Personal withdrawals come out of your payout</div>
@@ -481,14 +484,18 @@
         <div class="form-group"><label class="form-label">Type</label>
           <select class="form-select" id="mOpsType" onchange="onOpsTypeChange()"><option value="expense">Business Expense</option><option value="withdrawal">Personal Withdrawal</option></select>
         </div>
-        <div class="form-group"><label class="form-label">Owner</label>
-          <select class="form-select" id="mOpsOwner"><option>Clenny</option><option>Clanny</option></select>
+        <div class="form-group"><label class="form-label">Who handled it?</label>
+          <select class="form-select" id="mOpsOwner" onchange="onOpsOwnerChange()"><option>Clenny</option><option>Clanny</option></select>
         </div>
         <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="mOpsDate"></div>
         <div class="form-group"><label class="form-label">Category</label><input class="form-input" id="mOpsCategory" placeholder="e.g. Gas, Rental, Freight"></div>
         <div class="form-group"><label class="form-label">Amount ($)</label><input class="form-input" type="number" min="0" inputmode="decimal" id="mOpsAmount" placeholder="0.00"></div>
         <div class="form-group" id="mOpsIncludedGroup"><label class="form-label">Included in Settlement?</label>
           <select class="form-select" id="mOpsIncluded"><option value="Yes">Yes</option><option value="No">No</option></select>
+        </div>
+        <div class="form-group" id="mOpsFundingGroup"><label class="form-label">Paid from</label>
+          <select class="form-select" id="mOpsFunding"><option value="personal">Personal money — reimburse it</option><option value="sales">Sales money — already paid</option></select>
+          <div class="rule-note">Personal money is paid back to that partner. Sales money only reduces cash and profit.</div>
         </div>
         <div class="form-group" id="mOpsWithdrawalNote" style="display:none;">
           <div class="rule-note">A withdrawal takes cash out of the pot for personal use. It lowers Cash On Hand and comes straight out of this partner's payout. It does not count as a contribution.</div>
@@ -845,40 +852,52 @@
       return { boxes, cansPerCase, cansPerBox, casesOrdered, rollsOrdered, totalCans, totalCost, projRevenue, avgTargetPrice, inventoryByBrand, targetPriceByBrand, lines };
     }
 
+    function operationFundingSource(o) {
+      if (o.fundingSource === 'sales' || o.fundingSource === 'personal') return o.fundingSource;
+      // Legacy records predate the funding-source field. Preserve the known
+      // workflow: Clanny paid inbound costs personally; Clenny paid local costs
+      // from collected sales cash.
+      return o.owner === 'Clenny' ? 'sales' : 'personal';
+    }
+
     function calcSettlement(sh) {
       const c = calcShipment(sh);
       const isWd = o => o.kind === 'withdrawal';
-      const clennyOps = sh.ops.filter(o => !isWd(o) && o.included === 'Yes' && o.owner === 'Clenny').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
-      const clannyOps = sh.ops.filter(o => !isWd(o) && o.included === 'Yes' && o.owner === 'Clanny').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
-      // Withdrawals are personal draws against the pot: they reduce cash on hand
-      // and come straight out of the withdrawing partner's payout. They are NOT
-      // contributions, so they never touch basis or contribution %.
+      const approvedOps = sh.ops.filter(o => !isWd(o) && o.included === 'Yes');
+      const sumOps = predicate => approvedOps.filter(predicate).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+      const clennyOps = sumOps(o => o.owner === 'Clenny');
+      const clannyOps = sumOps(o => o.owner === 'Clanny');
+      const clennyPersonalOps = sumOps(o => o.owner === 'Clenny' && operationFundingSource(o) === 'personal');
+      const clannyPersonalOps = sumOps(o => o.owner === 'Clanny' && operationFundingSource(o) === 'personal');
+      const clennySalesOps = sumOps(o => o.owner === 'Clenny' && operationFundingSource(o) === 'sales');
+      const clannySalesOps = sumOps(o => o.owner === 'Clanny' && operationFundingSource(o) === 'sales');
+      const personalOps = clennyPersonalOps + clannyPersonalOps;
+      const salesFundedOps = clennySalesOps + clannySalesOps;
       const clennyWd = sh.ops.filter(o => isWd(o) && o.owner === 'Clenny').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
       const clannyWd = sh.ops.filter(o => isWd(o) && o.owner === 'Clanny').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
       const totalWd = clennyWd + clannyWd;
       const totalOps = clennyOps + clannyOps;
-      const totalBasis = c.totalCost + totalOps;
-      const clennyBasis = (sh.clennyInvest || 0) + clennyOps;
-      const clannyBasis = (sh.clannyInvest || 0) + clannyOps;
+      const clennyBasis = Number(sh.clennyInvest) || 0;
+      const clannyBasis = Number(sh.clannyInvest) || 0;
+      const totalBasis = clennyBasis + clannyBasis;
       const clennyPct = totalBasis === 0 ? 0 : clennyBasis / totalBasis;
       const clannyPct = totalBasis === 0 ? 0 : clannyBasis / totalBasis;
       const grossSales = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
-      const projProfit = c.projRevenue - totalBasis;
-      const currentPL = grossSales - totalBasis;
+      const projProfit = c.projRevenue - c.totalCost - totalOps;
+      const currentPL = grossSales - c.totalCost - totalOps;
       const clennyProfitShare = projProfit * clennyPct;
       const clannyProfitShare = projProfit * clannyPct;
-      const clennyPayout = clennyBasis + clennyProfitShare - clennyWd;
-      const clannyPayout = clannyBasis + clannyProfitShare - clannyWd;
+      const clennyPayout = clennyBasis + clennyPersonalOps + clennyProfitShare - clennyWd;
+      const clannyPayout = clannyBasis + clannyPersonalOps + clannyProfitShare - clannyWd;
       const paidSales = sh.sales.filter(sa => (sa.paymentStatus || 'Paid') === 'Paid');
       const paidGrossSales = paidSales.reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
       const paidCashClenny = paidSales.filter(sa => sa.collectedBy === 'Clenny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
       const paidCashClanny = paidSales.filter(sa => sa.collectedBy === 'Clanny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
-      const cashClenny = sh.sales.filter(sa => sa.collectedBy === 'Clenny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
-      const cashClanny = sh.sales.filter(sa => sa.collectedBy === 'Clanny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
-      // Clenny ops come from sales cash; Clanny ops are paid personally and stay in settlement basis.
-      const clennyCashOnHand = paidCashClenny - clennyOps - clennyWd;
-      const clannyCashOnHand = paidCashClanny - clannyWd;
-      const cashOnHand = paidGrossSales - clennyOps - totalWd;
+      const cashClenny = paidCashClenny;
+      const cashClanny = paidCashClanny;
+      const clennyCashOnHand = paidCashClenny - clennySalesOps - clennyWd;
+      const clannyCashOnHand = paidCashClanny - clannySalesOps - clannyWd;
+      const cashOnHand = paidGrossSales - salesFundedOps - totalWd;
       const soldCans = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.totalCans) || 0), 0);
       const remainingByBrand = { ...c.inventoryByBrand };
       sh.sales.forEach(sa => {
@@ -888,13 +907,11 @@
       });
       const remainingCans = Object.values(remainingByBrand).reduce((sum, cans) => sum + cans, 0);
       const remainingValue = Object.entries(remainingByBrand).reduce((sum, [brand, cans]) => sum + cans * (c.targetPriceByBrand[brand] || c.avgTargetPrice || 0), 0);
-      // A withdrawal is payout taken early: the partner is owed less AND holds
-      // less business cash, so the who-owes-whom balance is unchanged by it.
-      const clennyBal = clennyPayout - (cashClenny - clennyWd);
-      const clannyBal = clannyPayout - (cashClanny - clannyWd);
-      const checkPayout = Math.abs((clennyPayout + clannyPayout + totalWd) - c.projRevenue) < 0.01;
-      const checkBasis = Math.abs((clennyBasis + clannyBasis) - totalBasis) < 0.01;
-      return { clennyOps, clannyOps, totalOps, clennyWd, clannyWd, totalWd, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, paidGrossSales, projProfit, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, cashClenny, cashClanny, paidCashClenny, paidCashClanny, clennyCashOnHand, clannyCashOnHand, cashOnHand, soldCans, remainingCans, remainingByBrand, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, ...c };
+      const clennyBal = clennyPayout - clennyCashOnHand;
+      const clannyBal = clannyPayout - clannyCashOnHand;
+      const checkPayout = Math.abs((clennyPayout + clannyPayout + totalWd + salesFundedOps) - c.projRevenue) < 0.01;
+      const checkBasis = Math.abs(totalBasis - c.totalCost) < 0.01;
+      return { clennyOps, clannyOps, clennyPersonalOps, clannyPersonalOps, clennySalesOps, clannySalesOps, personalOps, salesFundedOps, totalOps, clennyWd, clannyWd, totalWd, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, paidGrossSales, projProfit, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, cashClenny, cashClanny, paidCashClenny, paidCashClanny, clennyCashOnHand, clannyCashOnHand, cashOnHand, soldCans, remainingCans, remainingByBrand, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, ...c };
     }
 
     // ---- Row mappers between prototype shape and Supabase schema ----
@@ -971,7 +988,21 @@
       if (s.shortSeq != null) row.short_seq = Number(s.shortSeq);
       return row;
     }
+    const FUNDING_MARKER_RE = /\s*\[\[funding:(personal|sales)\]\]\s*$/i;
+    function markedFundingSource(description) {
+      const match = String(description || '').match(FUNDING_MARKER_RE);
+      return match ? match[1].toLowerCase() : '';
+    }
+    function visibleOperationDescription(description) {
+      return String(description || '').replace(FUNDING_MARKER_RE, '').trim();
+    }
+    function storedOperationDescription(description, fundingSource, kind) {
+      const visible = visibleOperationDescription(description);
+      if (kind === 'withdrawal') return visible;
+      return `${visible}${visible ? ' ' : ''}[[funding:${fundingSource}]]`;
+    }
     function opFromRow(r) {
+      const storedFunding = r.funding_source === 'sales' || r.funding_source === 'personal' ? r.funding_source : markedFundingSource(r.description);
       return {
         id: r.id,
         owner: r.partner || 'Clanny',
@@ -980,7 +1011,8 @@
         amount: Number(r.amount) || 0,
         included: r.approved ? 'Yes' : 'No',
         kind: r.kind === 'withdrawal' ? 'withdrawal' : 'expense',
-        description: r.description || '',
+        fundingSource: storedFunding || (r.partner === 'Clenny' ? 'sales' : 'personal'),
+        description: visibleOperationDescription(r.description),
         receipt: r.receipt || ''
       };
     }
@@ -992,7 +1024,8 @@
         amount: Number(o.amount) || 0,
         approved: o.included === 'Yes',
         kind: o.kind === 'withdrawal' ? 'withdrawal' : 'expense',
-        description: o.description || '',
+        funding_source: operationFundingSource(o),
+        description: storedOperationDescription(o.description, operationFundingSource(o), o.kind),
         shipment_id: shipmentId
       };
       if (o.receipt) row.receipt = o.receipt;
@@ -1060,7 +1093,7 @@
     // Insert with graceful fallback: if PG rejects unknown columns (migration
     // not yet run), strip known optional columns and retry once.
     const OPTIONAL_SALE_COLS = ['product','customer','boxes_sold','rolls_sold','loose_cans_sold','payment_status','notes'];
-    const OPTIONAL_OP_COLS = ['receipt'];
+    const OPTIONAL_OP_COLS = ['receipt','funding_source'];
     async function sbInsertWithFallback(path, row, optionalCols) {
       try {
         const res = await sbFetch(path, {
@@ -1405,11 +1438,11 @@
     function describeSettlementMismatch(st) {
       const parts = [];
       if (!st.checkBasis) {
-        const d = (st.clennyBasis + st.clannyBasis) - st.totalBasis;
-        parts.push(`basis off by ${fmt(Math.abs(d))}`);
+        const d = st.totalBasis - st.totalCost;
+        parts.push(`product investments off by ${fmt(Math.abs(d))}`);
       }
       if (!st.checkPayout) {
-        const d = (st.clennyPayout + st.clannyPayout) - st.projRevenue;
+        const d = (st.clennyPayout + st.clannyPayout + st.totalWd + st.salesFundedOps) - st.projRevenue;
         parts.push(`payouts off by ${fmt(Math.abs(d))}`);
       }
       return parts.length ? "Numbers don't match — " + parts.join(', ') : 'Numbers add up';
@@ -1576,7 +1609,7 @@
           <div class="list-item-meta">${o.kind==='withdrawal'?'Personal Withdrawal':escapeHtml(o.category || 'Uncategorized')} &bull; ${escapeHtml(o.date || 'No date')}</div>
           <div class="list-item-meta">${escapeHtml(o.description || '')}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-            <span class="list-item-badge ${o.kind==='withdrawal'?'badge-excluded':(o.included==='Yes'?'badge-included':'badge-excluded')}">${o.kind==='withdrawal'?'Withdrawal — deducted from payout':(o.included==='Yes'?'Included':'Excluded')}</span>
+            <span class="list-item-badge ${o.kind==='withdrawal'?'badge-excluded':(o.included==='Yes'?'badge-included':'badge-excluded')}">${o.kind==='withdrawal'?'Withdrawal — deducted from payout':(o.included==='Yes'?(operationFundingSource(o)==='personal'?'Included — reimburse personal money':'Included — paid from sales'):'Excluded')}</span>
             <button class="btn btn-sm danger" onclick="deleteOps(${i})">Delete</button>
           </div>
         </div>
@@ -1585,10 +1618,14 @@
     function onOpsTypeChange() {
       const isWd = el('mOpsType').value === 'withdrawal';
       el('mOpsIncludedGroup').style.display = isWd ? 'none' : '';
+      el('mOpsFundingGroup').style.display = isWd ? 'none' : '';
       el('mOpsWithdrawalNote').style.display = isWd ? '' : 'none';
       if (isWd) el('mOpsIncluded').value = 'Yes';
     }
-    function openOpsModal() { el('mOpsType').value = 'expense'; onOpsTypeChange(); el('mOpsDate').value = today(); el('mOpsOwner').value = 'Clenny'; el('mOpsCategory').value = ''; el('mOpsAmount').value = ''; el('mOpsIncluded').value = 'Yes'; el('mOpsDesc').value = ''; el('mOpsReceipt').value = ''; el('opsModal').classList.add('active'); }
+    function onOpsOwnerChange() {
+      if (el('mOpsType').value === 'expense') el('mOpsFunding').value = el('mOpsOwner').value === 'Clenny' ? 'sales' : 'personal';
+    }
+    function openOpsModal() { el('mOpsType').value = 'expense'; el('mOpsDate').value = today(); el('mOpsOwner').value = 'Clenny'; el('mOpsFunding').value = 'sales'; onOpsTypeChange(); el('mOpsCategory').value = ''; el('mOpsAmount').value = ''; el('mOpsIncluded').value = 'Yes'; el('mOpsDesc').value = ''; el('mOpsReceipt').value = ''; el('opsModal').classList.add('active'); }
     function closeModal(id) { el(id).classList.remove('active'); }
     async function saveOps() {
       const sh = currentShipment(); if (!sh) return;
@@ -1598,6 +1635,7 @@
       const op = {
         owner: el('mOpsOwner').value, date: el('mOpsDate').value, category: el('mOpsCategory').value,
         amount: amount, included: kind === 'withdrawal' ? 'Yes' : el('mOpsIncluded').value, kind: kind,
+        fundingSource: kind === 'withdrawal' ? 'sales' : el('mOpsFunding').value,
         description: el('mOpsDesc').value, receipt: el('mOpsReceipt').value
       };
       const id = await saveOpRemote(op, sh.id);
@@ -1703,6 +1741,8 @@
       el('setClannyInvest').textContent = fmt(sh.clannyInvest);
       el('setClennyOps').textContent = fmt(st.clennyOps);
       el('setClannyOps').textContent = fmt(st.clannyOps);
+      el('setPersonalOps').textContent = fmt(st.personalOps);
+      el('setSalesOps').textContent = fmt(st.salesFundedOps);
       el('setTotalOps').textContent = fmt(st.totalOps);
       el('setTotalBasis').textContent = fmt(st.totalBasis);
       el('setClennyBasis').textContent = fmt(st.clennyBasis);
@@ -1736,17 +1776,17 @@
       el('setClannyBal').textContent = fmt(st.clannyBal);
       el('setCheck1').className = 'check-dot' + (st.checkPayout ? '' : ' fail');
       if (st.checkPayout) {
-        el('setCheckText1').textContent = 'Payouts match projected revenue';
+        el('setCheckText1').textContent = 'Payouts + withdrawals + sales-funded ops match revenue';
       } else {
-        const d = (st.clennyPayout + st.clannyPayout + st.totalWd) - st.projRevenue;
+        const d = (st.clennyPayout + st.clannyPayout + st.totalWd + st.salesFundedOps) - st.projRevenue;
         el('setCheckText1').textContent = `Payouts off by ${fmt(Math.abs(d))} vs projected revenue`;
       }
       el('setCheck2').className = 'check-dot' + (st.checkBasis ? '' : ' fail');
       if (st.checkBasis) {
-        el('setCheckText2').textContent = 'Contribution shares look right';
+        el('setCheckText2').textContent = 'Product investments cover product cost';
       } else {
-        const d = (st.clennyBasis + st.clannyBasis) - st.totalBasis;
-        el('setCheckText2').textContent = `Contribution shares off by ${fmt(Math.abs(d))}`;
+        const d = st.totalBasis - st.totalCost;
+        el('setCheckText2').textContent = `Product investments off by ${fmt(Math.abs(d))}`;
       }
     }
 

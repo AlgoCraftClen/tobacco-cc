@@ -28,6 +28,7 @@ The Supabase project needs the migrations under `supabase/migrations/` applied b
    - [`20260706_shipment_short_seq.sql`](supabase/migrations/20260706_shipment_short_seq.sql) — permanent `SHP #N` numbers per shipment
    - [`20260707_fk_cascade_and_publication_guards.sql`](supabase/migrations/20260707_fk_cascade_and_publication_guards.sql) — FK cascade on shipment delete + idempotent realtime publication adds
    - [`20260713_expense_kind.sql`](supabase/migrations/20260713_expense_kind.sql) — `expenses.kind` column distinguishing business expenses from personal withdrawals
+   - [`20260715_expense_funding_source.sql`](supabase/migrations/20260715_expense_funding_source.sql) — distinguishes personally paid operations from operations paid out of sales cash
 
 Safe to re-run — every statement is idempotent.
 
@@ -53,7 +54,9 @@ Prototype writes to these Supabase tables:
 
 Each shipment has a flexible load sheet: add as many Grizzly or Copenhagen lines as needed and enter full boxes, cases, rolls, or loose cans. Product lines are persisted inside the shipment notes metadata, so this feature does not require an additional Supabase migration and older single-product shipments remain compatible.
 
-All settlement math is client-side, based on the Excel-parity formulas in the workbook. See [`clenny_clanny_shipment_tracker.xlsx`](clenny_clanny_shipment_tracker.xlsx) for the source of truth.
+All settlement math is client-side. The current agreement described below is authoritative; [`clenny_clanny_shipment_tracker.xlsx`](clenny_clanny_shipment_tracker.xlsx) is retained as a historical reference to the earlier formula model.
+
+The current settlement agreement supersedes the workbook's old operations-as-contribution rule: product investments alone set the profit percentages. Every approved operation reduces profit; personally paid operations are reimbursed, while sales-funded operations are not reimbursed twice. Personal withdrawals reduce only the withdrawing partner's payout.
 
 ## iPhone app
 

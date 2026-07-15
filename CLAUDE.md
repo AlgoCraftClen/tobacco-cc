@@ -11,11 +11,11 @@ A shared shipment + settlement tracker for **Clenny** (Receiver) and **Clanny** 
 - **Backend:** Supabase project `njpkqemgpbstrbsaxpbz`
   - Dashboard: https://supabase.com/dashboard/project/njpkqemgpbstrbsaxpbz
   - SQL Editor: https://supabase.com/dashboard/project/njpkqemgpbstrbsaxpbz/sql
-- **Excel source-of-truth for settlement formulas:** [clenny_clanny_shipment_tracker.xlsx](clenny_clanny_shipment_tracker.xlsx)
+- **Historical workbook reference:** [clenny_clanny_shipment_tracker.xlsx](clenny_clanny_shipment_tracker.xlsx)
 
 ## Architecture in one paragraph
 
-Single-file HTML app (`index.html`, ~1250 lines) — no build step. Loads Supabase config inline, uses PostgREST for reads/writes and a 15-second poll for cross-partner sync. Tables: `shipments_v2`, `expenses`, `sales`. Settlement math is client-side and lives in `calcShipment` + `calcSettlement`. Excel workbook is the authoritative reference for formulas.
+Single-file HTML app (`index.html`, ~1250 lines) — no build step. Loads Supabase config inline, uses PostgREST for reads/writes and a 15-second poll for cross-partner sync. Tables: `shipments_v2`, `expenses`, `sales`. Settlement math is client-side and lives in `calcShipment` + `calcSettlement`. The current agreement documented below is authoritative; the Excel workbook remains a historical reference.
 
 ## Design decisions locked in
 
@@ -26,6 +26,7 @@ Single-file HTML app (`index.html`, ~1250 lines) — no build step. Loads Supaba
 - **APP_SECRET removed.** It was client-visible, so it was theater. Do not re-add "secret headers" as a security measure — they're not.
 - **Shipment IDs are UUIDs client-generated at create time.** Display labels are `SHP #<short_seq>`, where the **client** assigns `short_seq` = (highest existing + 1) at create time and writes it explicitly. The DB column still has a `nextval` default + UNIQUE constraint as a backstop, but the app no longer relies on the DB counter (it drifts when rows are deleted and can't be reset with the anon key). Concurrent-create collisions are caught and retried with a fresh max. Never expose the UUID in the UI or ask the user to type one.
 - **Shipments use flexible product lines.** Each load-sheet line chooses Grizzly or Copenhagen and accepts boxes, cases, rolls, and loose cans plus its own cost/case and target/can. Lines are stored in the hidden `CC_SHIPMENT_LINES` note marker so the static app works without a schema migration; the old `CC_PRODUCT_MIX` marker is still decoded for backward compatibility. Sales must identify a specific product so remaining inventory stays accurate by brand. Adding a brand = edit the `BRANDS` array in `index.html`.
+- **Product investment sets the profit split.** Operations never change ownership percentages. Every approved operation reduces profit. An operation paid with personal money is reimbursed to its owner; an operation paid from sales cash is already paid and only reduces cash/profit. Personal withdrawals remain separate and reduce only the withdrawing partner's payout. Legacy expenses infer Clanny as personally funded and Clenny as sales-funded.
 - **Single-file HTML, no build step.** Do not introduce npm/webpack/bundlers. Every change is a direct edit to `index.html`.
 - **Mobile-first, iOS Safari.** The two partners use this on their phones. Design and test accordingly.
 
@@ -45,7 +46,7 @@ Do not do this speculatively. Only if the user explicitly says the risk profile 
 
 ```
 index.html                        the entire app (~1250 lines)
-clenny_clanny_shipment_tracker.xlsx   Excel source-of-truth for settlement math
+clenny_clanny_shipment_tracker.xlsx   Historical settlement reference
 supabase/migrations/              applied via Supabase SQL Editor, filename order
   20260628_excel_formulas.sql
   20260705_prototype_sync.sql
