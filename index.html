@@ -1584,7 +1584,9 @@
       document.querySelectorAll('.product-line').forEach((row, index) => {
         const line = c.lines[index], strong = row.querySelector('.product-line-total strong');
         if (!line || !strong) return;
-        const lineCans = line.boxes * c.cansPerBox + line.cases * c.cansPerCase + line.rolls * s.cansPerRoll + line.looseCans;
+        const lineCans = line.quantityMode === 'equivalent'
+          ? line.looseCans
+          : line.boxes * c.cansPerBox + line.cases * c.cansPerCase + line.rolls * s.cansPerRoll + line.looseCans;
         strong.textContent = `${fmtInt(lineCans)} cans`;
       });
       const sh = currentShipment();
