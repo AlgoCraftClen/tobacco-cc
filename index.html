@@ -299,7 +299,7 @@
           <div class="card-row"><span class="card-label">Clenny Approved Ops</span><span class="card-value clenny" id="setClennyOps">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Approved Ops</span><span class="card-value clanny" id="setClannyOps">$0</span></div>
           <div class="card-row"><span class="card-label">Personally Paid — Reimburse</span><span class="card-value" id="setPersonalOps">$0</span></div>
-          <div class="card-row"><span class="card-label">Paid From Sales</span><span class="card-value" id="setSalesOps">$0</span></div>
+          <div class="card-row"><span class="card-label">Paid From Shared Business Funds</span><span class="card-value" id="setSalesOps">$0</span></div>
           <div class="card-row"><span class="card-label">Total Operations</span><span class="card-value" id="setTotalOps">$0</span></div>
         </div>
 
@@ -341,9 +341,9 @@
           <div class="card-title">Cash &amp; Inventory</div>
           <div class="card-row"><span class="card-label">Cash Collected by Clenny</span><span class="card-value clenny" id="setCashClenny">$0</span></div>
           <div class="card-row"><span class="card-label">Cash Collected by Clanny</span><span class="card-value clanny" id="setCashClanny">$0</span></div>
-          <div class="card-row"><span class="card-label">Clenny Cash After Ops &amp; Withdrawals</span><span class="card-value clenny" id="setClennyCOH">$0</span></div>
-          <div class="card-row"><span class="card-label">Clanny Cash After Ops &amp; Withdrawals</span><span class="card-value clanny" id="setClannyCOH">$0</span></div>
-          <div class="card-row"><span class="card-label">Actual Cash Ready to Reinvest</span><span class="card-value success" id="setActualReinvest">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Net Shared-Fund Cash Position</span><span class="card-value clenny" id="setClennyCOH">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Net Shared-Fund Cash Position</span><span class="card-value clanny" id="setClannyCOH">$0</span></div>
+          <div class="card-row"><span class="card-label">Combined Business Cash After All Costs</span><span class="card-value success" id="setActualReinvest">$0</span></div>
           <div class="card-row"><span class="card-label">Inventory Sold (cans)</span><span class="card-value" id="setSoldCans">0</span></div>
           <div class="card-row"><span class="card-label">Inventory Remaining</span><span class="card-value" id="setRemainingCans">0</span></div>
           <div id="setRemainingByProduct"></div>
@@ -353,7 +353,8 @@
         <div class="card">
           <div class="card-title">Reinvestment Transfer</div>
           <div class="card-row"><span class="card-label">Actual Cash Clenny Sends to Clanny</span><span class="card-value accent" id="setTransferToClanny">$0</span></div>
-          <div class="card-row"><span class="card-label">Projected Transfer When Sold Out</span><span class="card-value" id="setProjectedTransfer">$0</span></div>
+          <div class="card-row"><span class="card-label">Projected Gross Transfer When Sold Out</span><span class="card-value" id="setProjectedTransfer">$0</span></div>
+          <div class="card-row"><span class="card-label">Net Projected Reinvestment After All Costs</span><span class="card-value" id="setNetProjectedReinvest">$0</span></div>
           <div class="card-row"><span class="card-label">Clenny Ownership Within Projected Transfer</span><span class="card-value clenny" id="setClennyBal">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Ownership Within Projected Transfer</span><span class="card-value clanny" id="setClannyBal">$0</span></div>
           <div class="check-row"><div class="check-dot" id="setCheck1"></div><span id="setCheckText1">Settlement accounts for all revenue</span></div>
@@ -387,8 +388,8 @@
           </div>
           <div class="rule-item">
             <div class="rule-title">Record where operation money came from</div>
-            <div class="rule-meaning">Personal money is reimbursed to the partner who paid it. Sales money has already left the cash pot and is not reimbursed again.</div>
-            <div class="rule-note">Funding source changes reimbursement and cash, not the profit percentage.</div>
+            <div class="rule-meaning">Personal money is reimbursed to the partner who paid it. Shared business funds include sales and rolled-forward reinvestment money, so they are never reimbursed again.</div>
+            <div class="rule-note">Funding source changes reimbursement and cash, not the profit percentage. The rule is identical for both partners.</div>
           </div>
           <div class="rule-item">
             <div class="rule-title">Personal withdrawals come out of your payout</div>
@@ -500,8 +501,8 @@
           <select class="form-select" id="mOpsIncluded"><option value="Yes">Yes</option><option value="No">No</option></select>
         </div>
         <div class="form-group" id="mOpsFundingGroup"><label class="form-label">Paid from</label>
-          <select class="form-select" id="mOpsFunding"><option value="personal">Personal money — reimburse it</option><option value="sales">Sales money — already paid</option></select>
-          <div class="rule-note">Personal money is paid back to that partner. Sales money only reduces cash and profit.</div>
+          <select class="form-select" id="mOpsFunding"><option value="shared">Shared business funds — no reimbursement</option><option value="personal">Separate personal money — reimburse once</option></select>
+          <div class="rule-note">Shared business funds include sales and reinvestment money. They reduce business cash and profit but are never reimbursed again.</div>
         </div>
         <div class="form-group" id="mOpsWithdrawalNote" style="display:none;">
           <div class="rule-note">A withdrawal takes cash out of the pot for personal use. It lowers Cash On Hand and comes straight out of this partner's payout. It does not count as a contribution.</div>
@@ -869,11 +870,10 @@
     }
 
     function operationFundingSource(o) {
-      if (o.fundingSource === 'sales' || o.fundingSource === 'personal') return o.fundingSource;
-      // Legacy records predate the funding-source field. Preserve the known
-      // workflow: Clanny paid inbound costs personally; Clenny paid local costs
-      // from collected sales cash.
-      return o.owner === 'Clenny' ? 'sales' : 'personal';
+      if (o.fundingSource === 'shared' || o.fundingSource === 'personal') return o.fundingSource;
+      // "sales" was the original name for the same combined business pool.
+      if (o.fundingSource === 'sales') return 'shared';
+      return 'shared';
     }
 
     function calcSettlement(sh) {
@@ -885,10 +885,10 @@
       const clannyOps = sumOps(o => o.owner === 'Clanny');
       const clennyPersonalOps = sumOps(o => o.owner === 'Clenny' && operationFundingSource(o) === 'personal');
       const clannyPersonalOps = sumOps(o => o.owner === 'Clanny' && operationFundingSource(o) === 'personal');
-      const clennySalesOps = sumOps(o => o.owner === 'Clenny' && operationFundingSource(o) === 'sales');
-      const clannySalesOps = sumOps(o => o.owner === 'Clanny' && operationFundingSource(o) === 'sales');
+      const clennySharedOps = sumOps(o => o.owner === 'Clenny' && operationFundingSource(o) === 'shared');
+      const clannySharedOps = sumOps(o => o.owner === 'Clanny' && operationFundingSource(o) === 'shared');
       const personalOps = clennyPersonalOps + clannyPersonalOps;
-      const salesFundedOps = clennySalesOps + clannySalesOps;
+      const sharedFundedOps = clennySharedOps + clannySharedOps;
       const clennyWd = sh.ops.filter(o => isWd(o) && o.owner === 'Clenny').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
       const clannyWd = sh.ops.filter(o => isWd(o) && o.owner === 'Clanny').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
       const totalWd = clennyWd + clannyWd;
@@ -916,9 +916,9 @@
       const paidCashClanny = paidSales.filter(sa => sa.collectedBy === 'Clanny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
       const cashClenny = paidCashClenny;
       const cashClanny = paidCashClanny;
-      const clennyCashOnHand = paidCashClenny - clennySalesOps - clennyWd;
-      const clannyCashOnHand = paidCashClanny - clannySalesOps - clannyWd;
-      const cashOnHand = paidGrossSales - salesFundedOps - totalWd;
+      const clennyCashOnHand = paidCashClenny - clennySharedOps - clennyWd;
+      const clannyCashOnHand = paidCashClanny - clannySharedOps - clannyWd;
+      const cashOnHand = paidGrossSales - sharedFundedOps - totalWd;
       const soldCans = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.totalCans) || 0), 0);
       const remainingByBrand = { ...c.inventoryByBrand };
       sh.sales.forEach(sa => {
@@ -933,14 +933,15 @@
       // the economic ownership calculated above.
       const projectedReinvestment = clennyPayout + clannyPayout;
       const actualReinvestmentCash = cashOnHand;
-      const transferToClanny = actualReinvestmentCash;
+      const transferToClanny = clennyCashOnHand;
+      const projectedTransferToClanny = c.projRevenue - clennySharedOps - clennyWd;
       const clennyBal = clennyPayout;
       const clannyBal = clannyPayout;
-      const checkPayout = Math.abs((projectedReinvestment + totalWd + salesFundedOps) - c.projRevenue) < 0.01;
+      const checkPayout = Math.abs((projectedReinvestment + totalWd + sharedFundedOps) - c.projRevenue) < 0.01;
       const checkBasis = Math.abs(totalBasis - c.totalCost) < 0.01;
-      const checkCash = Math.abs((cashClenny + cashClanny - salesFundedOps - totalWd) - cashOnHand) < 0.01;
+      const checkCash = Math.abs((cashClenny + cashClanny - sharedFundedOps - totalWd) - cashOnHand) < 0.01;
       const checkInventory = Math.abs((soldCans + remainingCans) - c.totalCans) < 0.01 && Object.values(remainingByBrand).every(cans => cans >= -0.01);
-      return { clennyOps, clannyOps, clennyPersonalOps, clannyPersonalOps, clennySalesOps, clannySalesOps, personalOps, salesFundedOps, totalOps, clennyWd, clannyWd, totalWd, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, paidGrossSales, projProfit, soldProductCost, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, projectedReinvestment, actualReinvestmentCash, transferToClanny, cashClenny, cashClanny, paidCashClenny, paidCashClanny, clennyCashOnHand, clannyCashOnHand, cashOnHand, soldCans, remainingCans, remainingByBrand, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, checkCash, checkInventory, ...c };
+      return { clennyOps, clannyOps, clennyPersonalOps, clannyPersonalOps, clennySharedOps, clannySharedOps, personalOps, sharedFundedOps, totalOps, clennyWd, clannyWd, totalWd, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, paidGrossSales, projProfit, soldProductCost, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, projectedReinvestment, actualReinvestmentCash, transferToClanny, projectedTransferToClanny, cashClenny, cashClanny, paidCashClenny, paidCashClanny, clennyCashOnHand, clannyCashOnHand, cashOnHand, soldCans, remainingCans, remainingByBrand, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, checkCash, checkInventory, ...c };
     }
 
     // ---- Row mappers between prototype shape and Supabase schema ----
@@ -1017,7 +1018,7 @@
       if (s.shortSeq != null) row.short_seq = Number(s.shortSeq);
       return row;
     }
-    const FUNDING_MARKER_RE = /\s*\[\[funding:(personal|sales)\]\]\s*$/i;
+    const FUNDING_MARKER_RE = /\s*\[\[funding:(personal|shared|sales)\]\]\s*$/i;
     function markedFundingSource(description) {
       const match = String(description || '').match(FUNDING_MARKER_RE);
       return match ? match[1].toLowerCase() : '';
@@ -1031,7 +1032,7 @@
       return `${visible}${visible ? ' ' : ''}[[funding:${fundingSource}]]`;
     }
     function opFromRow(r) {
-      const storedFunding = r.funding_source === 'sales' || r.funding_source === 'personal' ? r.funding_source : markedFundingSource(r.description);
+      const storedFunding = ['shared', 'sales', 'personal'].includes(r.funding_source) ? r.funding_source : markedFundingSource(r.description);
       return {
         id: r.id,
         owner: r.partner || 'Clanny',
@@ -1040,7 +1041,7 @@
         amount: Number(r.amount) || 0,
         included: r.approved ? 'Yes' : 'No',
         kind: r.kind === 'withdrawal' ? 'withdrawal' : 'expense',
-        fundingSource: storedFunding || (r.partner === 'Clenny' ? 'sales' : 'personal'),
+        fundingSource: storedFunding === 'sales' ? 'shared' : (storedFunding || 'shared'),
         description: visibleOperationDescription(r.description),
         receipt: r.receipt || ''
       };
@@ -1471,7 +1472,7 @@
         parts.push(`product investments off by ${fmt(Math.abs(d))}`);
       }
       if (!st.checkPayout) {
-        const d = (st.projectedReinvestment + st.totalWd + st.salesFundedOps) - st.projRevenue;
+        const d = (st.projectedReinvestment + st.totalWd + st.sharedFundedOps) - st.projRevenue;
         parts.push(`reinvestment allocation off by ${fmt(Math.abs(d))}`);
       }
       if (!st.checkCash) parts.push('actual cash custody does not reconcile');
@@ -1680,7 +1681,7 @@
           <div class="list-item-meta">${o.kind==='withdrawal'?'Personal Withdrawal':escapeHtml(o.category || 'Uncategorized')} &bull; ${escapeHtml(o.date || 'No date')}</div>
           <div class="list-item-meta">${escapeHtml(o.description || '')}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-            <span class="list-item-badge ${o.kind==='withdrawal'?'badge-excluded':(o.included==='Yes'?'badge-included':'badge-excluded')}">${o.kind==='withdrawal'?'Withdrawal — deducted from payout':(o.included==='Yes'?(operationFundingSource(o)==='personal'?'Included — reimburse personal money':'Included — paid from sales'):'Excluded')}</span>
+            <span class="list-item-badge ${o.kind==='withdrawal'?'badge-excluded':(o.included==='Yes'?'badge-included':'badge-excluded')}">${o.kind==='withdrawal'?'Withdrawal — deducted from reinvestment':(o.included==='Yes'?(operationFundingSource(o)==='personal'?'Included — reimburse separate personal money once':'Included — shared business funds, no reimbursement'):'Excluded')}</span>
             <button class="btn btn-sm danger" onclick="deleteOps(${i})">Delete</button>
           </div>
         </div>
@@ -1694,9 +1695,9 @@
       if (isWd) el('mOpsIncluded').value = 'Yes';
     }
     function onOpsOwnerChange() {
-      if (el('mOpsType').value === 'expense') el('mOpsFunding').value = el('mOpsOwner').value === 'Clenny' ? 'sales' : 'personal';
+      // Funding follows the source of money, never the person handling it.
     }
-    function openOpsModal() { el('mOpsType').value = 'expense'; el('mOpsDate').value = today(); el('mOpsOwner').value = 'Clenny'; el('mOpsFunding').value = 'sales'; onOpsTypeChange(); el('mOpsCategory').value = ''; el('mOpsAmount').value = ''; el('mOpsIncluded').value = 'Yes'; el('mOpsDesc').value = ''; el('mOpsReceipt').value = ''; el('opsModal').classList.add('active'); }
+    function openOpsModal() { el('mOpsType').value = 'expense'; el('mOpsDate').value = today(); el('mOpsOwner').value = 'Clenny'; el('mOpsFunding').value = 'shared'; onOpsTypeChange(); el('mOpsCategory').value = ''; el('mOpsAmount').value = ''; el('mOpsIncluded').value = 'Yes'; el('mOpsDesc').value = ''; el('mOpsReceipt').value = ''; el('opsModal').classList.add('active'); }
     function closeModal(id) { el(id).classList.remove('active'); }
     async function saveOps() {
       const sh = currentShipment(); if (!sh) return;
@@ -1706,7 +1707,7 @@
       const op = {
         owner: el('mOpsOwner').value, date: el('mOpsDate').value, category: el('mOpsCategory').value,
         amount: amount, included: kind === 'withdrawal' ? 'Yes' : el('mOpsIncluded').value, kind: kind,
-        fundingSource: kind === 'withdrawal' ? 'sales' : el('mOpsFunding').value,
+        fundingSource: kind === 'withdrawal' ? 'shared' : el('mOpsFunding').value,
         description: el('mOpsDesc').value, receipt: el('mOpsReceipt').value
       };
       const id = await saveOpRemote(op, sh.id);
@@ -1813,7 +1814,7 @@
       el('setClennyOps').textContent = fmt(st.clennyOps);
       el('setClannyOps').textContent = fmt(st.clannyOps);
       el('setPersonalOps').textContent = fmt(st.personalOps);
-      el('setSalesOps').textContent = fmt(st.salesFundedOps);
+      el('setSalesOps').textContent = fmt(st.sharedFundedOps);
       el('setTotalOps').textContent = fmt(st.totalOps);
       el('setTotalBasis').textContent = fmt(st.totalBasis);
       el('setClennyBasis').textContent = fmt(st.clennyBasis);
@@ -1849,12 +1850,13 @@
       el('setClennyBal').textContent = fmt(st.clennyBal);
       el('setClannyBal').textContent = fmt(st.clannyBal);
       el('setTransferToClanny').textContent = fmt(st.transferToClanny);
-      el('setProjectedTransfer').textContent = fmt(st.projectedReinvestment);
+      el('setProjectedTransfer').textContent = fmt(st.projectedTransferToClanny);
+      el('setNetProjectedReinvest').textContent = fmt(st.projectedReinvestment);
       el('setCheck1').className = 'check-dot' + (st.checkPayout ? '' : ' fail');
       if (st.checkPayout) {
-        el('setCheckText1').textContent = 'Reinvestment + withdrawals + sales-funded ops match projected revenue';
+        el('setCheckText1').textContent = 'Net reinvestment + withdrawals + shared-fund operations match projected revenue';
       } else {
-        const d = (st.projectedReinvestment + st.totalWd + st.salesFundedOps) - st.projRevenue;
+        const d = (st.projectedReinvestment + st.totalWd + st.sharedFundedOps) - st.projRevenue;
         el('setCheckText1').textContent = `Reinvestment allocation off by ${fmt(Math.abs(d))} vs projected revenue`;
       }
       el('setCheck2').className = 'check-dot' + (st.checkBasis ? '' : ' fail');
@@ -1865,7 +1867,7 @@
         el('setCheckText2').textContent = `Product investments off by ${fmt(Math.abs(d))}`;
       }
       el('setCheck3').className = 'check-dot' + (st.checkCash ? '' : ' fail');
-      el('setCheckText3').textContent = st.checkCash ? 'Collected cash less sales-funded ops and withdrawals matches cash on hand' : 'Actual cash custody does not reconcile';
+      el('setCheckText3').textContent = st.checkCash ? 'Collected cash less shared-fund operations and withdrawals matches combined business cash' : 'Actual cash custody does not reconcile';
       el('setCheck4').className = 'check-dot' + (st.checkInventory ? '' : ' fail');
       el('setCheckText4').textContent = st.checkInventory ? 'Inventory sold plus inventory remaining matches shipment inventory' : 'Inventory does not reconcile';
     }
