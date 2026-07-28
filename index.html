@@ -1312,6 +1312,7 @@
       const a = document.activeElement;
       if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return true;
       if (document.querySelector('.modal-overlay.active')) return true;
+      if (currentTab === 'setup' && setupDirty) return true;
       return false;
     }
     function startPolling() {
@@ -1339,6 +1340,7 @@
     }
     function selectShipment(id) {
       if (!id) return;
+      setupDirty = false;
       state.selectedShipmentId = id;
       saveSelected();
       renderCurrentScreen();
@@ -1418,6 +1420,8 @@
 
     let currentTab = 'dashboard';
     function switchTab(tab) {
+      if (currentTab === 'setup' && tab !== 'setup') setupDirty = false;
+      if (tab === 'setup') setupDirty = false;
       currentTab = tab;
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1486,6 +1490,10 @@
     }
 
     let setupLinesDraft = [];
+    let setupDirty = false;
+    function markSetupDirty() {
+      if (currentTab === 'setup') setupDirty = true;
+    }
     function displayQuantity(value) {
       return value > 0 ? String(Number(value.toFixed(4))) : '';
     }
@@ -1568,6 +1576,7 @@
       };
     }
     function addShipmentLine() {
+      markSetupDirty();
       setupLinesDraft = normalizeShipmentLines(readShipmentLinesForm());
       const lastBrand = setupLinesDraft[setupLinesDraft.length - 1]?.brand;
       const brand = lastBrand === BRANDS[0] ? BRANDS[1] : BRANDS[0];
@@ -1575,6 +1584,7 @@
       renderShipmentLines(); updateSetupCalc();
     }
     function removeShipmentLine(index) {
+      markSetupDirty();
       setupLinesDraft = normalizeShipmentLines(readShipmentLinesForm());
       setupLinesDraft.splice(index, 1);
       if (!setupLinesDraft.length) {
@@ -1585,6 +1595,7 @@
     }
     function renderSetup() {
       const sh = currentShipment(); if (!sh) return;
+      setupDirty = false;
       setupLinesDraft = getShipmentLines(sh);
       if (!setupLinesDraft.length) setupLinesDraft = normalizeShipmentLines([{ id: 'line-1', brand: BRANDS[0] }]);
       el('sShipId').textContent = shortShipmentId(sh.id);
@@ -1635,6 +1646,8 @@
     ['sClennyInvest','sClannyInvest'].forEach(id => {
       on(id, 'input', () => updateSetupCalc(false));
     });
+    on('screen-setup', 'input', markSetupDirty);
+    on('screen-setup', 'change', markSetupDirty);
     async function saveSetup() {
       const sh = currentShipment(); if (!sh) return;
       // Build the candidate off-side. Only merge into the in-memory shipment
@@ -1666,6 +1679,7 @@
       const ok = await saveShipmentRemote(candidate);
       if (!ok) return;
       Object.assign(sh, candidate);
+      setupDirty = false;
       updateShipmentSelect();
       switchTab('dashboard');
     }
