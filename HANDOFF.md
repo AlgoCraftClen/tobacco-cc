@@ -61,6 +61,13 @@ Default target sale prices:
 
 For mixed shipments, each product line uses the same inventory structure but retains its own cost per case and target price per can.
 
+## Whole-Can and Operations Law
+
+- Partner can entitlement is calculated per shipment and per product from the partners' original investment percentages, rounded down to whole cans.
+- Cans left after both partner entitlements are rounded down are company-owned inventory. Their cost is not operations money, and all sale revenue from them remains company reserve for future operations or investment.
+- Approved operations are allocated between the partners by their original investment percentages. Each allocated share reduces that partner's next-run capital once.
+- Direct personal withdrawals remain separate from operations and reduce only the withdrawing partner's capital.
+
 ## Data and Deployment
 
 Supabase tables:
@@ -103,4 +110,3 @@ After a change:
 3. Read the newest user request before changing accounting behavior.
 4. Reproduce bugs against the real app without saving test data.
 5. Explain any accounting or math correction before implementing it when the user asks to discuss first.
-

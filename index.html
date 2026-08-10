@@ -212,6 +212,7 @@
           </div>
           <div class="card-row" style="margin-top:10px"><span class="card-label">Clenny Projected Reinvestment</span><span class="card-value clenny" id="dashClennyPayout">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Projected Reinvestment</span><span class="card-value clanny" id="dashClannyPayout">$0</span></div>
+          <div class="card-row"><span class="card-label">Company Projected Reserve</span><span class="card-value accent" id="dashCompanyPayout">$0</span></div>
         </div>
 
         <div class="card">
@@ -293,6 +294,7 @@
           <div class="card-row"><span class="card-label">Product Cost</span><span class="card-value" id="setProdCost">$0</span></div>
           <div class="card-row"><span class="card-label">Clenny Product Invest</span><span class="card-value clenny" id="setClennyInvest">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Product Invest</span><span class="card-value clanny" id="setClannyInvest">$0</span></div>
+          <div id="setWholeCanOwnership"></div>
         </div>
 
         <div class="card">
@@ -302,10 +304,12 @@
           <div class="card-row"><span class="card-label">Personally Paid — Reimburse</span><span class="card-value" id="setPersonalOps">$0</span></div>
           <div class="card-row"><span class="card-label">Paid From Shared Business Funds</span><span class="card-value" id="setSalesOps">$0</span></div>
           <div class="card-row"><span class="card-label">Total Operations</span><span class="card-value" id="setTotalOps">$0</span></div>
+          <div class="card-row"><span class="card-label">Clenny Percentage-Based Ops Share</span><span class="card-value clenny" id="setClennyOpsShare">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Percentage-Based Ops Share</span><span class="card-value clanny" id="setClannyOpsShare">$0</span></div>
         </div>
 
         <div class="card">
-          <div class="card-title">Product Investment &amp; Profit Split</div>
+          <div class="card-title">Product Investment Percentages</div>
           <div class="card-row"><span class="card-label">Total Product Investment</span><span class="card-value" id="setTotalBasis">$0</span></div>
           <div class="card-row"><span class="card-label">Clenny Product Investment</span><span class="card-value clenny" id="setClennyBasis">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Product Investment</span><span class="card-value clanny" id="setClannyBasis">$0</span></div>
@@ -324,9 +328,10 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Projected Profit Share</div>
-          <div class="card-row"><span class="card-label">Clenny Projected Profit Share</span><span class="card-value clenny" id="setClennyProfitShare">$0</span></div>
-          <div class="card-row"><span class="card-label">Clanny Projected Profit Share</span><span class="card-value clanny" id="setClannyProfitShare">$0</span></div>
+          <div class="card-title">Projected Whole-Can Profit After Ops</div>
+          <div class="card-row"><span class="card-label">Clenny Whole-Can Profit After Ops</span><span class="card-value clenny" id="setClennyProfitShare">$0</span></div>
+          <div class="card-row"><span class="card-label">Clanny Whole-Can Profit After Ops</span><span class="card-value clanny" id="setClannyProfitShare">$0</span></div>
+          <div class="card-row"><span class="card-label">Company Whole-Can Profit</span><span class="card-value accent" id="setCompanyProfit">$0</span></div>
         </div>
 
         <div class="card">
@@ -335,6 +340,7 @@
           <div class="card-row"><span class="card-label">Clanny Withdrawals</span><span class="card-value clanny" id="setClannyWd">$0</span></div>
           <div class="card-row"><span class="card-label">Clenny Capital Rolled Forward</span><span class="card-value clenny" id="setClennyPayout">$0</span></div>
           <div class="card-row"><span class="card-label">Clanny Capital Rolled Forward</span><span class="card-value clanny" id="setClannyPayout">$0</span></div>
+          <div class="card-row"><span class="card-label">Company Reserve for Future Ops/Investment</span><span class="card-value accent" id="setCompanyPayout">$0</span></div>
           <div class="card-row"><span class="card-label">Total Projected Reinvestment</span><span class="card-value accent" id="setTotalPayout">$0</span></div>
         </div>
 
@@ -380,9 +386,14 @@
             <div class="rule-note">The green check appears when both shares together cover the product cost.</div>
           </div>
           <div class="rule-item">
-            <div class="rule-title">Product investment sets the profit split</div>
-            <div class="rule-meaning">Clenny contributes a smaller amount and Clanny contributes the larger amount. Clanny uses the combined product money to purchase and send the shipment.</div>
-            <div class="rule-note">Operating costs never buy a larger share of the profit.</div>
+            <div class="rule-title">Only whole cans belong to a partner</div>
+            <div class="rule-meaning">Each partner's investment percentage is applied to each product in the shipment and rounded down to whole cans. Any cans left after rounding belong to the company.</div>
+            <div class="rule-note">The value and sale revenue of company-owned cans stay with the company for future operations or investment.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-title">Operations follow investment percentages</div>
+            <div class="rule-meaning">Each approved operation is divided by the partners' original investment percentages for that shipment.</div>
+            <div class="rule-note">Each partner's ops share reduces that partner's capital available for the next run. It never buys cans or increases ownership.</div>
           </div>
           <div class="rule-item">
             <div class="rule-title">Only approved business costs count</div>
@@ -901,6 +912,28 @@
       const totalBasis = clennyBasis + clannyBasis;
       const clennyPct = totalBasis === 0 ? 0 : clennyBasis / totalBasis;
       const clannyPct = totalBasis === 0 ? 0 : clannyBasis / totalBasis;
+      const clennyCansByBrand = {};
+      const clannyCansByBrand = {};
+      const companyCansByBrand = {};
+      Object.entries(c.inventoryByBrand).forEach(([brand, cans]) => {
+        // Partners receive whole cans only. The company owns every can left
+        // after both percentage-based entitlements are rounded down.
+        const wholeCans = Math.max(0, Math.floor(cans + 1e-9));
+        const clennyCans = Math.floor(wholeCans * clennyPct + 1e-9);
+        const clannyCans = Math.floor(wholeCans * clannyPct + 1e-9);
+        clennyCansByBrand[brand] = clennyCans;
+        clannyCansByBrand[brand] = clannyCans;
+        companyCansByBrand[brand] = Math.max(0, wholeCans - clennyCans - clannyCans);
+      });
+      const valueByBrand = (quantities, prices) => Object.entries(quantities).reduce((sum, [brand, cans]) => sum + cans * (prices[brand] || 0), 0);
+      const clennyEntitlementCost = valueByBrand(clennyCansByBrand, c.costPerCanByBrand);
+      const clannyEntitlementCost = valueByBrand(clannyCansByBrand, c.costPerCanByBrand);
+      const companyInventoryCost = valueByBrand(companyCansByBrand, c.costPerCanByBrand);
+      const clennyProductRevenue = valueByBrand(clennyCansByBrand, c.targetPriceByBrand);
+      const clannyProductRevenue = valueByBrand(clannyCansByBrand, c.targetPriceByBrand);
+      const companyProductRevenue = valueByBrand(companyCansByBrand, c.targetPriceByBrand);
+      const clennyOpsResponsibility = totalOps * clennyPct;
+      const clannyOpsResponsibility = totalOps * clannyPct;
       const grossSales = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
       const projProfit = c.projRevenue - c.totalCost - totalOps;
       const shipmentBrands = Object.keys(c.inventoryByBrand);
@@ -909,10 +942,12 @@
         return sum + (parseFloat(sa.totalCans) || 0) * (c.costPerCanByBrand[brand] || 0);
       }, 0);
       const currentPL = grossSales - soldProductCost - totalOps;
-      const clennyProfitShare = projProfit * clennyPct;
-      const clannyProfitShare = projProfit * clannyPct;
-      const clennyPayout = clennyBasis + clennyPersonalOps + clennyProfitShare - clennyWd;
-      const clannyPayout = clannyBasis + clannyPersonalOps + clannyProfitShare - clannyWd;
+      const clennyProfitShare = clennyProductRevenue - clennyEntitlementCost - clennyOpsResponsibility;
+      const clannyProfitShare = clannyProductRevenue - clannyEntitlementCost - clannyOpsResponsibility;
+      const companyProfit = companyProductRevenue - companyInventoryCost;
+      const clennyPayout = clennyProductRevenue - clennyOpsResponsibility + clennyPersonalOps - clennyWd;
+      const clannyPayout = clannyProductRevenue - clannyOpsResponsibility + clannyPersonalOps - clannyWd;
+      const companyPayout = companyProductRevenue;
       const paidSales = sh.sales.filter(sa => (sa.paymentStatus || 'Paid') === 'Paid');
       const paidGrossSales = paidSales.reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
       const paidCashClenny = paidSales.filter(sa => sa.collectedBy === 'Clenny').reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
@@ -934,7 +969,7 @@
       // The partners roll the available cash into the next shipment. Clanny
       // physically receives the combined transfer, but each partner retains
       // the economic ownership calculated above.
-      const projectedReinvestment = clennyPayout + clannyPayout;
+      const projectedReinvestment = clennyPayout + clannyPayout + companyPayout;
       const actualReinvestmentCash = cashOnHand;
       const transferToClanny = clennyCashOnHand;
       const projectedTransferToClanny = c.projRevenue - clennySharedOps - clennyWd;
@@ -944,7 +979,7 @@
       const checkBasis = Math.abs(totalBasis - c.totalCost) < 0.01;
       const checkCash = Math.abs((cashClenny + cashClanny - sharedFundedOps - totalWd) - cashOnHand) < 0.01;
       const checkInventory = Math.abs((soldCans + remainingCans) - c.totalCans) < 0.01 && Object.values(remainingByBrand).every(cans => cans >= -0.01);
-      return { clennyOps, clannyOps, clennyPersonalOps, clannyPersonalOps, clennySharedOps, clannySharedOps, personalOps, sharedFundedOps, totalOps, clennyWd, clannyWd, totalWd, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, grossSales, paidGrossSales, projProfit, soldProductCost, currentPL, clennyProfitShare, clannyProfitShare, clennyPayout, clannyPayout, projectedReinvestment, actualReinvestmentCash, transferToClanny, projectedTransferToClanny, cashClenny, cashClanny, paidCashClenny, paidCashClanny, clennyCashOnHand, clannyCashOnHand, cashOnHand, soldCans, remainingCans, remainingByBrand, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, checkCash, checkInventory, ...c };
+      return { clennyOps, clannyOps, clennyPersonalOps, clannyPersonalOps, clennySharedOps, clannySharedOps, personalOps, sharedFundedOps, totalOps, clennyOpsResponsibility, clannyOpsResponsibility, clennyWd, clannyWd, totalWd, totalBasis, clennyBasis, clannyBasis, clennyPct, clannyPct, clennyCansByBrand, clannyCansByBrand, companyCansByBrand, clennyEntitlementCost, clannyEntitlementCost, companyInventoryCost, clennyProductRevenue, clannyProductRevenue, companyProductRevenue, grossSales, paidGrossSales, projProfit, soldProductCost, currentPL, clennyProfitShare, clannyProfitShare, companyProfit, clennyPayout, clannyPayout, companyPayout, projectedReinvestment, actualReinvestmentCash, transferToClanny, projectedTransferToClanny, cashClenny, cashClanny, paidCashClenny, paidCashClanny, clennyCashOnHand, clannyCashOnHand, cashOnHand, soldCans, remainingCans, remainingByBrand, remainingValue, clennyBal, clannyBal, checkPayout, checkBasis, checkCash, checkInventory, ...c };
     }
 
     // ---- Row mappers between prototype shape and Supabase schema ----
@@ -1466,6 +1501,7 @@
       el('dashNetCompanyCash').className = 'card-value ' + (st.actualReinvestmentCash < 0 ? 'danger' : 'accent');
       el('dashClennyPayout').textContent = fmt(st.clennyPayout);
       el('dashClannyPayout').textContent = fmt(st.clannyPayout);
+      el('dashCompanyPayout').textContent = fmt(st.companyPayout);
       el('barClenny').style.width = fmtPct(st.clennyPct);
       el('barClanny').style.width = fmtPct(st.clannyPct);
       el('legendClenny').textContent = `Clenny ${fmtPct(st.clennyPct)}`;
@@ -1830,11 +1866,18 @@
       el('setProdCost').textContent = fmt(st.totalCost);
       el('setClennyInvest').textContent = fmt(sh.clennyInvest);
       el('setClannyInvest').textContent = fmt(sh.clannyInvest);
+      el('setWholeCanOwnership').innerHTML = Object.keys(st.inventoryByBrand).map(brand => `
+        <div class="card-row"><span class="card-label">Clenny ${escapeHtml(brand)} Entitlement</span><span class="card-value clenny">${fmtInt(st.clennyCansByBrand[brand] || 0)} cans</span></div>
+        <div class="card-row"><span class="card-label">Clanny ${escapeHtml(brand)} Entitlement</span><span class="card-value clanny">${fmtInt(st.clannyCansByBrand[brand] || 0)} cans</span></div>
+        <div class="card-row"><span class="card-label">Company-Owned ${escapeHtml(brand)}</span><span class="card-value accent">${fmtInt(st.companyCansByBrand[brand] || 0)} cans</span></div>
+      `).join('');
       el('setClennyOps').textContent = fmt(st.clennyOps);
       el('setClannyOps').textContent = fmt(st.clannyOps);
       el('setPersonalOps').textContent = fmt(st.personalOps);
       el('setSalesOps').textContent = fmt(st.sharedFundedOps);
       el('setTotalOps').textContent = fmt(st.totalOps);
+      el('setClennyOpsShare').textContent = fmt(st.clennyOpsResponsibility);
+      el('setClannyOpsShare').textContent = fmt(st.clannyOpsResponsibility);
       el('setTotalBasis').textContent = fmt(st.totalBasis);
       el('setClennyBasis').textContent = fmt(st.clennyBasis);
       el('setClannyBasis').textContent = fmt(st.clannyBasis);
@@ -1849,10 +1892,12 @@
       el('setCashOnHand').className = 'card-value ' + (st.clennyCashOnHand < 0 ? 'danger' : 'success');
       el('setClennyProfitShare').textContent = fmt(st.clennyProfitShare);
       el('setClannyProfitShare').textContent = fmt(st.clannyProfitShare);
+      el('setCompanyProfit').textContent = fmt(st.companyProfit);
       el('setClennyWd').textContent = st.clennyWd ? '-' + fmt(st.clennyWd) : fmt(0);
       el('setClannyWd').textContent = st.clannyWd ? '-' + fmt(st.clannyWd) : fmt(0);
       el('setClennyPayout').textContent = fmt(st.clennyPayout);
       el('setClannyPayout').textContent = fmt(st.clannyPayout);
+      el('setCompanyPayout').textContent = fmt(st.companyPayout);
       el('setTotalPayout').textContent = fmt(st.projectedReinvestment);
       el('setCashClenny').textContent = fmt(st.cashClenny);
       el('setCashClanny').textContent = fmt(st.cashClanny);

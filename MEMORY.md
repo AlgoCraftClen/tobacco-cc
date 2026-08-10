@@ -32,8 +32,15 @@ This file contains durable project decisions for future editing sessions. Treat 
 
 ## Partnership Investment Rules
 
-- Product investment alone determines each partner's profit percentage.
-- Operations do not increase either partner's ownership percentage.
+- Each shipment calculates the partners' investment percentages from their original product contributions for that shipment.
+- Each percentage is applied to every product's can count, and each partner's entitlement is rounded down to whole cans. Partners are never entitled to fractional cans.
+- Any cans left after both partners' whole-can entitlements are calculated belong to the company.
+- The product cost represented by fractional remainders remains invested in those company-owned cans. It is not available to pay operations.
+- All revenue from company-owned cans remains company money reserved for future operations or product investment. It is never divided as either partner's personal entitlement.
+- Approved operations are divided between Clenny and Clanny according to their original investment percentages for that shipment.
+- Each partner's percentage-based operations responsibility reduces that partner's capital available for the next shipment.
+- Operations do not increase either partner's ownership percentage or can entitlement.
+- A percentage-based operations deduction must be applied once only; it cannot also remain as a separate amount owed after it has reduced next-run capital.
 - Clenny's prior shipment payout/reinvestment amount migrates into the next shipment as Clenny's product investment.
 - Clanny contributes the remainder required to make total partner investment equal the new shipment's total product cost.
 - As Clenny's reinvested amount grows, the ownership percentages naturally move toward 50/50. They become exactly 50/50 only when both product investments are equal.
