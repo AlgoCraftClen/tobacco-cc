@@ -57,3 +57,14 @@ Begin with a full, read-only-first audit of both `AlgoCraftClen/tobacco-cc` and 
 - Preserve production data and backward compatibility.
 - Verify real deployed behavior after every approved change.
 - Do not save test shipments, sales, operations, settlements, or imports without explicit approval.
+
+## Durable Synchronization Rule
+
+- CC Tracker and Clenny Workstation are two interfaces over one authoritative Supabase ledger.
+- Any business record entered in either app must become visible in the other automatically.
+- Shared record types include shipments, sales, operations, withdrawals, reimbursements, and capital adjustments.
+- Business facts must not exist only in application code, local browser storage, or a workstation-only calculation.
+- The Shipment #4 → #5 $50.63 Clenny additional-capital classification must become a first-class shared capital-adjustment record; preserve all tracker source data.
+- Prefer secure Supabase real-time subscriptions, retaining manual refresh and bounded polling as recovery fallbacks.
+- Every synchronization change requires RLS/auth/session, validation, duplication, conflict, offline/error, and deployed-version verification in both directions.
+
