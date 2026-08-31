@@ -1,85 +1,59 @@
 # CC Tobacco Tracker Memory
 
-This file contains durable project decisions for future editing sessions. Treat these rules as authoritative unless the owner explicitly changes them.
+Updated: 2026-08-31
 
-## Identity and Roles
+Treat these durable rules as authoritative unless Clenny explicitly changes them.
 
-- **Clenny** is spelled C-L-E-N-N-Y. Clenny is the receiver and seller who records sales and physically collects sales cash.
-- **Clanny** is spelled C-L-A-N-N-Y. Clanny purchases and sends the product.
-- Clenny and Clanny are different people. Never merge, interchange, or autocorrect their names.
-- Do not use `Clinty` or other name variants.
+## Mandatory Next Session
 
-## Inventory Rules
+Begin with a full, read-only-first audit of both `AlgoCraftClen/tobacco-cc` and `AlgoCraftClen/clenny-workstation`, their deployed GitHub Pages apps, and shared Supabase backend.
 
-- A shipment can contain Grizzly, Copenhagen, or both.
-- A mixed shipment must support separate product lines at the same time.
-- Both products use the same inventory structure: 6 cases per box, 18 rolls per case, and 5 cans per roll.
-- Therefore, one case contains 90 cans and one box contains 540 cans.
-- Grizzly costs $497 per case and $2,982 per box.
-- Copenhagen costs $608 per case and $3,648 per box.
-- Grizzly defaults to a target sale price of $11 per can.
-- Copenhagen defaults to a target sale price of $12 per can.
-- Product cost and target sale price remain separate for each product, including mixed shipments.
-- Quantity entry supports boxes, cases, rolls, or loose cans, and equivalent fields must remain synchronized.
+“Full audit” means everything: every folder, file, line of code/config/docs, page, and safe control. Use Computer Use in Chrome or BrowserOS. Open every page and test every safe button. Do not use Playwright or Microsoft Edge. Stop destructive actions at the confirmation boundary and cancel. Do not submit live test data or production writes without explicit approval. Deliver an evidence-backed report and proposed corrections before coding. The complete protocol is in `HANDOFF.md`.
 
-## Shipment Rules
+## People
 
-- Every new shipment is a clean accounting and inventory period.
-- Previous shipment inventory, remaining cans, sales, operations, projected revenue, and dashboard totals must not carry into a new shipment.
-- The new shipment projection is calculated from its own quantities and each product line's target sale price.
-- Saving Shipment Setup must close the setup form and return to the dashboard.
-- Unsaved Shipment Setup values must survive background synchronization while the user is editing.
+- Clenny and Clanny are different people; preserve both spellings exactly.
+- Clenny is the workstation owner/bookkeeper, receiver, seller, and collector of sales cash.
+- Clanny purchases and sends product.
 
-## Partnership Investment Rules
+## Source of Truth
 
-- Each shipment calculates the partners' investment percentages from their original product contributions for that shipment.
-- Each percentage is applied to every product's can count, and each partner's entitlement is rounded down to whole cans. Partners are never entitled to fractional cans.
-- Any cans left after both partners' whole-can entitlements are calculated belong to the company.
-- The product cost represented by fractional remainders remains invested in those company-owned cans. It is not available to pay operations.
-- All revenue from company-owned cans remains company money reserved for future operations or product investment. It is never divided as either partner's personal entitlement.
-- Approved operations are divided between Clenny and Clanny according to their original investment percentages for that shipment.
-- Each partner's percentage-based operations responsibility reduces that partner's capital available for the next shipment.
-- Operations do not increase either partner's ownership percentage or can entitlement.
-- A percentage-based operations deduction must be applied once only; it cannot also remain as a separate amount owed after it has reduced next-run capital.
-- Clenny's prior shipment payout/reinvestment amount migrates into the next shipment as Clenny's product investment.
-- Clanny contributes the remainder required to make total partner investment equal the new shipment's total product cost.
-- As Clenny's reinvested amount grows, the ownership percentages naturally move toward 50/50. They become exactly 50/50 only when both product investments are equal.
-- Never force a 50/50 split when the actual product investments are unequal.
+- Tracker-entered production records are authoritative and must not be changed or lost.
+- Shared data is in Supabase project `njpkqemgpbstrbsaxpbz`, primarily `shipments_v2`, `expenses`, and `sales`.
+- The workstation derives displays/calculations from shared data. A mismatch is not permission to rewrite tracker records.
+- Expected audit baseline: 5 shipments, 46 operations, 20 sales; SHP #1–#4 have 0 remaining cans and SHP #5 has 1,620.
+- Trace source records, classifications, mappings, cache, and formulas before correcting any displayed number.
 
-## Operations and Cash Rules
+## Inventory
 
-- Funding source and the person performing an operation are separate facts.
-- Clenny uses money directly from collected sales cash to pay operations.
-- Clanny normally pays operations with Clanny's own personal money.
-- An approved operation always reduces business profit.
-- A personally funded operation is reimbursed separately to the person who paid it.
-- An operation paid from sales or shared business funds must not be reimbursed a second time.
-- Personal withdrawals reduce only the withdrawing partner's payout and do not change the profit split.
-- Cash custody never changes ownership percentages.
+- Both products use 6 cases per box, 18 rolls per case, and 5 cans per roll: 90 cans per case and 540 per box.
+- Grizzly defaults: $497/case, $2,982/box, $11 target sale price per can.
+- Copenhagen defaults: $608/case, $3,648/box, $12 target sale price per can.
+- Mixed shipments retain separate product costs and prices.
+- Every shipment is its own accounting/inventory period. Prior activity must not leak into a new shipment.
 
-## Cash on Hand
+## Accounting Law
 
-- `Clenny Cash on Hand Before Transfer` means the physical sales cash currently held by Clenny before transferring or settling it.
-- It is based on paid sales cash collected by Clenny, less operations that were actually paid from that sales cash and relevant cash already transferred or withdrawn.
-- Personally funded Clanny operations do not reduce the physical cash held by Clenny.
-- `Net Company Reinvestment Capital` is a different number. Do not substitute it for physical cash on hand.
-- Avoid double-counting an operation as both a reduction of sales cash and a reimbursement.
+- Product cost is separate from shipping, fuel, salaries, handling, and other operations.
+- Each shipment uses its own original product-investment percentages.
+- Apply percentages per product and round partner entitlements down to whole cans.
+- Remainder cans belong to the company; their revenue remains company reserve.
+- Clenny’s share grows as capital rolls forward. Never use a fixed historical one-third or forced 50/50 share.
+- Approved operations are allocated by that shipment’s investment percentages and reduce next-run capital once.
+- Personally funded business operations are reimbursed to the payer.
+- Shared/sales-funded operations are not reimbursed twice.
+- Personal withdrawals reduce only the withdrawing partner’s capital.
+- Payout/rolled capital = product revenue − operations responsibility + personal reimbursement − personal withdrawal.
+- Clenny’s rolled amount becomes Clenny’s next product investment; Clanny funds the remainder.
+- Cash custody never changes ownership.
+- The workstation must show separate, traceable “Clenny can withdraw $X” and “Clanny can withdraw $X” amounts.
+- Current withdrawal uses realized recorded sales after costs and prior withdrawals. Unsold-inventory results must be labeled projected and reserve the next shipment obligation and company inventory.
 
-## Technical Contract
+## Working Contract
 
-- The correct project is the GitHub repository at `AlgoCraftClen/tobacco-cc` and the matching folder `C:\Users\WorkStation\Desktop\tobacco-cc`.
-- The live app is `https://algocraftclen.github.io/tobacco-cc/`.
-- The app is actively used; preserve production data and backward compatibility.
-- `index.html` is the main app and settlement math is calculated client-side.
-- Supabase is the shared source of data across devices.
-- The 15-second poll must not overwrite dirty Shipment Setup fields. See commit `f7a1403`.
-- Do not alter accounting formulas merely to make a displayed number look expected. Trace the source records and funding classification first.
-
-## Working Preferences
-
-- Discuss and confirm financial logic before coding whenever the owner asks to talk first.
-- Use Computer Use with Google Chrome or BrowserOS for UI validation.
-- Never use Playwright or Microsoft Edge for this project.
-- Verify the real live application after deployment.
-- Do not save test shipments, sales, operations, or settlement data without explicit approval.
-- Keep changes scoped, audit the math, and commit and push completed work appropriately.
+- Tracker: `https://algocraftclen.github.io/tobacco-cc/`
+- Workstation: `https://algocraftclen.github.io/clenny-workstation/`
+- Supabase is the shared source across devices.
+- Preserve production data and backward compatibility.
+- Verify real deployed behavior after every approved change.
+- Do not save test shipments, sales, operations, settlements, or imports without explicit approval.
