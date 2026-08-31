@@ -799,15 +799,13 @@
       if (!sh) return false;
       const clenny = parseFloat(sh.clennyInvest) || 0;
       const clanny = parseFloat(sh.clannyInvest) || 0;
-      const rollover = previousClennyPayout(sh);
-      return (clenny === 0 && clanny === 0) || (rollover > 0 && Math.abs(clenny - rollover) < 0.01);
+      return clenny === 0 && clanny === 0;
     }
     function shouldAutoBalanceInvestmentInputs(sh, totalCost) {
       if (!sh) return false;
       const clenny = parseFloat(el('sClennyInvest').value) || 0;
       const clanny = parseFloat(el('sClannyInvest').value) || 0;
-      const rollover = Math.min(previousClennyPayout(sh), totalCost || 0);
-      return (clenny === 0 && clanny === 0) || (rollover > 0 && Math.abs(clenny - rollover) < 0.01);
+      return clenny === 0 && clanny === 0;
     }
     function balancedInvestmentsFor(sh, totalCost) {
       const clenny = Math.min(previousClennyPayout(sh), totalCost || 0);
@@ -929,9 +927,25 @@
       const clennyEntitlementCost = valueByBrand(clennyCansByBrand, c.costPerCanByBrand);
       const clannyEntitlementCost = valueByBrand(clannyCansByBrand, c.costPerCanByBrand);
       const companyInventoryCost = valueByBrand(companyCansByBrand, c.costPerCanByBrand);
-      const clennyProductRevenue = valueByBrand(clennyCansByBrand, c.targetPriceByBrand);
-      const clannyProductRevenue = valueByBrand(clannyCansByBrand, c.targetPriceByBrand);
-      const companyProductRevenue = valueByBrand(companyCansByBrand, c.targetPriceByBrand);
+      // Preserve actual sale prices for sold cans and use the target only for
+      // unsold inventory. This is essential for discounted sales such as SHP #4.
+      const soldByBrand = {};
+      sh.sales.forEach(sa => {
+        const brands = Object.keys(c.inventoryByBrand);
+        const brand = BRANDS.includes(sa.product) ? sa.product : (brands.length === 1 ? brands[0] : '');
+        if (!brand) return;
+        if (!soldByBrand[brand]) soldByBrand[brand] = { cans: 0, revenue: 0 };
+        soldByBrand[brand].cans += parseFloat(sa.totalCans) || 0;
+        soldByBrand[brand].revenue += parseFloat(sa.grossSales) || 0;
+      });
+      const effectivePriceByBrand = Object.fromEntries(Object.entries(c.inventoryByBrand).map(([brand, cans]) => {
+        const sold = soldByBrand[brand] || { cans: 0, revenue: 0 };
+        const projectedRevenue = sold.revenue + Math.max(0, cans - sold.cans) * (c.targetPriceByBrand[brand] || 0);
+        return [brand, cans > 0 ? projectedRevenue / cans : 0];
+      }));
+      const clennyProductRevenue = valueByBrand(clennyCansByBrand, effectivePriceByBrand);
+      const clannyProductRevenue = valueByBrand(clannyCansByBrand, effectivePriceByBrand);
+      const companyProductRevenue = valueByBrand(companyCansByBrand, effectivePriceByBrand);
       const clennyOpsResponsibility = totalOps * clennyPct;
       const clannyOpsResponsibility = totalOps * clannyPct;
       const grossSales = sh.sales.reduce((sum, sa) => sum + (parseFloat(sa.grossSales) || 0), 0);
@@ -972,7 +986,7 @@
       const projectedReinvestment = clennyPayout + clannyPayout + companyPayout;
       const actualReinvestmentCash = cashOnHand;
       const transferToClanny = clennyCashOnHand;
-      const projectedTransferToClanny = c.projRevenue - clennySharedOps - clennyWd;
+      const projectedTransferToClanny = projectedReinvestment;
       const clennyBal = clennyPayout;
       const clannyBal = clannyPayout;
       const checkPayout = Math.abs((projectedReinvestment + totalWd + sharedFundedOps) - c.projRevenue) < 0.01;
@@ -1757,7 +1771,7 @@
     async function saveOps() {
       const sh = currentShipment(); if (!sh) return;
       const amount = parseFloat(el('mOpsAmount').value) || 0;
-      if (!amount) { alert('Please enter an amount'); return; }
+      if (!Number.isFinite(amount) || amount <= 0) { alert('Amount must be greater than zero'); return; }
       const kind = el('mOpsType').value === 'withdrawal' ? 'withdrawal' : 'expense';
       const op = {
         owner: el('mOpsOwner').value, date: el('mOpsDate').value, category: el('mOpsCategory').value,
@@ -1840,9 +1854,14 @@
       const cansPerCase = (sh.rollsPerCase || 0) * (sh.cansPerRoll || 0);
       const totalCans = boxes * (sh.casesPerBox || 0) * cansPerCase + cases * cansPerCase + rolls * (sh.cansPerRoll || 0) + loose;
       const gross = totalCans * price;
-      if (totalCans <= 0) { alert('Please enter at least some quantity'); return; }
+      const product = el('mSalesProduct').value;
+      const settlement = calcSettlement(sh);
+      if (!BRANDS.includes(product) || !(product in settlement.remainingByBrand)) { alert('Choose a product carried by this shipment'); return; }
+      if (!Number.isFinite(totalCans) || totalCans <= 0 || !Number.isInteger(totalCans)) { alert('Sale quantity must be a positive whole number of cans'); return; }
+      if (!Number.isFinite(price) || price <= 0) { alert('Price per can must be greater than zero'); return; }
+      if (totalCans > settlement.remainingByBrand[product] + 1e-9) { alert(`Only ${fmtInt(settlement.remainingByBrand[product])} ${product} cans remain`); return; }
       const sale = {
-        date: el('mSalesDate').value, product: el('mSalesProduct').value, customer: el('mSalesCustomer').value,
+        date: el('mSalesDate').value, product, customer: el('mSalesCustomer').value,
         boxes, cases, rolls, looseCans: loose, totalCans, pricePerCan: price, grossSales: gross,
         collectedBy: el('mSalesCollector').value, paymentStatus: el('mSalesStatus').value, notes: el('mSalesNotes').value
       };
