@@ -1,112 +1,75 @@
 # CC Tobacco Tracker Handoff
 
-Updated: 2026-08-09
+Updated: 2026-08-31
 
-## Start Here
+## NEXT SESSION — MANDATORY FULL AUDIT
 
-- Repository: `C:\Users\WorkStation\Desktop\tobacco-cc`
+The next session begins with a full audit before any coding, data correction, or production write.
+
+### Goal
+
+Prove that CC Tobacco Tracker and Clenny Workstation are synchronized, mathematically consistent, secure, visually correct, and functionally correct end to end.
+
+### Scope: “Everything”
+
+Audit both repositories and live apps:
+
+- Tracker: `AlgoCraftClen/tobacco-cc` — `https://algocraftclen.github.io/tobacco-cc/`
+- Workstation: `AlgoCraftClen/clenny-workstation` — `https://algocraftclen.github.io/clenny-workstation/`
+- Every directory, file, and line of source, configuration, documentation, migration, workflow, and asset—no sampling.
+- GitHub Pages/Actions, deployed commit parity, and cache/version behavior.
+- Supabase schema, tables, constraints, Row Level Security, authentication, session refresh, queries, mutations, and mappings.
+- Every page, tab, panel, modal, form, table, card, button, link, dropdown, filter, import/export control, and navigation path.
+- Loading, empty, error, validation, success, signed-in/out, expired-session, mobile, tablet, and desktop states.
+- Every shipment, operation, sale, settlement, ownership, inventory, reimbursement, withdrawal, rollover, projection, and company-reserve calculation.
+- Cross-app synchronization and agreement with authoritative Supabase records.
+
+### Required method
+
+1. Read both repositories’ HANDOFF, MEMORY, README, and repository instructions completely.
+2. Inventory both repositories and read every line of every text/code file.
+3. Audit the database and live records read-only first.
+4. Use the Computer Use plugin for visual and interactive checks in Chrome or BrowserOS. Do not use Microsoft Edge or Playwright for this project.
+5. Open every page and click every safe button/control, comparing the visible state before and after.
+6. For Delete or other destructive controls, inspect only to the confirmation boundary and cancel. Never confirm deletion during an audit.
+7. Do not submit test shipments, operations, sales, settlements, imports, or any live write without Clenny’s explicit approval at the time.
+8. Compare repository source, deployed source, rendered behavior, and database source-of-truth values.
+9. Produce an evidence-backed findings report: severity, affected app/file, reproduction, expected result, actual result, and proposed correction.
+10. Explain proposed corrections before coding. Implement only after approval, then re-audit both applications.
+
+“Everything” means exhaustive inspection. It does not authorize deleting records, changing authoritative data, exposing secrets, or submitting test data.
+
+### Data protection and accounting law
+
+- Tracker-entered records are authoritative. Never change, replace, normalize, or delete them to make the workstation agree.
+- If the apps disagree, trace the calculation, mapping, cache, or display defect.
+- Each shipment uses its own original product-investment percentages.
+- Whole-can ownership is calculated per shipment and per product; remainder cans belong to the company.
+- Business operations are distinct from product cost and allocated by that shipment’s investment percentages.
+- Personally funded business operations are reimbursed; shared/sales-funded operations are not reimbursed twice.
+- Personal withdrawals reduce only that partner’s capital.
+- Payout/rolled capital = product revenue − operations responsibility + personal reimbursement − personal withdrawal.
+- Clenny’s rolled capital becomes Clenny’s next shipment product investment; Clanny funds the remainder.
+- Clenny’s capital grows shipment by shipment. Never apply a fixed historical one-third share.
+- The workstation must show separate, traceable amounts for “Clenny can withdraw” and “Clanny can withdraw.”
+
+### Verified baseline entering the audit
+
+- Supabase project: `njpkqemgpbstrbsaxpbz`
+- Tables: `shipments_v2`, `expenses`, `sales`
+- Expected counts: 5 shipments, 46 operations, 20 sales
+- Remaining inventory: SHP #1–#4 = 0; SHP #5 = 1,620 cans
+- SHP #5: Clenny 33.04% / 535 cans; Clanny 66.96% / 1,084 cans; company 1 can
+- SHP #5 has no recorded sales, so current safe withdrawal is $0 for both partners.
+- Current workstation projected baseline after sellout and reserving the next equal shipment: Clenny $2,732.57; Clanny $5,614.43. Independently verify these figures.
+- Recent workstation commits: `5d2ae43` and `13d95f4`.
+
+## Project Reference
+
 - Branch: `main`
-- Starting commit: `f7a1403` (`Preserve unsaved shipment setup edits`)
-- Remote: `https://github.com/AlgoCraftClen/tobacco-cc.git`
-- Live app: `https://algocraftclen.github.io/tobacco-cc/`
-- Primary application file: `index.html`
-- Backend: Supabase project `njpkqemgpbstrbsaxpbz`
-- This is a static single-file web app with no build step.
-
-Read `MEMORY.md`, `README.md`, and `.codex/AGENTS.md` before editing.
-
-## Current State
-
-The working application is the GitHub-backed version in this repository. Do not replace it with or copy code from an older CC Tobacco folder. The GitHub Pages application is live and actively used, so preserve existing records and accounting behavior.
-
-At the time of this handoff:
-
-- `main` matches `origin/main` at `f7a1403`.
-- `.claude/` is an existing untracked directory. Do not add, remove, or modify it unless explicitly requested.
-- Shipment #3 exists as a planned Grizzly shipment with its setup values not yet saved.
-- No temporary Shipment Setup test data was saved during the last verification.
-
-## Latest Fix
-
-Commit `f7a1403` prevents the 15-second background synchronization from erasing unsaved Shipment Setup entries.
-
-The form now becomes dirty after any setup input, selection, product-line addition, or product-line removal. Polling pauses while the setup is dirty and resumes after a successful save, switching shipments, or leaving Shipment Setup.
-
-Verified behavior:
-
-1. Open Shipment #3 and Shipment Setup.
-2. Make an unsaved load-sheet change.
-3. Remove focus and wait longer than 15 seconds.
-4. The unsaved form remains intact.
-
-## Product Math
-
-Default inventory structure:
-
-- 6 cases per box
-- 18 rolls per case
-- 5 cans per roll
-- 90 cans per case
-- 540 cans per box
-
-Default supplier costs:
-
-- Grizzly: $497 per case, $2,982 per box
-- Copenhagen: $608 per case, $3,648 per box
-
-Default target sale prices:
-
-- Grizzly: $11 per can
-- Copenhagen: $12 per can
-
-For mixed shipments, each product line uses the same inventory structure but retains its own cost per case and target price per can.
-
-## Whole-Can and Operations Law
-
-- Partner can entitlement is calculated per shipment and per product from the partners' original investment percentages, rounded down to whole cans.
-- Cans left after both partner entitlements are rounded down are company-owned inventory. Their cost is not operations money, and all sale revenue from them remains company reserve for future operations or investment.
-- Approved operations are allocated between the partners by their original investment percentages. Each allocated share reduces that partner's next-run capital once.
-- Direct personal withdrawals remain separate from operations and reduce only the withdrawing partner's capital.
-
-## Data and Deployment
-
-Supabase tables:
-
-- `shipments_v2`
-- `expenses`
-- `sales`
-
-Product-line data is stored in shipment notes metadata for compatibility with older shipments. Database migrations are under `supabase/migrations/` and must be applied in filename order when needed.
-
-Local run options:
-
-```powershell
-npx serve . -l 3000
-```
-
-The file can also be opened directly, but the live GitHub Pages URL is the authoritative deployed application.
-
-After a change:
-
-1. Review `git diff` and protect unrelated user files.
-2. Run `git diff --check`.
-3. Parse the inline JavaScript for syntax errors.
-4. Test the affected workflow in Google Chrome or BrowserOS with Computer Use.
-5. Commit and push only intentional files.
-6. Confirm the changed source is present on GitHub Pages before claiming deployment is complete.
-
-## Tool Restrictions
-
-- Use Google Chrome or BrowserOS for application testing.
-- Use the Computer Use plugin for UI checks.
-- Do not use Playwright for this project.
-- Do not use Microsoft Edge.
-- Do not save test records to the live database unless the user explicitly approves it.
-
-## Next Session Checklist
-
-1. Run `git status --short --branch` and `git log -5 --oneline --decorate`.
-2. Confirm the local repository still matches `origin/main`.
-3. Read the newest user request before changing accounting behavior.
-4. Reproduce bugs against the real app without saving test data.
-5. Explain any accounting or math correction before implementing it when the user asks to discuss first.
+- Live tracker: `https://algocraftclen.github.io/tobacco-cc/`
+- Primary tracker file: `index.html`
+- Backend: Supabase `njpkqemgpbstrbsaxpbz`
+- Source tables: `shipments_v2`, `expenses`, `sales`
+- Product lines are stored in shipment notes metadata for backward compatibility.
+- Database migrations are under `supabase/migrations/` and must be applied in filename order.
