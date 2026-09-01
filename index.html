@@ -155,6 +155,9 @@
     .sync-offline { background: var(--danger); }
     @keyframes sync-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
   </style>
+  <style>
+    .auth-gate{position:fixed;inset:0;z-index:1000;background:linear-gradient(145deg,#f7f8fb,#e9eef8);display:grid;place-items:center;padding:20px}.auth-gate.hidden{display:none}.auth-card{width:min(430px,100%);background:#fff;color:#0f172a;border:1px solid #dbe2ea;border-radius:18px;box-shadow:0 22px 55px rgba(15,23,42,.14);padding:26px}.auth-mark{width:46px;height:46px;border-radius:13px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;margin-bottom:18px}.auth-card h1{font-size:24px;margin:0 0 8px;color:#0f172a}.auth-card p{color:#64748b;margin:0 0 18px;line-height:1.5}.auth-card .form-group{margin-bottom:14px}.auth-card button{margin-top:4px}.auth-message{min-height:20px;color:var(--danger)!important;font-size:13px;margin-top:12px!important}.header-session{font-size:11px;color:var(--text-2);white-space:nowrap}.header-signout{width:auto!important;flex-shrink:0;padding:8px 10px!important}
+  </style>
 </head>
 <body>
   <div id="app">
@@ -164,7 +167,7 @@
         <select class="header-select" id="shipmentSelect" onchange="selectShipment(this.value)">
           <option value="">Select shipment...</option>
         </select>
-        <button class="btn btn-sm" style="width:auto;flex-shrink:0;" aria-label="New shipment" onclick="openShipmentModal()">+</button>
+        <button class="btn btn-sm" style="width:auto;flex-shrink:0;" aria-label="New shipment" onclick="openShipmentModal()">+</button><button class="btn btn-sm header-signout" id="signOutBtn" type="button">Sign out</button>
       </div>
     </header>
 
@@ -342,6 +345,11 @@
           <div class="card-row"><span class="card-label">Clanny Capital Rolled Forward</span><span class="card-value clanny" id="setClannyPayout">$0</span></div>
           <div class="card-row"><span class="card-label">Company Reserve for Future Ops/Investment</span><span class="card-value accent" id="setCompanyPayout">$0</span></div>
           <div class="card-row"><span class="card-label">Total Projected Reinvestment</span><span class="card-value accent" id="setTotalPayout">$0</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Shared Capital Adjustments</div>
+          <div id="setCapitalAdjustments"><div class="card-row"><span class="card-label">No shared adjustments</span><span class="card-value">$0</span></div></div>
         </div>
 
         <div class="card">
@@ -559,21 +567,24 @@
     </div>
   </div>
 
-  <script>
+  <div id="authGate" class="auth-gate"><div class="auth-card"><div class="auth-mark">CC</div><h1>Sign in to CC Tracker</h1><p>Use the authorized Clenny account. The tracker and workstation share the same protected Supabase ledger.</p><form id="authForm"><div class="form-group"><label class="form-label" for="authEmail">Email</label><input class="form-input" id="authEmail" type="email" value="clennyminor@gmail.com" readonly></div><div class="form-group"><label class="form-label" for="authPassword">Password</label><input class="form-input" id="authPassword" type="password" minlength="8" required autocomplete="current-password" placeholder="At least 8 characters"></div><button class="btn primary" id="signInBtn">Sign in</button><p class="auth-message" id="authMessage" aria-live="polite"></p></form></div></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script><script>
     // ---- Supabase config ----
-    // The anon key is intentionally public — this is a two-person tracker
-    // with no login, no PII, no money moving through it. Accepted risk:
-    // anyone who finds the URL can read/write the shared tables. If that
-    // ever changes, add Supabase Auth + real RLS policies.
+    // The public key identifies the project. Supabase Auth and RLS protect
+    // every shared ledger read and write for the authorized Clenny account.
     const SUPABASE_URL = 'https://njpkqemgpbstrbsaxpbz.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qcGtxZW1ncGJzdHJic2F4cGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMjc3NDYsImV4cCI6MjA5NjcwMzc0Nn0.IKEqP0XW7hcVi-p65hUTyS2pApv7gZLt2dlMiwKbuX8';
-    const SB_HEADERS = {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json'
-    };
+    const AUTH_KEY = 'cc-supabase-session-v1';
+    let session = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+    let realtimeClient = null, realtimeChannel = null, realtimeReloadTimer = null;
+    function authHeaders() { return {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(session?.access_token||SUPABASE_KEY),'Content-Type':'application/json'}; }
+    async function authRequest(path, body) { const res=await fetch(SUPABASE_URL+'/auth/v1/'+path,{method:'POST',headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();if(!res.ok)throw new Error(data.msg||data.message||data.error_description||'Authentication failed');return data; }
+    function saveSession(data) { session=data;localStorage.setItem(AUTH_KEY,JSON.stringify(data));el('authGate').classList.add('hidden');startRealtime(); }
+    async function refreshSession() { if(!session?.refresh_token)return false;try{saveSession(await authRequest('token?grant_type=refresh_token',{refresh_token:session.refresh_token}));return true}catch(e){return false} }
+    async function signIn() { saveSession(await authRequest('token?grant_type=password',{email:'clennyminor@gmail.com',password:el('authPassword').value}));await loadAll();updateShipmentSelect();renderCurrentScreen(); }
+    async function signOut() { stopRealtime();const old=session;session=null;localStorage.removeItem(AUTH_KEY);state=defaultState();el('authGate').classList.remove('hidden');el('authPassword').value='';el('authMessage').textContent='Signed out safely.';updateShipmentSelect();renderCurrentScreen();if(old?.access_token)fetch(SUPABASE_URL+'/auth/v1/logout',{method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+old.access_token}}).catch(function(){}); }
 
-    const defaultState = () => ({ selectedShipmentId: '', shipments: [] });
+    const defaultState = () => ({ selectedShipmentId: '', shipments: [], capitalAdjustments: [] });
     let state = defaultState();
 
     function setSyncStatus(s) {
@@ -1158,15 +1169,20 @@
     }
 
     // ---- Supabase REST helpers ----
-    async function sbFetch(path, opts) {
+    async function sbFetch(path, opts, retried) {
       opts = opts || {};
       const res = await fetch(SUPABASE_URL + '/rest/v1' + path, {
         method: opts.method || 'GET',
-        headers: Object.assign({}, SB_HEADERS, opts.headers || {}),
+        headers: Object.assign({}, authHeaders(), opts.headers || {}),
         body: opts.body
       });
+      if (res.status === 401 && !retried && await refreshSession()) return sbFetch(path, opts, true);
       if (!res.ok) {
         const text = await res.text();
+        if (res.status === 401 || res.status === 403) {
+          stopRealtime(); session=null; localStorage.removeItem(AUTH_KEY);
+          el('authGate').classList.remove('hidden'); el('authMessage').textContent='Your session expired. Sign in again to continue.';
+        }
         throw new Error(res.status + ' ' + text);
       }
       const ct = res.headers.get('content-type') || '';
@@ -1204,16 +1220,19 @@
     async function loadAll() {
       setSyncStatus('connecting');
       try {
-        const [shipmentRows, opRows, saleRows] = await Promise.all([
+        if (!session?.access_token) throw new Error('Sign in is required to load the shared ledger');
+        const [shipmentRows, opRows, saleRows, adjustmentRows] = await Promise.all([
           sbFetch('/shipments_v2?select=*&order=created_at.asc'),
           sbFetch('/expenses?select=*&order=created_at.asc'),
-          sbFetch('/sales?select=*&order=created_at.asc')
+          sbFetch('/sales?select=*&order=created_at.asc'),
+          sbFetch('/capital_adjustments?select=*&order=created_at.asc').catch(error => /PGRST205|404|capital_adjustments/.test(String(error.message)) ? [] : Promise.reject(error))
         ]);
         const shipments = shipmentRows.map(shipmentFromRow);
         const byId = {}; shipments.forEach(s => byId[s.id] = s);
         opRows.forEach(r => { const sh = byId[r.shipment_id]; if (sh) sh.ops.push(opFromRow(r)); });
         saleRows.forEach(r => { const sh = byId[r.shipment_id]; if (sh) sh.sales.push(saleFromRow(r)); });
         state.shipments = shipments;
+        state.capitalAdjustments = adjustmentRows || [];
         applyAutoBalancedInvestments();
         const savedSel = localStorage.getItem('cc-selected');
         if (savedSel && byId[savedSel]) state.selectedShipmentId = savedSel;
@@ -1353,7 +1372,37 @@
       }
     }
 
-    // ---- Poll every 15s so both partners see each other's writes ----
+    // ---- Realtime first, bounded polling as recovery fallback ----
+    function scheduleRealtimeReload() {
+      clearTimeout(realtimeReloadTimer);
+      realtimeReloadTimer = setTimeout(async () => {
+        if (document.hidden || isUserBusy() || !session?.access_token) return;
+        const ok = await loadAll();
+        if (ok) { updateShipmentSelect(); renderCurrentScreen(); }
+      }, 250);
+    }
+    function stopRealtime() {
+      clearTimeout(realtimeReloadTimer);
+      if (realtimeClient && realtimeChannel) realtimeClient.removeChannel(realtimeChannel);
+      realtimeChannel = null; realtimeClient = null;
+    }
+    function startRealtime() {
+      stopRealtime();
+      if (!session?.access_token || !window.supabase?.createClient) return;
+      realtimeClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+      realtimeClient.realtime.setAuth(session.access_token);
+      realtimeChannel = realtimeClient.channel('cc-tracker-ledger')
+        .on('postgres_changes',{event:'*',schema:'public',table:'shipments_v2'},scheduleRealtimeReload)
+        .on('postgres_changes',{event:'*',schema:'public',table:'expenses'},scheduleRealtimeReload)
+        .on('postgres_changes',{event:'*',schema:'public',table:'sales'},scheduleRealtimeReload)
+        .on('postgres_changes',{event:'*',schema:'public',table:'capital_adjustments'},scheduleRealtimeReload)
+        .subscribe(status => {
+          if (status === 'SUBSCRIBED') setSyncStatus('live');
+          else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setSyncStatus('connecting');
+        });
+    }
+
+    // Poll every 15s if realtime is delayed or disconnected.
     // Skips when a form field or modal is focused so we don't clobber
     // whatever the user is typing right now.
     let pollTimer = null;
@@ -1367,7 +1416,7 @@
     function startPolling() {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = setInterval(async () => {
-        if (document.hidden || isUserBusy()) return;
+        if (document.hidden || isUserBusy() || !session?.access_token) return;
         const ok = await loadAll();
         if (ok) { updateShipmentSelect(); renderCurrentScreen(); }
       }, 15000);
@@ -1918,6 +1967,14 @@
       el('setClannyPayout').textContent = fmt(st.clannyPayout);
       el('setCompanyPayout').textContent = fmt(st.companyPayout);
       el('setTotalPayout').textContent = fmt(st.projectedReinvestment);
+      const adjustments = (state.capitalAdjustments || []).filter(a => a.from_shipment_id === sh.id || a.to_shipment_id === sh.id);
+      el('setCapitalAdjustments').innerHTML = adjustments.map(a => {
+        const from = state.shipments.find(s => s.id === a.from_shipment_id);
+        const to = state.shipments.find(s => s.id === a.to_shipment_id);
+        const target = a.allocation_target === 'Business' ? 'Business reserve' : a.allocation_target;
+        const status = a.status === 'pending_partner_decision' ? 'Pending partner decision' : 'Final';
+        return `<div class="card-row"><span class="card-label">SHP #${from?.shortSeq || '?'} → SHP #${to?.shortSeq || '?'}<br><small>${escapeHtml(target)} · ${escapeHtml(status)} · no cash or ownership change</small></span><span class="card-value accent">${fmt(a.amount)}</span></div>`;
+      }).join('') || '<div class="card-row"><span class="card-label">No shared adjustments for this shipment</span><span class="card-value">$0</span></div>';
       el('setCashClenny').textContent = fmt(st.cashClenny);
       el('setCashClanny').textContent = fmt(st.cashClanny);
       el('setClennyCOH').textContent = fmt(st.clennyCashOnHand);
@@ -1983,19 +2040,30 @@
     (async function init() {
       el('mOpsDate').value = today();
       el('mSalesDate').value = today();
+      el('authForm').onsubmit = async e => { e.preventDefault();el('authMessage').textContent='Signing in…';try{await signIn();el('authMessage').textContent=''}catch(error){el('authMessage').textContent=error.message} };
+      el('signOutBtn').onclick = signOut;
       el('shipmentsList').addEventListener('click', (e) => {
         const card = e.target.closest('.ship-card');
         if (!card || !card.dataset.shipId) return;
         selectShipment(card.dataset.shipId);
         switchTab('dashboard');
       });
-      await loadAll();
-      updateShipmentSelect();
-      renderCurrentScreen();
+      if (session?.access_token) {
+        el('authGate').classList.add('hidden');
+        await loadAll();
+        updateShipmentSelect();
+        renderCurrentScreen();
+        startRealtime();
+      } else {
+        el('authGate').classList.remove('hidden');
+        setSyncStatus('offline');
+        updateShipmentSelect();
+        renderCurrentScreen();
+      }
       startPolling();
       // Refresh right after tab regains focus (faster than waiting for the poll)
       document.addEventListener('visibilitychange', async () => {
-        if (document.hidden || isUserBusy()) return;
+        if (document.hidden || isUserBusy() || !session?.access_token) return;
         const ok = await loadAll();
         if (ok) { updateShipmentSelect(); renderCurrentScreen(); }
       });

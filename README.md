@@ -8,11 +8,11 @@ Once GitHub Pages is enabled on this repo, the app is at:
 
 **https://algocraftclen.github.io/tobacco-cc/**
 
-Open it on either phone (or a laptop). No install, no login. The sync dot in the top-left header shows connection state:
+Open it on either phone (or a laptop). No install is required. Sign in with the authorized Clenny account; Supabase Row Level Security protects all ledger reads and writes. The sync dot in the top-left header shows connection state:
 
 | Dot | Meaning |
 |-----|---------|
-| Green | Connected, changes are being saved live |
+| Green | Authenticated and connected; realtime changes are active |
 | Blue (pulsing) | Saving right now |
 | Yellow (pulsing) | Connecting |
 | Red | Offline / DB unreachable |
@@ -29,6 +29,8 @@ The Supabase project needs the migrations under `supabase/migrations/` applied b
    - [`20260707_fk_cascade_and_publication_guards.sql`](supabase/migrations/20260707_fk_cascade_and_publication_guards.sql) — FK cascade on shipment delete + idempotent realtime publication adds
    - [`20260713_expense_kind.sql`](supabase/migrations/20260713_expense_kind.sql) — `expenses.kind` column distinguishing business expenses from personal withdrawals
    - [`20260715_expense_funding_source.sql`](supabase/migrations/20260715_expense_funding_source.sql) — distinguishes personally paid operations from operations paid out of sales cash
+   - [`20260716_shared_business_funding.sql`](supabase/migrations/20260716_shared_business_funding.sql) — normalizes shared business funding without double reimbursement
+   - [`20260902_shared_sync_security.sql`](supabase/migrations/20260902_shared_sync_security.sql) — protects all ledger access, adds the shared capital-adjustment record, and enables its realtime publication
 
 Safe to re-run — every statement is idempotent.
 
@@ -51,8 +53,11 @@ Prototype writes to these Supabase tables:
 - `shipments_v2` — one row per shipment (SHP-002, SHP-003, …)
 - `expenses` — Operations Ledger rows (owner, category, amount, included?)
 - `sales` — Sales Ledger rows (date, quantity, price, cash collector)
+- `capital_adjustments` — auditable transition classifications that do not rewrite shipment, sale, or operation records
 
 Each shipment has a flexible load sheet: add as many Grizzly or Copenhagen lines as needed and enter full boxes, cases, rolls, or loose cans. Product lines are persisted inside the shipment notes metadata, so this feature does not require an additional Supabase migration and older single-product shipments remain compatible.
+
+The SHP #4 → SHP #5 $50.63 difference is held in `capital_adjustments` as a business reserve pending a partner decision. It is classification-only: cash and ownership remain unchanged until Clenny and Clanny make a final decision.
 
 All settlement math is client-side. The current agreement described below is authoritative; [`clenny_clanny_shipment_tracker.xlsx`](clenny_clanny_shipment_tracker.xlsx) is retained as a historical reference to the earlier formula model.
 
