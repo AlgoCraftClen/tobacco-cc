@@ -39,7 +39,7 @@ Begin with a full, read-only-first audit of both `AlgoCraftClen/tobacco-cc` and 
 - SHP #5 current safe withdrawal is $0.00 for Clenny and $0.00 for Clanny because no sales are recorded.
 - Projected rolled capital is $5,714.57 for Clenny and $11,578.43 for Clanny; company reserve is $12.00.
 - Projected reinvestment capital is $5,714.57 for Clenny and $11,578.43 for Clanny. Excess remains pending until the next three product boxes are chosen together.
-- Clenny reserves one complete selected box and Clanny reserves two complete selected boxes at actual product cost. Three Grizzly boxes produce $2,732.57 / $5,614.43 excess; three Copenhagen boxes produce $2,066.57 / $4,282.43. Mixed product decisions are calculated box by box.
+- The meeting planner accepts adjustable whole-case quantities for each partner and product; six cases equal one box. Reserve is the actual cost of each partner's selected Grizzly and Copenhagen cases, allowing either partner's box count to increase and mixed shipments such as 15 Grizzly + 3 Copenhagen cases.
 - SHP #4 must use actual recorded product sale prices: $2,905.22 / $13,785.96 / $23.81 company. The difference to SHP #5's Clenny basis is $50.63 of additional capital.
 
 - Product cost is separate from shipping, fuel, salaries, handling, and other operations.
