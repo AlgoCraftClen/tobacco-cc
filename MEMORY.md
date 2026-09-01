@@ -2,6 +2,14 @@
 
 Updated: 2026-09-01
 
+## Workstation Design Reference
+
+- Workstation responsive layouts must not introduce page-level horizontal scrolling; wide historical comparison tables may use one labeled inner scroller.
+- Current realized withdrawal, active inventory, and next-shipment meeting state must precede lifetime totals.
+- Meeting case selections are local drafts only and must never rewrite Tracker records.
+- Workstation privacy wording must identify Supabase as the shared business-record store, GitHub as the code host, and browser storage as session/preferences/draft storage.
+- Workstation replacement imports stay disabled. Integrity checks must report exact failing shipments/deltas, and production authentication must expose session state, sign-out, and expiry recovery.
+
 Treat these durable rules as authoritative unless Clenny explicitly changes them.
 
 ## Next Session
