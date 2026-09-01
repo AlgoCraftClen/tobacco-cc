@@ -8,6 +8,7 @@ The approved cross-app blocker repair was deployed on 2026-09-02.
 
 - Tracker commit `23be950` and Workstation commit `1d04a18` require the same authorized Clenny Supabase session for protected data.
 - Anonymous REST access is blocked by RLS; all four shared tables allow CRUD only to the authorized authenticated Clenny account.
+- Six retained legacy tables (`contributions`, `customers`, `invoices`, `products`, `purchases`, and `shipments`) are also restricted to the authorized Clenny account; their existing rows were preserved.
 - Both applications subscribe to Supabase Realtime for `shipments_v2`, `expenses`, `sales`, and `capital_adjustments`, with manual refresh and bounded polling as recovery paths.
 - Migration `20260902_shared_sync_security.sql` is applied in project `njpkqemgpbstrbsaxpbz`.
 - The Shipment #4 to #5 difference is now one shared `capital_adjustments` row for `$50.63`, temporarily allocated to `Business`, with status `pending_partner_decision`.
@@ -104,5 +105,5 @@ Audit both repositories and live apps:
 
 ## Remaining Administrative Hardening
 
-Supabase's security advisor still reports leaked-password protection as disabled. Enabling that account-level Auth setting requires signing into the Supabase dashboard. It is recommended hardening, but it does not reopen anonymous ledger access or block the deployed applications.
+Supabase's database security advisor has no errors and no remaining database-policy warnings. The sole remaining Auth warning is leaked-password protection, which Supabase restricts to Pro plans; the organization is on Free. Do not initiate a paid upgrade without explicit approval.
 

@@ -31,6 +31,7 @@ The Supabase project needs the migrations under `supabase/migrations/` applied b
    - [`20260715_expense_funding_source.sql`](supabase/migrations/20260715_expense_funding_source.sql) — distinguishes personally paid operations from operations paid out of sales cash
    - [`20260716_shared_business_funding.sql`](supabase/migrations/20260716_shared_business_funding.sql) — normalizes shared business funding without double reimbursement
    - [`20260902_shared_sync_security.sql`](supabase/migrations/20260902_shared_sync_security.sql) — protects all ledger access, adds the shared capital-adjustment record, and enables its realtime publication
+   - [`20260902_lock_legacy_public_tables.sql`](supabase/migrations/20260902_lock_legacy_public_tables.sql) — removes anonymous/public access from six retained legacy tables without deleting their rows
 
 Safe to re-run — every statement is idempotent.
 

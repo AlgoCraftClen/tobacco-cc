@@ -18,9 +18,10 @@ Treat these durable rules as authoritative unless Clenny explicitly changes them
 - Tracker commit: `23be950`; Workstation commit: `1d04a18`.
 - Core shared tables are `shipments_v2`, `expenses`, `sales`, and `capital_adjustments`.
 - Anonymous ledger access is blocked. Protected reads and writes require the authorized authenticated Clenny account.
+- Retained legacy tables are protected by the same authenticated Clenny-only boundary; no legacy row was deleted.
 - The `$50.63` Shipment #4 to #5 difference is recorded once as a `Business` adjustment with `pending_partner_decision`; it affects neither ownership nor cash.
 - Finalizing that allocation requires a partner decision. Do not rewrite historical source records.
-- Supabase leaked-password protection remains an optional dashboard hardening item.
+- Supabase leaked-password protection remains the sole advisor warning and requires a paid Pro plan; never upgrade without explicit approval.
 
 ## People
 
