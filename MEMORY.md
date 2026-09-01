@@ -4,11 +4,11 @@ Updated: 2026-09-01
 
 Treat these durable rules as authoritative unless Clenny explicitly changes them.
 
-## Mandatory Next Session
+## Next Session
 
-Begin with a full, read-only-first audit of both `AlgoCraftClen/tobacco-cc` and `AlgoCraftClen/clenny-workstation`, their deployed GitHub Pages apps, and shared Supabase backend.
+The full read-only audit of both repositories, deployed apps, and the shared Supabase backend was completed on 2026-09-01. Begin the next session with design flaws in Clenny Workstation while treating Tracker records and calculations as authoritative reference material.
 
-“Full audit” means everything: every folder, file, line of code/config/docs, page, and safe control. Use Computer Use in Chrome or BrowserOS. Open every page and test every safe button. Do not use Playwright or Microsoft Edge. Stop destructive actions at the confirmation boundary and cancel. Do not submit live test data or production writes without explicit approval. Deliver an evidence-backed report and proposed corrections before coding. The complete protocol is in `HANDOFF.md`.
+Prioritize responsive layout, nested horizontal scrolling, information hierarchy, meeting usability, misleading privacy/import copy, integrity-status clarity, and authentication/session controls. Explain proposed changes before coding, preserve production records, and re-audit every affected cross-app workflow after approved changes.
 
 ## People
 

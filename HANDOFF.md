@@ -2,15 +2,17 @@
 
 Updated: 2026-09-01
 
-## NEXT SESSION — MANDATORY FULL AUDIT
+## NEXT SESSION — WORKSTATION DESIGN FLAWS
 
-The next session begins with a full audit before any coding, data correction, or production write.
+The full read-only audit was completed on 2026-09-01. The next session should begin with the design flaws in Clenny Workstation, using this Tracker repository as the accounting and shared-data reference.
+
+Do not repeat the full audit unless a design change alters calculations, shared data, security, or synchronization. Preserve Tracker-entered records and re-audit every affected cross-app workflow after approved design changes.
 
 ### Goal
 
 Prove that CC Tobacco Tracker and Clenny Workstation are synchronized, mathematically consistent, secure, visually correct, and functionally correct end to end.
 
-### Scope: “Everything”
+### Completed audit scope — reference
 
 Audit both repositories and live apps:
 
@@ -24,7 +26,7 @@ Audit both repositories and live apps:
 - Every shipment, operation, sale, settlement, ownership, inventory, reimbursement, withdrawal, rollover, projection, and company-reserve calculation.
 - Cross-app synchronization and agreement with authoritative Supabase records.
 
-### Required method
+### Safeguards retained for design work
 
 1. Read both repositories’ HANDOFF, MEMORY, README, and repository instructions completely.
 2. Inventory both repositories and read every line of every text/code file.
@@ -66,7 +68,7 @@ Audit both repositories and live apps:
 - Projected reinvestment capital is $5,714.57 for Clenny and $11,578.43 for Clanny. Excess is not final until both partners choose the next shipment's three product boxes in a meeting.
 - Meeting planning uses adjustable whole-case quantities for each partner and product; six cases equal one box. Reserve is the actual cost of each partner's selected Grizzly and Copenhagen cases, so partner box counts may increase and shipments may mix products (for example, 15 Grizzly cases plus 3 Copenhagen cases = 3 boxes). Excess remains pending until both partners enter a case mix.
 - SHP #4 actual-price settlement: Clenny $2,905.22; Clanny $13,785.96; company $23.81. SHP #5 therefore includes $50.63 of additional Clenny capital.
-- Recent workstation commits: `5d2ae43` and `13d95f4`.
+- Recent workstation commits: `7ffd242` (adaptable case-mix planner), `72f6526` (initial whole-box planner), and `be9e8e3` (settlement math and live-entry safeguards).
 
 ## Project Reference
 
@@ -78,7 +80,7 @@ Audit both repositories and live apps:
 - Product lines are stored in shipment notes metadata for backward compatibility.
 - Database migrations are under `supabase/migrations/` and must be applied in filename order.
 
-## Next Session Priority — Bidirectional Shared-Database Synchronization
+## Following Priority — Bidirectional Shared-Database Synchronization
 
 The mobile CC Tracker and Clenny Workstation are two interfaces over one authoritative Supabase ledger. The next session must audit first, then design and implement complete bidirectional synchronization:
 
