@@ -1,6 +1,20 @@
 # CC Tobacco Tracker Handoff
 
-Updated: 2026-09-01
+Updated: 2026-09-02
+
+## SHARED SECURITY AND SYNCHRONIZATION COMPLETED
+
+The approved cross-app blocker repair was deployed on 2026-09-02.
+
+- Tracker commit `23be950` and Workstation commit `1d04a18` require the same authorized Clenny Supabase session for protected data.
+- Anonymous REST access is blocked by RLS; all four shared tables allow CRUD only to the authorized authenticated Clenny account.
+- Both applications subscribe to Supabase Realtime for `shipments_v2`, `expenses`, `sales`, and `capital_adjustments`, with manual refresh and bounded polling as recovery paths.
+- Migration `20260902_shared_sync_security.sql` is applied in project `njpkqemgpbstrbsaxpbz`.
+- The Shipment #4 to #5 difference is now one shared `capital_adjustments` row for `$50.63`, temporarily allocated to `Business`, with status `pending_partner_decision`.
+- That classification changes neither cash custody nor partner ownership: `affects_cash = false` and `affects_ownership = false`.
+- No historical shipment, expense, or sale row was changed. The verified baseline remains 5 shipments, 46 operations, 20 sales, and 1,620 cans remaining in SHP #5.
+
+Fresh production sign-out screens and read security were verified in the Codex built-in browser with no console errors. Authenticated production mutations were deliberately not created; do not add test transactions without explicit approval at action time.
 
 ## WORKSTATION DESIGN PASS COMPLETED
 
@@ -10,11 +24,11 @@ The Workstation now prioritizes current withdrawal and meeting decisions, contai
 
 Verified data remained: 5 shipments, 46 operations, 20 sales, and 1,620 cans remaining in SHP #5. The Workstation's clearer integrity panel surfaces the pre-existing SHP #1 investment-basis difference rather than concealing it behind contradictory green checks.
 
-## NEXT SESSION — WORKSTATION DESIGN FLAWS
+## NEXT SESSION
 
-The full read-only audit was completed on 2026-09-01. The next session should begin with the design flaws in Clenny Workstation, using this Tracker repository as the accounting and shared-data reference.
+Sign in with the authorized Clenny account and verify the normal authenticated read flow in both deployed apps. Then Clenny and Clanny can decide whether the pending `$50.63` Business reserve should remain with the business or be finalized to Clenny or Clanny. Change the shared adjustment only after that decision; do not change historical shipment, expense, or sale rows to force the result.
 
-Do not repeat the full audit unless a design change alters calculations, shared data, security, or synchronization. Preserve Tracker-entered records and re-audit every affected cross-app workflow after approved design changes.
+Do not repeat the completed audit unless a later change affects calculations, shared data, security, or synchronization. Preserve Tracker-entered records and verify every affected cross-app workflow after approved changes.
 
 ### Goal
 
@@ -66,7 +80,7 @@ Audit both repositories and live apps:
 ### Verified baseline entering the audit
 
 - Supabase project: `njpkqemgpbstrbsaxpbz`
-- Tables: `shipments_v2`, `expenses`, `sales`
+- Tables: `shipments_v2`, `expenses`, `sales`, `capital_adjustments`
 - Expected counts: 5 shipments, 46 operations, 20 sales
 - Remaining inventory: SHP #1–#4 = 0; SHP #5 = 1,620 cans
 - SHP #5: Clenny 33.04% / 535 cans; Clanny 66.96% / 1,084 cans; company 1 can
@@ -84,20 +98,11 @@ Audit both repositories and live apps:
 - Live tracker: `https://algocraftclen.github.io/tobacco-cc/`
 - Primary tracker file: `index.html`
 - Backend: Supabase `njpkqemgpbstrbsaxpbz`
-- Source tables: `shipments_v2`, `expenses`, `sales`
+- Source tables: `shipments_v2`, `expenses`, `sales`, `capital_adjustments`
 - Product lines are stored in shipment notes metadata for backward compatibility.
 - Database migrations are under `supabase/migrations/` and must be applied in filename order.
 
-## Following Priority — Bidirectional Shared-Database Synchronization
+## Remaining Administrative Hardening
 
-The mobile CC Tracker and Clenny Workstation are two interfaces over one authoritative Supabase ledger. The next session must audit first, then design and implement complete bidirectional synchronization:
-
-- Mobile entries must update the workstation automatically.
-- Workstation entries must update the mobile tracker automatically.
-- Shipments, sales, operations, withdrawals, reimbursements, and capital adjustments must be first-class shared database records—not hard-coded in one app or stored only in browser preferences.
-- Replace the workstation-only Shipment #4 → #5 $50.63 classification with a shared, auditable capital-adjustment record while preserving all existing tracker-entered data.
-- Add secure real-time subscriptions for both apps, with manual refresh and bounded polling as recovery fallbacks.
-- Audit RLS, authentication, session refresh, validation, duplicate prevention, conflict behavior, offline/error states, and deployed-version parity.
-- Test read-only first. Do not create production test transactions or alter authoritative records without Clenny’s explicit approval at action time.
-- Prove both directions end to end: mobile → database → workstation and workstation → database → mobile.
+Supabase's security advisor still reports leaked-password protection as disabled. Enabling that account-level Auth setting requires signing into the Supabase dashboard. It is recommended hardening, but it does not reopen anonymous ledger access or block the deployed applications.
 

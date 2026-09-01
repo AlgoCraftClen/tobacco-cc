@@ -1,6 +1,6 @@
 # CC Tobacco Tracker Memory
 
-Updated: 2026-09-01
+Updated: 2026-09-02
 
 ## Workstation Design Reference
 
@@ -12,11 +12,15 @@ Updated: 2026-09-01
 
 Treat these durable rules as authoritative unless Clenny explicitly changes them.
 
-## Next Session
+## Current Secure Baseline
 
-The full read-only audit of both repositories, deployed apps, and the shared Supabase backend was completed on 2026-09-01. Begin the next session with design flaws in Clenny Workstation while treating Tracker records and calculations as authoritative reference material.
-
-Prioritize responsive layout, nested horizontal scrolling, information hierarchy, meeting usability, misleading privacy/import copy, integrity-status clarity, and authentication/session controls. Explain proposed changes before coding, preserve production records, and re-audit every affected cross-app workflow after approved changes.
+- Cross-app auth, RLS, Realtime, polling fallback, and shared capital-adjustment work was deployed on 2026-09-02.
+- Tracker commit: `23be950`; Workstation commit: `1d04a18`.
+- Core shared tables are `shipments_v2`, `expenses`, `sales`, and `capital_adjustments`.
+- Anonymous ledger access is blocked. Protected reads and writes require the authorized authenticated Clenny account.
+- The `$50.63` Shipment #4 to #5 difference is recorded once as a `Business` adjustment with `pending_partner_decision`; it affects neither ownership nor cash.
+- Finalizing that allocation requires a partner decision. Do not rewrite historical source records.
+- Supabase leaked-password protection remains an optional dashboard hardening item.
 
 ## People
 
@@ -27,7 +31,7 @@ Prioritize responsive layout, nested horizontal scrolling, information hierarchy
 ## Source of Truth
 
 - Tracker-entered production records are authoritative and must not be changed or lost.
-- Shared data is in Supabase project `njpkqemgpbstrbsaxpbz`, primarily `shipments_v2`, `expenses`, and `sales`.
+- Shared data is in Supabase project `njpkqemgpbstrbsaxpbz`, primarily `shipments_v2`, `expenses`, `sales`, and `capital_adjustments`.
 - The workstation derives displays/calculations from shared data. A mismatch is not permission to rewrite tracker records.
 - Expected audit baseline: 5 shipments, 46 operations, 20 sales; SHP #1–#4 have 0 remaining cans and SHP #5 has 1,620.
 - Trace source records, classifications, mappings, cache, and formulas before correcting any displayed number.
@@ -80,7 +84,7 @@ Prioritize responsive layout, nested horizontal scrolling, information hierarchy
 - Any business record entered in either app must become visible in the other automatically.
 - Shared record types include shipments, sales, operations, withdrawals, reimbursements, and capital adjustments.
 - Business facts must not exist only in application code, local browser storage, or a workstation-only calculation.
-- The Shipment #4 → #5 $50.63 Clenny additional-capital classification must become a first-class shared capital-adjustment record; preserve all tracker source data.
+- The Shipment #4 → #5 $50.63 difference is a first-class shared capital-adjustment record allocated to Business pending the partners' decision; preserve all tracker source data.
 - Prefer secure Supabase real-time subscriptions, retaining manual refresh and bounded polling as recovery fallbacks.
 - Every synchronization change requires RLS/auth/session, validation, duplication, conflict, offline/error, and deployed-version verification in both directions.
 
